@@ -35,13 +35,13 @@ type ClusterCounterVec struct {
 	// 集群内机器数目
 	defaultLocalTrafficRatio float64
 
-	cycleName string
+	discardPreviousData bool
 
 	counters sync.Map
 }
 
 func (counterVec *ClusterCounterVec) WithLabelValues(lbs []string) ClusterCounterI {
-	key := strings.Join(lbs, KEYSEP)
+	key := strings.Join(lbs, SEP)
 	if v, ok := counterVec.counters.Load(key); ok {
 		if limiter, ok2 := v.(*ClusterCounter); ok2 {
 			return limiter
@@ -57,6 +57,7 @@ func (counterVec *ClusterCounterVec) WithLabelValues(lbs []string) ClusterCounte
 		loadDataInterval:  counterVec.loadDataInterval,
 		storeDataInterval: counterVec.storeDataInterval,
 		localTrafficRatio: counterVec.defaultLocalTrafficRatio,
+		discardPreviousData:counterVec.discardPreviousData,
 	}
 	newCounter.init()
 

@@ -9,33 +9,19 @@ import (
 	"time"
 )
 
-const KEYSEP = "####"
+const SEP = "####"
 
 //
 type ClusterCounterI interface {
-	// 增加
 	Add(value int64)
 
-	// 本地当前计数器
 	LocalCurrent() int64
 
-	// 集群最近一次计数
 	ClusterLast() (int64, time.Time)
 
-	// 集群预计当前值
 	ClusterPredict() int64
 
-	// 集群放大系数
 	LocalTrafficRatio() float64
-}
-
-type ClusterCounterOpts struct {
-	Name             string
-	ResetInterval    time.Duration
-	LoadDataInterval time.Duration
-
-	StoreDataInterval        time.Duration
-	DefaultLocalTrafficRatio float64
 }
 
 // 集群计数器
@@ -44,7 +30,7 @@ type ClusterCounter struct {
 
 	// 名称
 	name      string
-	cycleName string
+	intervalKey string
 	// 标签
 	lbs []string
 
@@ -65,13 +51,13 @@ type ClusterCounter struct {
 	// 本地数据
 	localValue int64
 
-	lastPushTime time.Time
+	lastStoreDataTime time.Time
 	localPushed  int64
 	localLast    int64
 	localPrev    int64
 
 	// 集群全局数据
-	lastPullTime time.Time
+	lastLoadDataTime time.Time
 	clusterLast  int64
 	clusterPrev  int64
 
@@ -80,6 +66,8 @@ type ClusterCounter struct {
 	expireTime time.Time
 
 	initTime time.Time
+
+	discardPreviousData bool
 }
 
 // 计数器增加
@@ -94,7 +82,7 @@ func (counter *ClusterCounter) LocalCurrent() int64 {
 
 // 集群最后更新值
 func (counter *ClusterCounter) ClusterLast() (int64, time.Time) {
-	return atomic.LoadInt64(&counter.clusterLast), counter.lastPullTime
+	return atomic.LoadInt64(&counter.clusterLast), counter.lastLoadDataTime
 }
 
 // 集群预测值
@@ -139,12 +127,14 @@ func (counter *ClusterCounter) init() {
 		interval := int64(counter.resetInterval.Seconds())
 		startTs := interval * (nowTs / interval)
 		endTs := startTs + interval
-		intervalKey := fmt.Sprintf("%v%v_%v", KEYSEP, startTs, interval)
-		counter.cycleName = intervalKey
+		counter.intervalKey = fmt.Sprintf("%v%v_%v", SEP, startTs, interval)
+		if counter.discardPreviousData {
+			counter.intervalKey += fmt.Sprintf("%v%v", SEP, timeNow.UnixNano())
+		}
 		counter.expireTime = time.Now().Add(time.Duration(endTs-nowTs+1) * time.Second)
 	}
 
-	if counter.defaultTrafficRatio < 1.0 {
+	if counter.defaultTrafficRatio == 0.0 {
 		counter.defaultTrafficRatio = 1.0
 	}
 
@@ -152,15 +142,17 @@ func (counter *ClusterCounter) init() {
 		counter.localTrafficRatio = counter.defaultTrafficRatio
 	}
 
-	counter.mu.Unlock()
-	value, err := counter.Factory.LoadData(counter.name, counter.cycleName,
-		strings.Join(counter.lbs, KEYSEP))
-	counter.mu.Lock()
-	if err == nil {
-		atomic.StoreInt64(&counter.clusterPrev, atomic.LoadInt64(&counter.clusterLast))
-		atomic.StoreInt64(&counter.clusterLast, value)
-		counter.lastPullTime = timeNow
-		return
+	if counter.loadDataInterval > 0 {
+		counter.mu.Unlock()
+		value, err := counter.Factory.LoadData(counter.name, counter.intervalKey,
+			strings.Join(counter.lbs, SEP))
+		counter.mu.Lock()
+		if err == nil {
+			atomic.StoreInt64(&counter.clusterPrev, atomic.LoadInt64(&counter.clusterLast))
+			atomic.StoreInt64(&counter.clusterLast, value)
+			counter.lastLoadDataTime = timeNow
+			return
+		}
 	}
 }
 
@@ -172,7 +164,7 @@ func (counter *ClusterCounter) Update() {
 	timeNow := time.Now()
 	if counter.expireTime.Unix() < timeNow.Unix() && counter.resetInterval.Seconds() > 0 {
 		var notPushValue = atomic.SwapInt64(&counter.localValue, 0) - atomic.SwapInt64(&counter.localPushed, 0)
-		var cycleName = counter.cycleName
+		var intervalName = counter.intervalKey
 
 		atomic.StoreInt64(&counter.localLast, 0)
 		atomic.StoreInt64(&counter.localPrev, 0)
@@ -183,8 +175,7 @@ func (counter *ClusterCounter) Update() {
 		interval := int64(counter.resetInterval.Seconds())
 		startTs := interval * (nowTs / interval)
 		endTs := startTs + interval
-		intervalKey := fmt.Sprintf("%v%v_%v", KEYSEP, startTs, interval)
-		counter.cycleName = intervalKey
+		counter.intervalKey = fmt.Sprintf("%v%v_%v", SEP, startTs, interval)
 		counter.expireTime = time.Now().Add(time.Duration(endTs-nowTs+1) * time.Second)
 
 		if counter.defaultTrafficRatio < 1.0 {
@@ -195,26 +186,27 @@ func (counter *ClusterCounter) Update() {
 			counter.localTrafficRatio = counter.defaultTrafficRatio
 		}
 
-		if notPushValue > 0 && len(cycleName) > 0 {
+		if notPushValue > 0 && len(intervalName) > 0 {
 			counter.mu.Unlock()
-			err := counter.Factory.StoreData(counter.name, cycleName, strings.Join(counter.lbs, KEYSEP), notPushValue)
+			err := counter.Factory.StoreData(counter.name, intervalName, strings.Join(counter.lbs, SEP), notPushValue)
 			counter.mu.Lock()
 
 			if err != nil {
-				counter.lastPushTime = time.Now()
+				counter.lastStoreDataTime = time.Now()
 			}
 		}
 		return
 	}
 
-	if timeNow.UnixNano()-counter.lastPullTime.UnixNano() > counter.loadDataInterval.Nanoseconds() {
+	if counter.loadDataInterval > 0 &&
+		timeNow.UnixNano()-counter.lastLoadDataTime.UnixNano() > counter.loadDataInterval.Nanoseconds() {
 		counter.mu.Unlock()
-		value, err := counter.Factory.LoadData(counter.name, counter.cycleName,
-			strings.Join(counter.lbs, KEYSEP))
+		value, err := counter.Factory.LoadData(counter.name, counter.intervalKey,
+			strings.Join(counter.lbs, SEP))
 		counter.mu.Lock()
 
 		if err != nil {
-			counter.lastPullTime = timeNow
+			counter.lastLoadDataTime = timeNow
 			return
 		}
 		atomic.StoreInt64(&counter.localPrev, atomic.LoadInt64(&counter.localLast))
@@ -229,19 +221,20 @@ func (counter *ClusterCounter) Update() {
 
 	}
 
-	if timeNow.UnixNano()-counter.lastPullTime.Add(1 * time.Second).UnixNano() > counter.storeDataInterval.Nanoseconds() {
+	if counter.storeDataInterval > 0 &&
+		timeNow.UnixNano()-counter.lastLoadDataTime.Add(1 * time.Second).UnixNano() > counter.storeDataInterval.Nanoseconds() {
 		pushValue := atomic.LoadInt64(&counter.localValue) - atomic.LoadInt64(&counter.localPushed)
 		if pushValue > 0 {
 			counter.mu.Unlock()
-			err := counter.Factory.StoreData(counter.name, counter.cycleName, strings.Join(counter.lbs, KEYSEP),
+			err := counter.Factory.StoreData(counter.name, counter.intervalKey, strings.Join(counter.lbs, SEP),
 				pushValue)
 			counter.mu.Lock()
 
 			if err == nil {
-				counter.lastPushTime = time.Now()
+				counter.lastStoreDataTime = time.Now()
 				atomic.AddInt64(&counter.localPushed, pushValue)
 			}
-			counter.lastPushTime = time.Now()
+			counter.lastStoreDataTime = time.Now()
 		}
 	}
 }

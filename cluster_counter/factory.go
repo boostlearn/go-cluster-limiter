@@ -7,7 +7,17 @@ import (
 	"time"
 )
 
-// 计数器生产工厂
+type ClusterCounterOpts struct {
+	Name             string
+	ResetInterval    time.Duration
+	LoadDataInterval time.Duration
+
+	StoreDataInterval        time.Duration
+	DefaultLocalTrafficRatio float64
+
+	DiscardPreviousData bool
+}
+
 type ClusterCounterFactoryI interface {
 	// 构建计数器
 	NewClusterCounter(opts *ClusterCounterOpts) (ClusterCounterI, error)
@@ -27,7 +37,7 @@ type ClusterCounterFactory struct {
 	clusterCounterVectors sync.Map
 	clusterCounters       sync.Map
 
-	redisKeyPrefix string
+	keyPrefix string
 	store          DataStoreI
 
 	syncStatus bool
@@ -37,13 +47,13 @@ type ClusterCounterFactory struct {
 	updateInterval time.Duration
 }
 
-type ClusterCounterRedisFactoryOpts struct {
+type ClusterCounterFactoryOpts struct {
 	KeyPrefix                string
 	DefaultLocalTrafficRatio float64
 	UpdateInterval           time.Duration
 }
 
-func NewFactory(opts *ClusterCounterRedisFactoryOpts, store DataStoreI) *ClusterCounterFactory {
+func NewFactory(opts *ClusterCounterFactoryOpts, store DataStoreI) *ClusterCounterFactory {
 	if len(opts.KeyPrefix) == 0 {
 		opts.KeyPrefix = "CLCT:"
 	}
@@ -56,7 +66,7 @@ func NewFactory(opts *ClusterCounterRedisFactoryOpts, store DataStoreI) *Cluster
 	}
 
 	factory := &ClusterCounterFactory{
-		redisKeyPrefix:           opts.KeyPrefix,
+		keyPrefix:           opts.KeyPrefix,
 		store:                    store,
 		syncStatus:               false,
 		defaultLocalTrafficRatio: opts.DefaultLocalTrafficRatio,
@@ -106,6 +116,7 @@ func (factory *ClusterCounterFactory) NewClusterCounterVec(opts *ClusterCounterO
 		name:                     opts.Name,
 		labelNames:               append([]string{}, labelNames...),
 		defaultLocalTrafficRatio: opts.DefaultLocalTrafficRatio,
+		discardPreviousData:opts.DiscardPreviousData,
 	}
 	clusterCounterVec.Update()
 
@@ -147,6 +158,7 @@ func (factory *ClusterCounterFactory) NewClusterCounter(opts *ClusterCounterOpts
 		storeDataInterval:   opts.StoreDataInterval,
 		name:                opts.Name,
 		defaultTrafficRatio: opts.DefaultLocalTrafficRatio,
+		discardPreviousData:opts.DiscardPreviousData,
 	}
 	clusterCounter.Update()
 
@@ -185,12 +197,12 @@ func (factory *ClusterCounterFactory) WatchAndSync() {
 }
 
 func (factory *ClusterCounterFactory) StoreData(name string, measure string, key string, value int64) error {
-	storeKey := fmt.Sprintf("%v%v%v%v%v%v", factory.redisKeyPrefix, name, KEYSEP, measure, KEYSEP, key)
+	storeKey := fmt.Sprintf("%v%v%v%v%v%v", factory.keyPrefix, name, SEP, measure, SEP, key)
 	return factory.store.Store(storeKey, value)
 }
 
 func (factory *ClusterCounterFactory) LoadData(name string, measure string, key string) (int64, error) {
-	storeKey := fmt.Sprintf("%v%v%v%v%v%v", factory.redisKeyPrefix, name, KEYSEP, measure, KEYSEP, key)
+	storeKey := fmt.Sprintf("%v%v%v%v%v%v", factory.keyPrefix, name, SEP, measure, SEP, key)
 	return factory.store.Load(storeKey)
 }
 
