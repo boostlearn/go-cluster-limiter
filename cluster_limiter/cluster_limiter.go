@@ -10,8 +10,11 @@ import (
 type ClusterLimiter struct {
 	mu sync.RWMutex
 
-	Name           string
-	lbs            []string
+	Name string
+	lbs  []string
+
+	DiscardPreviousData bool
+
 	RequestCounter cluster_counter.ClusterCounterI
 	PassCounter    cluster_counter.ClusterCounterI
 	RewardCounter  cluster_counter.ClusterCounterI

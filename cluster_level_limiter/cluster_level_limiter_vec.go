@@ -12,6 +12,8 @@ const SEP = "####"
 type ClusterLevelLimiterVec struct {
 	Name string
 
+	DiscardPreviousData bool
+
 	HighRequestCounter cluster_counter.ClusterCounterVecI
 	HighPassCounter    cluster_counter.ClusterCounterVecI
 	HighRewardCounter  cluster_counter.ClusterCounterVecI
@@ -73,6 +75,7 @@ func (limiterVec *ClusterLevelLimiterVec) WithLabelValues(lbs []string) *Cluster
 		prevUpdateTime:       time.Time{},
 		LevelSampleMax:       limiterVec.LevelSampleMax,
 		levelSamples:         make([]float64, limiterVec.LevelSampleMax),
+		DiscardPreviousData:  limiterVec.DiscardPreviousData,
 	}
 	newLimiter.Init()
 	newLimiter.Update()

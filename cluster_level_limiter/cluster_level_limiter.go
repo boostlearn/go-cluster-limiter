@@ -14,6 +14,8 @@ type ClusterLevelLimiter struct {
 	Name string
 	lbs  []string
 
+	DiscardPreviousData bool
+
 	HighRequestCounter cluster_counter.ClusterCounterI
 	HighPassCounter    cluster_counter.ClusterCounterI
 	HighRewardCounter  cluster_counter.ClusterCounterI

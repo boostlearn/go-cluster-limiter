@@ -12,6 +12,8 @@ const SEP = "####"
 type ClusterLimiterVec struct {
 	Name string
 
+	DiscardPreviousData bool
+
 	RequestCounter cluster_counter.ClusterCounterVecI
 	PassCounter    cluster_counter.ClusterCounterVecI
 	RewardCounter  cluster_counter.ClusterCounterVecI
@@ -38,26 +40,27 @@ func (limiterVec *ClusterLimiterVec) WithLabelValues(lbs []string) *ClusterLimit
 	}
 
 	newLimiter := &ClusterLimiter{
-		Name:             limiterVec.Name,
-		lbs:              append([]string{}, lbs...),
-		totalTarget:      0,
-		curPassRate:      0,
-		idealPassRate:    0,
-		RequestCounter:   limiterVec.RequestCounter.WithLabelValues(lbs),
-		PassCounter:      limiterVec.PassCounter.WithLabelValues(lbs),
-		RewardCounter:    limiterVec.RewardCounter.WithLabelValues(lbs),
-		StartTime:        limiterVec.StartTime,
-		EndTime:          limiterVec.EndTime,
-		ResetInterval:    limiterVec.ResetInterval,
-		BoostInterval:    limiterVec.BoostInterval,
-		MaxBoostFactor:   limiterVec.MaxBoostFactor,
-		UpdateInterval:   limiterVec.UpdateInterval,
-		mu:               sync.RWMutex{},
-		prevRequest:      0,
-		prevPass:         0,
-		prevReward:       0,
-		prevPacingTarget: 0,
-		prevUpdateTime:   time.Time{},
+		Name:                limiterVec.Name,
+		lbs:                 append([]string{}, lbs...),
+		totalTarget:         0,
+		curPassRate:         0,
+		idealPassRate:       0,
+		RequestCounter:      limiterVec.RequestCounter.WithLabelValues(lbs),
+		PassCounter:         limiterVec.PassCounter.WithLabelValues(lbs),
+		RewardCounter:       limiterVec.RewardCounter.WithLabelValues(lbs),
+		StartTime:           limiterVec.StartTime,
+		EndTime:             limiterVec.EndTime,
+		ResetInterval:       limiterVec.ResetInterval,
+		BoostInterval:       limiterVec.BoostInterval,
+		MaxBoostFactor:      limiterVec.MaxBoostFactor,
+		UpdateInterval:      limiterVec.UpdateInterval,
+		mu:                  sync.RWMutex{},
+		prevRequest:         0,
+		prevPass:            0,
+		prevReward:          0,
+		prevPacingTarget:    0,
+		prevUpdateTime:      time.Time{},
+		DiscardPreviousData: limiterVec.DiscardPreviousData,
 	}
 	newLimiter.Init()
 	newLimiter.Update()
