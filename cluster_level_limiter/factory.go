@@ -12,7 +12,7 @@ const LimiterPrefix = "lmt:"
 type ClusterLevelLimiterFactory struct {
 	status bool
 
-	limiterVecs sync.Map
+	limiterVectors sync.Map
 	limiters    sync.Map
 
 	counterFactory cluster_counter.ClusterCounterFactoryI
@@ -26,7 +26,7 @@ type ClusterLevelLimiterFactory struct {
 
 	limiterKeyPrefix string
 
-	defaultClusterClusterAmpFactor float64
+	defaultClusterLocalTrafficRatio float64
 }
 
 // 构建参数
@@ -74,7 +74,7 @@ func NewFactory(opts *ClusterLevelLimiterFactoryOpts,
 	}
 
 	factory := &ClusterLevelLimiterFactory{
-		limiterVecs:           sync.Map{},
+		limiterVectors:           sync.Map{},
 		counterFactory:        counterFactory,
 		defaultBoostInterval:  opts.DefaultBoostInterval,
 		defaultUpdateInterval: opts.DefaultUpdateInterval,
@@ -99,7 +99,7 @@ func (factory *ClusterLevelLimiterFactory) NewClusterLevelLimiterVec(opts *Clust
 		return nil, errors.New("need label names")
 	}
 
-	if l, ok := factory.limiterVecs.Load(opts.Name); ok {
+	if l, ok := factory.limiterVectors.Load(opts.Name); ok {
 		return l.(*ClusterLevelLimiterVec), nil
 	}
 
@@ -195,7 +195,7 @@ func (factory *ClusterLevelLimiterFactory) NewClusterLevelLimiterVec(opts *Clust
 		return nil, err
 	}
 
-	factory.limiterVecs.Store(opts.Name, limiterVec)
+	factory.limiterVectors.Store(opts.Name, limiterVec)
 	return factory.NewClusterLevelLimiterVec(opts, labelNames)
 }
 
@@ -304,7 +304,7 @@ func (factory *ClusterLevelLimiterFactory) NewClusterLevelLimiter(opts *ClusterL
 		return nil, err
 	}
 
-	factory.limiterVecs.Store(opts.Name, limiterVec)
+	factory.limiterVectors.Store(opts.Name, limiterVec)
 	return factory.NewClusterLevelLimiter(opts)
 }
 
@@ -332,7 +332,7 @@ func (factory *ClusterLevelLimiterFactory) WatchAndSync() {
 			return true
 		})
 
-		factory.limiterVecs.Range(func(k interface{}, v interface{}) bool {
+		factory.limiterVectors.Range(func(k interface{}, v interface{}) bool {
 			if limiter, ok := v.(*ClusterLevelLimiterVec); ok {
 				limiter.Update()
 			}

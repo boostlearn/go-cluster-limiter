@@ -9,12 +9,9 @@ import (
 	"time"
 )
 
-const KEY_SEP = "####"
-const SPACE_SEP = "::"
+const KEYSEP = "####"
 
-const MAX_EXPAND_RATIO = 10000
-
-// 机器计数器接口
+//
 type ClusterCounterI interface {
 	// 增加
 	Add(value int64)
@@ -29,15 +26,16 @@ type ClusterCounterI interface {
 	ClusterPredict() int64
 
 	// 集群放大系数
-	ClusterAmpFactor() float64
+	LocalTrafficRatio() float64
 }
 
 type ClusterCounterOpts struct {
-	Name                    string
-	ResetInterval           time.Duration
-	PullInterval            time.Duration
-	PushInterval            time.Duration
-	DefaultClusterAmpFactor float64
+	Name             string
+	ResetInterval    time.Duration
+	LoadDataInterval time.Duration
+
+	StoreDataInterval        time.Duration
+	DefaultLocalTrafficRatio float64
 }
 
 // 集群计数器
@@ -45,26 +43,24 @@ type ClusterCounter struct {
 	mu sync.RWMutex
 
 	// 名称
-	Name        string
-	measureName string
+	name      string
+	cycleName string
+	// 标签
+	lbs []string
 
 	// 生产者
 	Factory ClusterCounterFactoryI
 
 	// 重置周期
-	ResetInterval time.Duration
+	resetInterval time.Duration
 
 	// 更新周期
-	PullInterval time.Duration
+	loadDataInterval time.Duration
 
 	// 更新周期
-	PushInterval time.Duration
+	storeDataInterval time.Duration
 
-	// 标签
-	lbs []string
-
-	// 集群内机器数目
-	DefaultClusterAmpFactor float64
+	defaultTrafficRatio float64
 
 	// 本地数据
 	localValue int64
@@ -79,9 +75,11 @@ type ClusterCounter struct {
 	clusterLast  int64
 	clusterPrev  int64
 
-	clusterAmpFactor float64
+	localTrafficRatio float64
 
 	expireTime time.Time
+
+	initTime time.Time
 }
 
 // 计数器增加
@@ -108,25 +106,62 @@ func (counter *ClusterCounter) ClusterPredict() int64 {
 	localValue := atomic.LoadInt64(&counter.localValue)
 	localLast := atomic.LoadInt64(&counter.localLast)
 
-	clusterAmpFactor := counter.clusterAmpFactor
-	if clusterAmpFactor == 0.0 {
-		clusterAmpFactor = counter.DefaultClusterAmpFactor
+	localTrafficRatio := counter.localTrafficRatio
+	if localTrafficRatio == 0.0 {
+		counter.localTrafficRatio = counter.defaultTrafficRatio
 	}
 
-	return clusterLast + int64(float64(localValue-localLast)*clusterAmpFactor)
+	return clusterLast + int64(float64(localValue-localLast)/localTrafficRatio)
 
 }
 
 // 集群放大系数
-func (counter *ClusterCounter) ClusterAmpFactor() float64 {
+func (counter *ClusterCounter) LocalTrafficRatio() float64 {
 	counter.mu.RLock()
 	defer counter.mu.RUnlock()
 
-	if counter.clusterAmpFactor == 0.0 {
-		return counter.DefaultClusterAmpFactor
+	if counter.localTrafficRatio == 0.0 {
+		return counter.defaultTrafficRatio
 	}
 
-	return counter.clusterAmpFactor
+	return counter.localTrafficRatio
+}
+
+func (counter *ClusterCounter) init() {
+	counter.mu.Lock()
+	defer counter.mu.Unlock()
+
+	timeNow := time.Now()
+	counter.initTime = timeNow
+
+	if counter.resetInterval.Seconds() > 0 {
+		nowTs := timeNow.Unix()
+		interval := int64(counter.resetInterval.Seconds())
+		startTs := interval * (nowTs / interval)
+		endTs := startTs + interval
+		intervalKey := fmt.Sprintf("%v%v_%v", KEYSEP, startTs, interval)
+		counter.cycleName = intervalKey
+		counter.expireTime = time.Now().Add(time.Duration(endTs-nowTs+1) * time.Second)
+	}
+
+	if counter.defaultTrafficRatio < 1.0 {
+		counter.defaultTrafficRatio = 1.0
+	}
+
+	if counter.localTrafficRatio == 0.0 {
+		counter.localTrafficRatio = counter.defaultTrafficRatio
+	}
+
+	counter.mu.Unlock()
+	value, err := counter.Factory.LoadData(counter.name, counter.cycleName,
+		strings.Join(counter.lbs, KEYSEP))
+	counter.mu.Lock()
+	if err == nil {
+		atomic.StoreInt64(&counter.clusterPrev, atomic.LoadInt64(&counter.clusterLast))
+		atomic.StoreInt64(&counter.clusterLast, value)
+		counter.lastPullTime = timeNow
+		return
+	}
 }
 
 // 周期更新
@@ -135,9 +170,9 @@ func (counter *ClusterCounter) Update() {
 	defer counter.mu.Unlock()
 
 	timeNow := time.Now()
-	if counter.expireTime.Unix() < timeNow.Unix() && counter.ResetInterval.Seconds() > 0 {
+	if counter.expireTime.Unix() < timeNow.Unix() && counter.resetInterval.Seconds() > 0 {
 		var notPushValue = atomic.SwapInt64(&counter.localValue, 0) - atomic.SwapInt64(&counter.localPushed, 0)
-		var measureName = counter.measureName
+		var cycleName = counter.cycleName
 
 		atomic.StoreInt64(&counter.localLast, 0)
 		atomic.StoreInt64(&counter.localPrev, 0)
@@ -145,23 +180,24 @@ func (counter *ClusterCounter) Update() {
 		atomic.StoreInt64(&counter.clusterPrev, 0)
 
 		nowTs := timeNow.Unix()
-		interval := int64(counter.ResetInterval.Seconds())
+		interval := int64(counter.resetInterval.Seconds())
 		startTs := interval * (nowTs / interval)
 		endTs := startTs + interval
-		intervalKey := fmt.Sprintf("%v%v_%v", SPACE_SEP, startTs, interval)
-		counter.measureName = counter.Name + intervalKey
+		intervalKey := fmt.Sprintf("%v%v_%v", KEYSEP, startTs, interval)
+		counter.cycleName = intervalKey
 		counter.expireTime = time.Now().Add(time.Duration(endTs-nowTs+1) * time.Second)
 
-		if counter.clusterAmpFactor == 0.0 {
-			counter.clusterAmpFactor = counter.DefaultClusterAmpFactor
-		}
-		if counter.clusterAmpFactor < 1.0 {
-			counter.clusterAmpFactor = 1.0
+		if counter.defaultTrafficRatio < 1.0 {
+			counter.defaultTrafficRatio = 1.0
 		}
 
-		if notPushValue > 0 && len(measureName) > 0 {
+		if counter.localTrafficRatio == 0.0 {
+			counter.localTrafficRatio = counter.defaultTrafficRatio
+		}
+
+		if notPushValue > 0 && len(cycleName) > 0 {
 			counter.mu.Unlock()
-			err := counter.Factory.PushData(counter.Name, measureName, strings.Join(counter.lbs, KEY_SEP), notPushValue)
+			err := counter.Factory.StoreData(counter.name, cycleName, strings.Join(counter.lbs, KEYSEP), notPushValue)
 			counter.mu.Lock()
 
 			if err != nil {
@@ -171,10 +207,10 @@ func (counter *ClusterCounter) Update() {
 		return
 	}
 
-	if timeNow.UnixNano()-counter.lastPullTime.UnixNano() > counter.PullInterval.Nanoseconds() {
+	if timeNow.UnixNano()-counter.lastPullTime.UnixNano() > counter.loadDataInterval.Nanoseconds() {
 		counter.mu.Unlock()
-		value, err := counter.Factory.PullData(counter.Name, counter.measureName,
-			strings.Join(counter.lbs, KEY_SEP))
+		value, err := counter.Factory.LoadData(counter.name, counter.cycleName,
+			strings.Join(counter.lbs, KEYSEP))
 		counter.mu.Lock()
 
 		if err != nil {
@@ -188,16 +224,16 @@ func (counter *ClusterCounter) Update() {
 		atomic.StoreInt64(&counter.clusterPrev, atomic.LoadInt64(&counter.clusterLast))
 		atomic.StoreInt64(&counter.clusterLast, value)
 		if value > lastValue {
-			counter.updateClusterAmpFactor()
+			counter.updateLocalTrafficRatio()
 		}
 
 	}
 
-	if timeNow.UnixNano()-counter.lastPullTime.Add(1*time.Second).UnixNano() > counter.PushInterval.Nanoseconds() {
+	if timeNow.UnixNano()-counter.lastPullTime.Add(1 * time.Second).UnixNano() > counter.storeDataInterval.Nanoseconds() {
 		pushValue := atomic.LoadInt64(&counter.localValue) - atomic.LoadInt64(&counter.localPushed)
 		if pushValue > 0 {
 			counter.mu.Unlock()
-			err := counter.Factory.PushData(counter.Name, counter.measureName, strings.Join(counter.lbs, KEY_SEP),
+			err := counter.Factory.StoreData(counter.name, counter.cycleName, strings.Join(counter.lbs, KEYSEP),
 				pushValue)
 			counter.mu.Lock()
 
@@ -211,27 +247,25 @@ func (counter *ClusterCounter) Update() {
 }
 
 // 重新计算放大系数
-func (counter *ClusterCounter) updateClusterAmpFactor() {
+func (counter *ClusterCounter) updateLocalTrafficRatio() {
 	clusterPrev := atomic.LoadInt64(&counter.clusterPrev)
 	localPrev := atomic.LoadInt64(&counter.localPrev)
 	localLast := atomic.LoadInt64(&counter.localLast)
 	clusterLast := atomic.LoadInt64(&counter.clusterLast)
 
-	if clusterPrev == 0 || localPrev == 0 || clusterPrev >= clusterLast ||
-		localPrev >= localLast {
-		if counter.clusterAmpFactor == 0.0 {
-			counter.clusterAmpFactor = counter.DefaultClusterAmpFactor
-		}
-		if counter.clusterAmpFactor < 1.0 {
-			counter.clusterAmpFactor = 1.0
+	if clusterPrev == 0 || localPrev == 0 ||
+		clusterPrev >= clusterLast || localPrev >= localLast ||
+		time.Now().UnixNano()-counter.initTime.UnixNano() < 2*counter.storeDataInterval.Nanoseconds() {
+		if counter.localTrafficRatio == 0.0 {
+			counter.localTrafficRatio = counter.defaultTrafficRatio
 		}
 	} else {
-		var ratio = float64(clusterLast-clusterPrev) / float64(localLast-localPrev)
-		if ratio < 1.0 {
+		var ratio = float64(localLast-localPrev) / float64(clusterLast-clusterPrev)
+		if ratio > 1.0 {
 			ratio = 1.0
 		}
-		if ratio < MAX_EXPAND_RATIO {
-			counter.clusterAmpFactor = counter.clusterAmpFactor*0.5 + ratio*0.5
+		if ratio > 0.0001 {
+			counter.localTrafficRatio = counter.localTrafficRatio*0.5 + ratio*0.5
 		}
 	}
 }

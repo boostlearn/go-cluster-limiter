@@ -15,33 +15,33 @@ type ClusterCounterVec struct {
 	mu sync.RWMutex
 
 	// 名称
-	Name string
+	name string
 
 	// 标签
-	LabelNames []string
+	labelNames []string
 
 	// factory
 	Factory ClusterCounterFactoryI
 
 	// 重置周期
-	ResetInterval time.Duration
+	resetInterval time.Duration
 
 	// 更新周期
-	PullInterval time.Duration
+	loadDataInterval time.Duration
 
 	// 更新周期
-	PushInterval time.Duration
+	storeDataInterval time.Duration
 
 	// 集群内机器数目
-	DefaultClusterAmpFactor float64
+	defaultLocalTrafficRatio float64
 
-	measureName string
+	cycleName string
 
 	counters sync.Map
 }
 
 func (counterVec *ClusterCounterVec) WithLabelValues(lbs []string) ClusterCounterI {
-	key := strings.Join(lbs, KEY_SEP)
+	key := strings.Join(lbs, KEYSEP)
 	if v, ok := counterVec.counters.Load(key); ok {
 		if limiter, ok2 := v.(*ClusterCounter); ok2 {
 			return limiter
@@ -49,17 +49,17 @@ func (counterVec *ClusterCounterVec) WithLabelValues(lbs []string) ClusterCounte
 	}
 
 	newCounter := &ClusterCounter{
-		Name:                    counterVec.Name,
-		lbs:                     append([]string{}, lbs...),
-		mu:                      sync.RWMutex{},
-		Factory:                 counterVec.Factory,
-		ResetInterval:           counterVec.ResetInterval,
-		PullInterval:            counterVec.PullInterval,
-		PushInterval:            counterVec.PushInterval,
-		DefaultClusterAmpFactor: counterVec.DefaultClusterAmpFactor,
-		measureName:             counterVec.measureName,
+		name:              counterVec.name,
+		lbs:               append([]string{}, lbs...),
+		mu:                sync.RWMutex{},
+		Factory:           counterVec.Factory,
+		resetInterval:     counterVec.resetInterval,
+		loadDataInterval:  counterVec.loadDataInterval,
+		storeDataInterval: counterVec.storeDataInterval,
+		localTrafficRatio: counterVec.defaultLocalTrafficRatio,
 	}
-	newCounter.Update()
+	newCounter.init()
+
 	counterVec.counters.Store(key, newCounter)
 	return counterVec.WithLabelValues(lbs)
 }

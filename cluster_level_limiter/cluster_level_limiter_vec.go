@@ -7,7 +7,7 @@ import (
 	"time"
 )
 
-const KEY_SEP = "####"
+const KEYSEP = "####"
 
 type ClusterLevelLimiterVec struct {
 	Name string
@@ -40,7 +40,7 @@ type ClusterLevelLimiterVec struct {
 }
 
 func (limiterVec *ClusterLevelLimiterVec) WithLabelValues(lbs []string) *ClusterLevelLimiter {
-	key := strings.Join(lbs, KEY_SEP)
+	key := strings.Join(lbs, KEYSEP)
 	if v, ok := limiterVec.limiters.Load(key); ok {
 		if limiter, ok2 := v.(*ClusterLevelLimiter); ok2 {
 			return limiter
