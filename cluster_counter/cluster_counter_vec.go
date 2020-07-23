@@ -49,15 +49,15 @@ func (counterVec *ClusterCounterVec) WithLabelValues(lbs []string) ClusterCounte
 	}
 
 	newCounter := &ClusterCounter{
-		name:              counterVec.name,
-		lbs:               append([]string{}, lbs...),
-		mu:                sync.RWMutex{},
-		Factory:           counterVec.Factory,
-		resetInterval:     counterVec.resetInterval,
-		loadDataInterval:  counterVec.loadDataInterval,
-		storeDataInterval: counterVec.storeDataInterval,
-		localTrafficRatio: counterVec.defaultLocalTrafficRatio,
-		discardPreviousData:counterVec.discardPreviousData,
+		name:                counterVec.name,
+		lbs:                 append([]string{}, lbs...),
+		mu:                  sync.RWMutex{},
+		Factory:             counterVec.Factory,
+		resetInterval:       counterVec.resetInterval,
+		loadDataInterval:    counterVec.loadDataInterval,
+		storeDataInterval:   counterVec.storeDataInterval,
+		localTrafficRatio:   counterVec.defaultLocalTrafficRatio,
+		discardPreviousData: counterVec.discardPreviousData,
 	}
 	newCounter.init()
 

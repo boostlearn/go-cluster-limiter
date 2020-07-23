@@ -29,7 +29,7 @@ type ClusterCounter struct {
 	mu sync.RWMutex
 
 	// 名称
-	name      string
+	name        string
 	intervalKey string
 	// 标签
 	lbs []string
@@ -52,14 +52,14 @@ type ClusterCounter struct {
 	localValue int64
 
 	lastStoreDataTime time.Time
-	localPushed  int64
-	localLast    int64
-	localPrev    int64
+	localPushed       int64
+	localLast         int64
+	localPrev         int64
 
 	// 集群全局数据
 	lastLoadDataTime time.Time
-	clusterLast  int64
-	clusterPrev  int64
+	clusterLast      int64
+	clusterPrev      int64
 
 	localTrafficRatio float64
 
@@ -158,6 +158,15 @@ func (counter *ClusterCounter) init() {
 
 // 周期更新
 func (counter *ClusterCounter) Update() {
+	counter.CheckReset()
+
+	counter.CheckStoreData()
+
+	counter.CheckStoreData()
+
+}
+
+func (counter *ClusterCounter) CheckReset() {
 	counter.mu.Lock()
 	defer counter.mu.Unlock()
 
@@ -198,6 +207,13 @@ func (counter *ClusterCounter) Update() {
 		return
 	}
 
+}
+
+func (counter *ClusterCounter) CheckLoadData() {
+	counter.mu.Lock()
+	defer counter.mu.Unlock()
+
+	timeNow := time.Now()
 	if counter.loadDataInterval > 0 &&
 		timeNow.UnixNano()-counter.lastLoadDataTime.UnixNano() > counter.loadDataInterval.Nanoseconds() {
 		counter.mu.Unlock()
@@ -221,6 +237,13 @@ func (counter *ClusterCounter) Update() {
 
 	}
 
+}
+
+func (counter *ClusterCounter) CheckStoreData() {
+	counter.mu.Lock()
+	defer counter.mu.Unlock()
+
+	timeNow := time.Now()
 	if counter.storeDataInterval > 0 &&
 		timeNow.UnixNano()-counter.lastLoadDataTime.Add(1 * time.Second).UnixNano() > counter.storeDataInterval.Nanoseconds() {
 		pushValue := atomic.LoadInt64(&counter.localValue) - atomic.LoadInt64(&counter.localPushed)

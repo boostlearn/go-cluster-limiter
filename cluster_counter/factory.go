@@ -38,7 +38,7 @@ type ClusterCounterFactory struct {
 	clusterCounters       sync.Map
 
 	keyPrefix string
-	store          DataStoreI
+	store     DataStoreI
 
 	syncStatus bool
 
@@ -66,7 +66,7 @@ func NewFactory(opts *ClusterCounterFactoryOpts, store DataStoreI) *ClusterCount
 	}
 
 	factory := &ClusterCounterFactory{
-		keyPrefix:           opts.KeyPrefix,
+		keyPrefix:                opts.KeyPrefix,
 		store:                    store,
 		syncStatus:               false,
 		defaultLocalTrafficRatio: opts.DefaultLocalTrafficRatio,
@@ -116,7 +116,7 @@ func (factory *ClusterCounterFactory) NewClusterCounterVec(opts *ClusterCounterO
 		name:                     opts.Name,
 		labelNames:               append([]string{}, labelNames...),
 		defaultLocalTrafficRatio: opts.DefaultLocalTrafficRatio,
-		discardPreviousData:opts.DiscardPreviousData,
+		discardPreviousData:      opts.DiscardPreviousData,
 	}
 	clusterCounterVec.Update()
 
@@ -158,7 +158,7 @@ func (factory *ClusterCounterFactory) NewClusterCounter(opts *ClusterCounterOpts
 		storeDataInterval:   opts.StoreDataInterval,
 		name:                opts.Name,
 		defaultTrafficRatio: opts.DefaultLocalTrafficRatio,
-		discardPreviousData:opts.DiscardPreviousData,
+		discardPreviousData: opts.DiscardPreviousData,
 	}
 	clusterCounter.Update()
 
