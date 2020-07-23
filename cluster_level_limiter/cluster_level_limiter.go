@@ -11,10 +11,10 @@ import (
 type ClusterLevelLimiter struct {
 	mu sync.RWMutex
 
-	Name string
+	name string
 	lbs  []string
-
-	DiscardPreviousData bool
+ 
+	discardPreviousData bool 
 
 	HighRequestCounter cluster_counter.ClusterCounterI
 	HighPassCounter    cluster_counter.ClusterCounterI
@@ -28,16 +28,16 @@ type ClusterLevelLimiter struct {
 	LowPassCounter    cluster_counter.ClusterCounterI
 	LowRewardCounter  cluster_counter.ClusterCounterI
 
-	StartTime      time.Time
-	EndTime        time.Time
-	InitTime       time.Time
-	ResetInterval  time.Duration
-	BoostInterval  time.Duration
-	UpdateInterval time.Duration
+	startTime      time.Time
+	endTime        time.Time
+	initTime       time.Time
+	resetDataInterval  time.Duration 
+	boostInterval  time.Duration
+	silentInterval time.Duration
 
-	MaxBoostFactor float64
-
-	LevelSampleMax int64
+	maxBoostFactor float64
+  
+	levelSampleMax int64
 
 	totalTarget   int64
 	curPassRate   float64
@@ -49,7 +49,7 @@ type ClusterLevelLimiter struct {
 	highValueCut    float64
 	hasHighLevelCut bool
 
-	ReserveRate float64
+	reserveRate float64
 
 	lowLevel  float64
 	highLevel float64
@@ -96,9 +96,9 @@ func (limiter *ClusterLevelLimiter) Take(v int64, level float64) bool {
 		return false
 	}
 
-	if limiter.LevelSampleMax > 0 {
+	if limiter.levelSampleMax > 0 {
 		limiter.levelSamples[limiter.levelSampleIdx] = level
-		limiter.levelSampleIdx = (limiter.levelSampleAdded + 1) % limiter.LevelSampleMax
+		limiter.levelSampleIdx = (limiter.levelSampleAdded + 1) % limiter.levelSampleMax
 		limiter.levelSampleAdded += 1
 	}
 
@@ -190,24 +190,24 @@ func (limiter *ClusterLevelLimiter) Init() {
 
 	timeNow := time.Now()
 	nowTs := timeNow.Unix()
-	if limiter.ResetInterval > 0 {
-		interval := int64(limiter.ResetInterval.Seconds())
+	if limiter.resetDataInterval > 0 {
+		interval := int64(limiter.resetDataInterval.Seconds())
 		startTs := interval * (nowTs / interval)
 		endTs := startTs + interval
-		limiter.EndTime = timeNow.Add(time.Duration(endTs-nowTs) * time.Second)
-		limiter.StartTime = timeNow.Add(time.Duration(startTs-nowTs) * time.Second)
+		limiter.endTime = timeNow.Add(time.Duration(endTs-nowTs) * time.Second)
+		limiter.startTime = timeNow.Add(time.Duration(startTs-nowTs) * time.Second)
 	}
 
-	limiter.InitTime = time.Now()
+	limiter.initTime = time.Now()
 	limiter.highLevel = 1.0
 	limiter.lowLevel = 0.0
 
-	if limiter.ReserveRate == 0.0 {
-		limiter.ReserveRate = 0.9
+	if limiter.reserveRate == 0.0 {
+		limiter.reserveRate = 0.9
 	}
 
-	if limiter.MaxBoostFactor == 0.0 {
-		limiter.MaxBoostFactor = 2.0
+	if limiter.maxBoostFactor == 0.0 {
+		limiter.maxBoostFactor = 2.0
 	}
 }
 
@@ -218,18 +218,18 @@ func (limiter *ClusterLevelLimiter) Update() {
 
 	timeNow := time.Now()
 	nowTs := timeNow.Unix()
-	if limiter.ResetInterval.Seconds() > 0 && limiter.EndTime.Unix() <= nowTs {
-		interval := int64(limiter.ResetInterval.Seconds())
+	if limiter.resetDataInterval.Seconds() > 0 && limiter.endTime.Unix() <= nowTs {
+		interval := int64(limiter.resetDataInterval.Seconds())
 		startTs := interval * (nowTs / interval)
 		endTs := startTs + interval
-		limiter.EndTime = timeNow.Add(time.Duration(endTs-nowTs) * time.Second)
-		limiter.StartTime = timeNow.Add(time.Duration(startTs-nowTs) * time.Second)
+		limiter.endTime = timeNow.Add(time.Duration(endTs-nowTs) * time.Second)
+		limiter.startTime = timeNow.Add(time.Duration(startTs-nowTs) * time.Second)
 	}
 
-	if limiter.ResetInterval > 0 && (
-		time.Now().UnixNano() < limiter.InitTime.UnixNano()+int64(limiter.UpdateInterval.Nanoseconds())/2 ||
-			time.Now().UnixNano() >= limiter.EndTime.UnixNano()-int64(limiter.UpdateInterval.Nanoseconds())/2 ||
-			time.Now().UnixNano() < limiter.StartTime.UnixNano()+int64(limiter.UpdateInterval.Nanoseconds())/2) {
+	if limiter.resetDataInterval > 0 && (
+		time.Now().UnixNano() < limiter.initTime.UnixNano()+int64(limiter.silentInterval.Nanoseconds())/2 ||
+			time.Now().UnixNano() >= limiter.endTime.UnixNano()-int64(limiter.silentInterval.Nanoseconds())/2 ||
+			time.Now().UnixNano() < limiter.startTime.UnixNano()+int64(limiter.silentInterval.Nanoseconds())/2) {
 		limiter.curPassRate = limiter.idealPassRate
 		return
 	}
@@ -243,8 +243,8 @@ func (limiter *ClusterLevelLimiter) Update() {
 	limiter.updateIdealPassRate()
 	limiter.updatePassRate()
 
-	if limiter.ResetInterval > 0 &&
-		time.Now().UnixNano() < limiter.InitTime.UnixNano()+int64(limiter.UpdateInterval.Nanoseconds())/2 {
+	if limiter.resetDataInterval > 0 &&
+		time.Now().UnixNano() < limiter.initTime.UnixNano()+int64(limiter.silentInterval.Nanoseconds())/2 {
 		limiter.curPassRate = limiter.idealPassRate
 		return
 	}
@@ -260,13 +260,13 @@ func (limiter *ClusterLevelLimiter) PacingReward() int64 {
 func (limiter *ClusterLevelLimiter) getPacingReward() int64 {
 	targetTotalReward := limiter.totalTarget
 	pacingReward := int64(float64(targetTotalReward) *
-		float64(time.Now().UnixNano()-limiter.StartTime.UnixNano()) / float64(limiter.EndTime.UnixNano()-limiter.StartTime.UnixNano()))
+		float64(time.Now().UnixNano()-limiter.startTime.UnixNano()) / float64(limiter.endTime.UnixNano()-limiter.startTime.UnixNano()))
 	return pacingReward
 }
 
 func (limiter *ClusterLevelLimiter) updateIdealPassRate() {
 	timeNow := time.Now()
-	if time.Now().UnixNano()-limiter.prevUpdateTime.UnixNano() < limiter.UpdateInterval.Nanoseconds() {
+	if time.Now().UnixNano()-limiter.prevUpdateTime.UnixNano() < limiter.silentInterval.Nanoseconds() {
 		return
 	}
 
@@ -277,7 +277,7 @@ func (limiter *ClusterLevelLimiter) updateIdealPassRate() {
 		return
 	}
 
-	targetUnit := int64(float64(limiter.totalTarget) / float64(limiter.EndTime.Unix()-limiter.StartTime.Unix()))
+	targetUnit := int64(float64(limiter.totalTarget) / float64(limiter.endTime.Unix()-limiter.startTime.Unix()))
 
 	highRequestCur := limiter.HighRequestCounter.ClusterPredict()
 	highPassCur := limiter.HighPassCounter.ClusterPredict()
@@ -345,13 +345,13 @@ func (limiter *ClusterLevelLimiter) updateIdealPassRate() {
 		limiter.lowLevel = limiter.idealPassRate / 2
 	}
 
-	if float64(highRewardCur-limiter.prevHighReward) > float64(pacingTarget-limiter.prevPacingTarget)*limiter.ReserveRate*1.05 && limiter.highLevel < 1.0 {
+	if float64(highRewardCur-limiter.prevHighReward) > float64(pacingTarget-limiter.prevPacingTarget)*limiter.reserveRate*1.05 && limiter.highLevel < 1.0 {
 		limiter.highLevel += limiter.idealPassRate * 0.02
 		if limiter.highLevel > 1.0 {
 			limiter.highLevel = 1.0
 			limiter.hasHighLevelCut = false
 		}
-	} else if float64(highRewardCur-limiter.prevHighReward) < float64(pacingTarget-limiter.prevPacingTarget)*limiter.ReserveRate*0.95 {
+	} else if float64(highRewardCur-limiter.prevHighReward) < float64(pacingTarget-limiter.prevPacingTarget)*limiter.reserveRate*0.95 {
 		limiter.highLevel -= limiter.idealPassRate * 0.02
 		if limiter.highLevel < 0 {
 			limiter.highLevel = 0
@@ -399,16 +399,16 @@ func (limiter *ClusterLevelLimiter) LostTime() float64 {
 }
 
 func (limiter *ClusterLevelLimiter) getLostTime() float64 {
-	if limiter.ResetInterval > 0 && (
-		time.Now().UnixNano() < limiter.InitTime.UnixNano()+int64(limiter.UpdateInterval.Nanoseconds())/2 ||
-			time.Now().UnixNano() >= limiter.EndTime.UnixNano()-int64(limiter.UpdateInterval.Nanoseconds())/2 ||
-			time.Now().UnixNano() < limiter.StartTime.UnixNano()+int64(limiter.UpdateInterval.Nanoseconds())/2) {
+	if limiter.resetDataInterval > 0 && (
+		time.Now().UnixNano() < limiter.initTime.UnixNano()+int64(limiter.silentInterval.Nanoseconds())/2 ||
+			time.Now().UnixNano() >= limiter.endTime.UnixNano()-int64(limiter.silentInterval.Nanoseconds())/2 ||
+			time.Now().UnixNano() < limiter.startTime.UnixNano()+int64(limiter.silentInterval.Nanoseconds())/2) {
 		return 0.0
 	}
 
 	curRewardValue := limiter.MiddleRewardCounter.ClusterPredict() + limiter.HighRewardCounter.ClusterPredict() + limiter.LowRewardCounter.ClusterPredict()
 	pacingReward := limiter.getPacingReward()
-	interval := float64(limiter.EndTime.UnixNano()-limiter.StartTime.UnixNano()) / 1e9
+	interval := float64(limiter.endTime.UnixNano()-limiter.startTime.UnixNano()) / 1e9
 	if interval < 1.0 {
 		return 0
 	}
@@ -425,15 +425,15 @@ func (limiter *ClusterLevelLimiter) getLostTime() float64 {
 func (limiter *ClusterLevelLimiter) updatePassRate() {
 	needBoostTime := limiter.getLostTime()
 
-	if limiter.BoostInterval == 0 { // 未设置
-		limiter.BoostInterval = time.Duration(60) * time.Second
+	if limiter.boostInterval == 0 { // 未设置
+		limiter.boostInterval = time.Duration(60) * time.Second
 	}
 
 	if needBoostTime > 0 {
 		smoothPassRate := limiter.idealPassRate * (1 + needBoostTime*1e9/
-			float64(limiter.BoostInterval.Nanoseconds()))
-		if limiter.MaxBoostFactor > 1.0 && smoothPassRate > limiter.MaxBoostFactor*limiter.idealPassRate {
-			smoothPassRate = limiter.MaxBoostFactor * limiter.idealPassRate
+			float64(limiter.boostInterval.Nanoseconds()))
+		if limiter.maxBoostFactor > 1.0 && smoothPassRate > limiter.maxBoostFactor*limiter.idealPassRate {
+			smoothPassRate = limiter.maxBoostFactor * limiter.idealPassRate
 		}
 		if smoothPassRate > 1.0 {
 			limiter.curPassRate = 1.0
@@ -442,7 +442,7 @@ func (limiter *ClusterLevelLimiter) updatePassRate() {
 		}
 	} else {
 		smoothPassRate := limiter.idealPassRate * (1 + needBoostTime*4*1e9/
-			float64(limiter.BoostInterval.Nanoseconds()))
+			float64(limiter.boostInterval.Nanoseconds()))
 		if smoothPassRate < 0 {
 			limiter.curPassRate = limiter.idealPassRate / 10000
 		} else {
@@ -453,8 +453,8 @@ func (limiter *ClusterLevelLimiter) updatePassRate() {
 
 func (limiter *ClusterLevelLimiter) updateCutLevel() {
 	sampleNum := limiter.levelSampleAdded
-	if sampleNum > limiter.LevelSampleMax {
-		sampleNum = limiter.LevelSampleMax
+	if sampleNum > limiter.levelSampleMax {
+		sampleNum = limiter.levelSampleMax
 	}
 
 	if sampleNum < 100 {

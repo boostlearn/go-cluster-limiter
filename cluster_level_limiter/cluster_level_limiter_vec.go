@@ -10,9 +10,9 @@ import (
 const SEP = "####"
 
 type ClusterLevelLimiterVec struct {
-	Name string
+	name string
 
-	DiscardPreviousData bool
+	discardPreviousData bool
 
 	HighRequestCounter cluster_counter.ClusterCounterVecI
 	HighPassCounter    cluster_counter.ClusterCounterVecI
@@ -26,16 +26,16 @@ type ClusterLevelLimiterVec struct {
 	LowPassCounter    cluster_counter.ClusterCounterVecI
 	LowRewardCounter  cluster_counter.ClusterCounterVecI
 
-	StartTime     time.Time
-	EndTime       time.Time
-	ResetInterval time.Duration
+	startTime     time.Time
+	endTime       time.Time
+	resetDataInterval time.Duration
 
-	BoostInterval  time.Duration
-	MaxBoostFactor float64
+	boostInterval  time.Duration
+	maxBoostFactor float64
 
-	UpdateInterval time.Duration
+	silentInterval time.Duration
 
-	LevelSampleMax int64
+	levelSampleMax int64
 
 	mu       sync.RWMutex
 	limiters sync.Map
@@ -50,11 +50,8 @@ func (limiterVec *ClusterLevelLimiterVec) WithLabelValues(lbs []string) *Cluster
 	}
 
 	newLimiter := &ClusterLevelLimiter{
-		Name:                 limiterVec.Name,
+		name:                 limiterVec.name,
 		lbs:                  append([]string{}, lbs...),
-		totalTarget:          0,
-		curPassRate:          0,
-		idealPassRate:        0,
 		HighRequestCounter:   limiterVec.HighRequestCounter.WithLabelValues(lbs),
 		HighPassCounter:      limiterVec.HighPassCounter.WithLabelValues(lbs),
 		HighRewardCounter:    limiterVec.HighRewardCounter.WithLabelValues(lbs),
@@ -64,18 +61,18 @@ func (limiterVec *ClusterLevelLimiterVec) WithLabelValues(lbs []string) *Cluster
 		LowRequestCounter:    limiterVec.LowRequestCounter.WithLabelValues(lbs),
 		LowPassCounter:       limiterVec.LowPassCounter.WithLabelValues(lbs),
 		LowRewardCounter:     limiterVec.LowRewardCounter.WithLabelValues(lbs),
-		StartTime:            limiterVec.StartTime,
-		EndTime:              limiterVec.EndTime,
-		ResetInterval:        limiterVec.ResetInterval,
-		BoostInterval:        limiterVec.BoostInterval,
-		MaxBoostFactor:       limiterVec.MaxBoostFactor,
-		UpdateInterval:       limiterVec.UpdateInterval,
+		startTime:            limiterVec.startTime,
+		endTime:              limiterVec.endTime,
+		resetDataInterval:        limiterVec.resetDataInterval,
+		boostInterval:        limiterVec.boostInterval,
+		maxBoostFactor:       limiterVec.maxBoostFactor,
+		silentInterval:       limiterVec.silentInterval,
 		mu:                   sync.RWMutex{},
 		prevPacingTarget:     0,
 		prevUpdateTime:       time.Time{},
-		LevelSampleMax:       limiterVec.LevelSampleMax,
-		levelSamples:         make([]float64, limiterVec.LevelSampleMax),
-		DiscardPreviousData:  limiterVec.DiscardPreviousData,
+		levelSampleMax:       limiterVec.levelSampleMax,
+		levelSamples:         make([]float64, limiterVec.levelSampleMax),
+		discardPreviousData:  limiterVec.discardPreviousData,
 	}
 	newLimiter.Init()
 	newLimiter.Update()
