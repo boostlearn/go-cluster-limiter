@@ -28,6 +28,8 @@ type ClusterLimiterVec struct {
 
 	silentInterval time.Duration
 
+	burstInterval time.Duration
+
 	mu       sync.RWMutex
 	limiters sync.Map
 }
@@ -43,9 +45,6 @@ func (limiterVec *ClusterLimiterVec) WithLabelValues(lbs []string) *ClusterLimit
 	newLimiter := &ClusterLimiter{
 		name:                limiterVec.name,
 		lbs:                 append([]string{}, lbs...),
-		totalTarget:         0,
-		curPassRate:         0,
-		idealPassRate:       0,
 		RequestCounter:      limiterVec.RequestCounter.WithLabelValues(lbs),
 		PassCounter:         limiterVec.PassCounter.WithLabelValues(lbs),
 		RewardCounter:       limiterVec.RewardCounter.WithLabelValues(lbs),
@@ -55,6 +54,7 @@ func (limiterVec *ClusterLimiterVec) WithLabelValues(lbs []string) *ClusterLimit
 		boostInterval:       limiterVec.boostInterval,
 		maxBoostFactor:      limiterVec.maxBoostFactor,
 		silentInterval:      limiterVec.silentInterval,
+		burstInterval: limiterVec.burstInterval,
 		mu:                  sync.RWMutex{},
 		prevRequest:         0,
 		prevPass:            0,

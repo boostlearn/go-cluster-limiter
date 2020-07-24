@@ -18,11 +18,9 @@ type ClusterLimiterFactory struct {
 	counterFactory *cluster_counter.ClusterCounterFactory
 
 	defaultBoostInterval  time.Duration
-	defaultUpdateInterval time.Duration
+	updateInterval time.Duration
 
 	defaultMaxBoostFactor float64
-
-	updateRatioInterval time.Duration
 
 	limiterKeyPrefix string
 
@@ -52,7 +50,9 @@ type ClusterLimiterOpts struct {
 
 	BoostInterval time.Duration
 
-	UpdateInterval time.Duration
+	SilentInterval time.Duration
+
+	BurstInterval time.Duration
 
 	MaxBoostFactor float64
 
@@ -79,9 +79,8 @@ func NewFactory(opts *ClusterLimiterFactoryOpts,
 		limiterVectors:        sync.Map{},
 		counterFactory:        counterFactory,
 		defaultBoostInterval:  opts.DefaultBoostInterval,
-		defaultUpdateInterval: opts.DefaultUpdateInterval,
+		updateInterval: opts.DefaultUpdateInterval,
 		limiterKeyPrefix:      opts.KeyPrefix,
-		updateRatioInterval:   opts.DefaultUpdateInterval,
 	}
 	factory.Start()
 	return factory
@@ -105,8 +104,12 @@ func (factory *ClusterLimiterFactory) NewClusterLimiterVec(opts *ClusterLimiterO
 		return l.(*ClusterLimiterVec), nil
 	}
 
-	if opts.UpdateInterval == 0 {
-		opts.UpdateInterval = factory.defaultUpdateInterval
+	if opts.SilentInterval == 0 {
+		opts.SilentInterval = factory.updateInterval
+	}
+
+	if opts.BurstInterval == 0 {
+		opts.BurstInterval = factory.updateInterval
 	}
 
 	if opts.BoostInterval == 0 {
@@ -123,7 +126,8 @@ func (factory *ClusterLimiterFactory) NewClusterLimiterVec(opts *ClusterLimiterO
 		resetDataInterval:   opts.ResetInterval,
 		boostInterval:       opts.BoostInterval,
 		maxBoostFactor:      opts.MaxBoostFactor,
-		silentInterval:      opts.UpdateInterval,
+		silentInterval:      opts.SilentInterval,
+		burstInterval: opts.BurstInterval,
 		discardPreviousData: opts.DiscardPreviousData,
 	}
 
@@ -172,8 +176,8 @@ func (factory *ClusterLimiterFactory) NewClusterLimiter(opts *ClusterLimiterOpts
 		return l.(*ClusterLimiter), nil
 	}
 
-	if opts.UpdateInterval == 0 {
-		opts.UpdateInterval = factory.defaultUpdateInterval
+	if opts.SilentInterval == 0 {
+		opts.SilentInterval = factory.updateInterval
 	}
 
 	if opts.BoostInterval == 0 {
@@ -190,7 +194,7 @@ func (factory *ClusterLimiterFactory) NewClusterLimiter(opts *ClusterLimiterOpts
 		resetDataInterval:   opts.ResetInterval,
 		boostInterval:       opts.BoostInterval,
 		maxBoostFactor:      opts.MaxBoostFactor,
-		silentInterval:      opts.UpdateInterval,
+		silentInterval:      opts.SilentInterval,
 		discardPreviousData: opts.DiscardPreviousData,
 	}
 
@@ -256,6 +260,6 @@ func (factory *ClusterLimiterFactory) WatchAndSync() {
 			}
 			return true
 		})
-		time.Sleep(factory.updateRatioInterval)
+		time.Sleep(factory.updateInterval)
 	}
 }
