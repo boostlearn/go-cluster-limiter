@@ -38,15 +38,15 @@ type ClusterCounter struct {
 	localCurrentValue int64
 
 	lastStoreDataTime time.Time
-	localPushedValue       int64
-	localLastValue         int64
-	localPrevValue         int64
+	localPushedValue  int64
+	localLastValue    int64
+	localPrevValue    int64
 
 	// 集群全局数据
 	lastLoadDataTime time.Time
-	clusterLastValue      int64
-	clusterPrevValue      int64
-	clusterInitValue	int64
+	clusterLastValue int64
+	clusterPrevValue int64
+	clusterInitValue int64
 
 	localTrafficRatio float64
 
@@ -78,7 +78,7 @@ func (counter *ClusterCounter) ClusterLast() (int64, time.Time) {
 	counter.mu.RLock()
 	defer counter.mu.RUnlock()
 
-	clusterLast :=  atomic.LoadInt64(&counter.clusterLastValue)
+	clusterLast := atomic.LoadInt64(&counter.clusterLastValue)
 	if counter.discardPreviousData {
 		clusterLast -= counter.clusterInitValue
 	}
@@ -118,7 +118,7 @@ func (counter *ClusterCounter) LocalTrafficRatio() float64 {
 	return counter.localTrafficRatio
 }
 
-func (counter *ClusterCounter) init() {
+func (counter *ClusterCounter) Init() {
 	counter.mu.Lock()
 	defer counter.mu.Unlock()
 

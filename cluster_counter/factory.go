@@ -103,7 +103,6 @@ func (factory *ClusterCounterFactory) NewClusterCounterVec(opts *ClusterCounterO
 		defaultLocalTrafficRatio: opts.DefaultLocalTrafficRatio,
 		discardPreviousData:      opts.DiscardPreviousData,
 	}
-	clusterCounterVec.Update()
 
 	factory.clusterCounterVectors.Store(opts.Name, clusterCounterVec)
 
@@ -145,7 +144,7 @@ func (factory *ClusterCounterFactory) NewClusterCounter(opts *ClusterCounterOpts
 		defaultTrafficRatio: opts.DefaultLocalTrafficRatio,
 		discardPreviousData: opts.DiscardPreviousData,
 	}
-	clusterCounter.Update()
+	clusterCounter.Init()
 
 	factory.clusterCounters.Store(opts.Name, clusterCounter)
 

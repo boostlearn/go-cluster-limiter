@@ -64,7 +64,7 @@ func (counterVec *ClusterCounterVec) WithLabelValues(lbs []string) *ClusterCount
 		localTrafficRatio:   counterVec.defaultLocalTrafficRatio,
 		discardPreviousData: counterVec.discardPreviousData,
 	}
-	newCounter.init()
+	newCounter.Init()
 
 	counterVec.counters.Store(key, newCounter)
 	return counterVec.WithLabelValues(lbs)
