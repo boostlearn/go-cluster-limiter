@@ -2,7 +2,6 @@
 package cluster_counter
 
 import (
-	"fmt"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -50,7 +49,8 @@ type ClusterCounter struct {
 
 	localTrafficRatio float64
 
-	expireTime time.Time
+	beginTime time.Time
+	endTime   time.Time
 
 	initTime time.Time
 
@@ -122,16 +122,13 @@ func (counter *ClusterCounter) Init() {
 	counter.mu.Lock()
 	defer counter.mu.Unlock()
 
-	timeNow := time.Now()
+	timeNow := time.Now().Truncate(time.Second)
 	counter.initTime = timeNow
+	counter.resetInterval = counter.resetInterval.Truncate(time.Second)
 
-	if counter.resetInterval.Seconds() > 0 {
-		nowTs := timeNow.Unix()
-		interval := int64(counter.resetInterval.Seconds())
-		startTs := interval * (nowTs / interval)
-		endTs := startTs + interval
-		counter.intervalKey = fmt.Sprintf("%v%v_%v", SEP, startTs, interval)
-		counter.expireTime = time.Now().Add(time.Duration(endTs-nowTs+1) * time.Second)
+	if counter.resetInterval > 0 {
+		counter.beginTime = timeNow.Truncate(counter.resetInterval)
+		counter.endTime = counter.beginTime.Add(counter.resetInterval)
 	}
 
 	if counter.defaultTrafficRatio == 0.0 {
@@ -142,19 +139,18 @@ func (counter *ClusterCounter) Init() {
 		counter.localTrafficRatio = counter.defaultTrafficRatio
 	}
 
-	if counter.loadDataInterval > 0 {
-		counter.mu.Unlock()
-		value, err := counter.factory.Store.Load(counter.name, counter.intervalKey,
-			counter.lbs)
-		counter.mu.Lock()
-		if err == nil {
-			atomic.StoreInt64(&counter.clusterPrevValue, atomic.LoadInt64(&counter.clusterLastValue))
-			atomic.StoreInt64(&counter.clusterLastValue, value)
-			atomic.StoreInt64(&counter.clusterInitValue, value)
-			counter.lastLoadDataTime = timeNow
-			return
-		}
+	counter.mu.Unlock()
+	value, err := counter.factory.Store.Load(counter.name, counter.beginTime, counter.endTime, counter.lbs)
+	counter.mu.Lock()
+
+	if err == nil {
+		atomic.StoreInt64(&counter.clusterPrevValue, atomic.LoadInt64(&counter.clusterLastValue))
+		atomic.StoreInt64(&counter.clusterLastValue, value)
+		atomic.StoreInt64(&counter.clusterInitValue, value)
+		counter.lastLoadDataTime = timeNow
+		return
 	}
+
 }
 
 // 周期更新
@@ -171,8 +167,8 @@ func (counter *ClusterCounter) ResetData() {
 	counter.mu.Lock()
 	defer counter.mu.Unlock()
 
-	timeNow := time.Now()
-	if counter.expireTime.Unix() < timeNow.Unix() && counter.resetInterval.Seconds() > 0 {
+	timeNow := time.Now().Truncate(time.Second)
+	if timeNow.After(counter.endTime) && counter.resetInterval > 0 {
 		var notPushValue = atomic.SwapInt64(&counter.localCurrentValue, 0) - atomic.SwapInt64(&counter.localPushedValue, 0)
 		var intervalName = counter.intervalKey
 
@@ -182,12 +178,8 @@ func (counter *ClusterCounter) ResetData() {
 		atomic.StoreInt64(&counter.clusterPrevValue, 0)
 		atomic.StoreInt64(&counter.clusterInitValue, 0)
 
-		nowTs := timeNow.Unix()
-		interval := int64(counter.resetInterval.Seconds())
-		startTs := interval * (nowTs / interval)
-		endTs := startTs + interval
-		counter.intervalKey = fmt.Sprintf("%v%v_%v", SEP, startTs, interval)
-		counter.expireTime = time.Now().Add(time.Duration(endTs-nowTs+1) * time.Second)
+		counter.endTime = timeNow.Truncate(counter.resetInterval)
+		counter.endTime = counter.beginTime.Add(counter.resetInterval)
 
 		if counter.defaultTrafficRatio < 1.0 {
 			counter.defaultTrafficRatio = 1.0
@@ -199,7 +191,7 @@ func (counter *ClusterCounter) ResetData() {
 
 		if notPushValue > 0 && len(intervalName) > 0 {
 			counter.mu.Unlock()
-			err := counter.factory.Store.Store(counter.name, intervalName, counter.lbs, notPushValue)
+			err := counter.factory.Store.Store(counter.name, counter.beginTime, counter.endTime, counter.lbs, notPushValue)
 			counter.mu.Lock()
 
 			if err != nil {
@@ -215,11 +207,11 @@ func (counter *ClusterCounter) LoadData() {
 	counter.mu.Lock()
 	defer counter.mu.Unlock()
 
-	timeNow := time.Now()
+	timeNow := time.Now().Truncate(time.Second)
 	if counter.loadDataInterval > 0 &&
-		timeNow.UnixNano()-counter.lastLoadDataTime.UnixNano() > counter.loadDataInterval.Nanoseconds() {
+		timeNow.After(counter.lastLoadDataTime.Add(counter.loadDataInterval)) {
 		counter.mu.Unlock()
-		value, err := counter.factory.Store.Load(counter.name, counter.intervalKey,
+		value, err := counter.factory.Store.Load(counter.name, counter.beginTime, counter.endTime,
 			counter.lbs)
 		counter.mu.Lock()
 
@@ -245,13 +237,13 @@ func (counter *ClusterCounter) StoreData() {
 	counter.mu.Lock()
 	defer counter.mu.Unlock()
 
-	timeNow := time.Now()
+	timeNow := time.Now().Truncate(time.Second)
 	if counter.storeDataInterval > 0 &&
 		timeNow.UnixNano()-counter.lastLoadDataTime.Add(1*time.Second).UnixNano() > counter.storeDataInterval.Nanoseconds() {
 		pushValue := atomic.LoadInt64(&counter.localCurrentValue) - atomic.LoadInt64(&counter.localPushedValue)
 		if pushValue > 0 {
 			counter.mu.Unlock()
-			err := counter.factory.Store.Store(counter.name, counter.intervalKey, counter.lbs,
+			err := counter.factory.Store.Store(counter.name, counter.beginTime, counter.endTime, counter.lbs,
 				pushValue)
 			counter.mu.Lock()
 
@@ -271,9 +263,10 @@ func (counter *ClusterCounter) updateLocalTrafficRatio() {
 	localLast := atomic.LoadInt64(&counter.localLastValue)
 	clusterLast := atomic.LoadInt64(&counter.clusterLastValue)
 
+	timeNow := time.Now().Truncate(time.Second)
 	if clusterPrev == 0 || localPrev == 0 ||
 		clusterPrev >= clusterLast || localPrev >= localLast ||
-		time.Now().UnixNano()-counter.initTime.UnixNano() < 2*counter.storeDataInterval.Nanoseconds() {
+		timeNow.Before(counter.initTime.Add(2*counter.storeDataInterval)) {
 		if counter.localTrafficRatio == 0.0 {
 			counter.localTrafficRatio = counter.defaultTrafficRatio
 		}

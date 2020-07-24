@@ -77,11 +77,11 @@ func (factory *ClusterCounterFactory) NewClusterCounterVec(opts *ClusterCounterO
 		opts.DefaultLocalTrafficRatio = factory.defaultLocalTrafficRatio
 	}
 
-	if opts.StoreDataInterval == 0 {
+	if opts.StoreDataInterval.Truncate(time.Second) == 0 {
 		opts.StoreDataInterval = time.Duration(5) * time.Second
 	}
 
-	if opts.LoadDataInterval == 0 {
+	if opts.LoadDataInterval.Truncate(time.Second) == 0 {
 		opts.LoadDataInterval = time.Duration(10) * time.Second
 	}
 
@@ -95,9 +95,9 @@ func (factory *ClusterCounterFactory) NewClusterCounterVec(opts *ClusterCounterO
 
 	clusterCounterVec := &ClusterCounterVec{
 		factory:                  factory,
-		resetInterval:            opts.ResetInterval,
-		loadDataInterval:         opts.LoadDataInterval,
-		storeDataInterval:        opts.StoreDataInterval,
+		resetInterval:            opts.ResetInterval.Truncate(time.Second),
+		loadDataInterval:         opts.LoadDataInterval.Truncate(time.Second),
+		storeDataInterval:        opts.StoreDataInterval.Truncate(time.Second),
 		name:                     opts.Name,
 		labelNames:               append([]string{}, labelNames...),
 		defaultLocalTrafficRatio: opts.DefaultLocalTrafficRatio,
@@ -119,11 +119,11 @@ func (factory *ClusterCounterFactory) NewClusterCounter(opts *ClusterCounterOpts
 		opts.DefaultLocalTrafficRatio = factory.defaultLocalTrafficRatio
 	}
 
-	if opts.StoreDataInterval == 0 {
+	if opts.StoreDataInterval.Truncate(time.Second) == 0 {
 		opts.StoreDataInterval = time.Duration(5) * time.Second
 	}
 
-	if opts.LoadDataInterval == 0 {
+	if opts.LoadDataInterval.Truncate(time.Second) == 0 {
 		opts.LoadDataInterval = time.Duration(10) * time.Second
 	}
 
@@ -137,9 +137,9 @@ func (factory *ClusterCounterFactory) NewClusterCounter(opts *ClusterCounterOpts
 
 	clusterCounter := &ClusterCounter{
 		factory:             factory,
-		resetInterval:       opts.ResetInterval,
-		loadDataInterval:    opts.LoadDataInterval,
-		storeDataInterval:   opts.StoreDataInterval,
+		resetInterval:       opts.ResetInterval.Truncate(time.Second),
+		loadDataInterval:    opts.LoadDataInterval.Truncate(time.Second),
+		storeDataInterval:   opts.StoreDataInterval.Truncate(time.Second),
 		name:                opts.Name,
 		defaultTrafficRatio: opts.DefaultLocalTrafficRatio,
 		discardPreviousData: opts.DiscardPreviousData,

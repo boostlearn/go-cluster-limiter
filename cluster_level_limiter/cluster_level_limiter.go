@@ -188,17 +188,13 @@ func (limiter *ClusterLevelLimiter) Init() {
 	limiter.mu.Lock()
 	defer limiter.mu.Unlock()
 
-	timeNow := time.Now()
-	nowTs := timeNow.Unix()
+	timeNow := time.Now().Truncate(time.Second)
 	if limiter.resetDataInterval > 0 {
-		interval := int64(limiter.resetDataInterval.Seconds())
-		startTs := interval * (nowTs / interval)
-		endTs := startTs + interval
-		limiter.endTime = timeNow.Add(time.Duration(endTs-nowTs) * time.Second)
-		limiter.startTime = timeNow.Add(time.Duration(startTs-nowTs) * time.Second)
+		limiter.startTime = timeNow.Truncate(limiter.resetDataInterval)
+		limiter.endTime = limiter.startTime.Add(limiter.resetDataInterval)
 	}
 
-	limiter.initTime = time.Now()
+	limiter.initTime = timeNow
 	limiter.highLevel = 1.0
 	limiter.lowLevel = 0.0
 
@@ -216,20 +212,16 @@ func (limiter *ClusterLevelLimiter) Update() {
 	limiter.mu.Lock()
 	defer limiter.mu.Unlock()
 
-	timeNow := time.Now()
-	nowTs := timeNow.Unix()
-	if limiter.resetDataInterval.Seconds() > 0 && limiter.endTime.Unix() <= nowTs {
-		interval := int64(limiter.resetDataInterval.Seconds())
-		startTs := interval * (nowTs / interval)
-		endTs := startTs + interval
-		limiter.endTime = timeNow.Add(time.Duration(endTs-nowTs) * time.Second)
-		limiter.startTime = timeNow.Add(time.Duration(startTs-nowTs) * time.Second)
+	timeNow := time.Now().Truncate(time.Second)
+	if limiter.resetDataInterval > 0 && timeNow.After(limiter.endTime) {
+		limiter.startTime = timeNow.Truncate(limiter.resetDataInterval)
+		limiter.endTime = limiter.startTime.Add(limiter.resetDataInterval)
 	}
 
 	if limiter.resetDataInterval > 0 && (
-		time.Now().UnixNano() < limiter.initTime.UnixNano()+int64(limiter.silentInterval.Nanoseconds())/2 ||
-			time.Now().UnixNano() >= limiter.endTime.UnixNano()-int64(limiter.silentInterval.Nanoseconds())/2 ||
-			time.Now().UnixNano() < limiter.startTime.UnixNano()+int64(limiter.silentInterval.Nanoseconds())/2) {
+		timeNow.Before(limiter.initTime.Add(limiter.silentInterval/2)) ||
+			timeNow.After(limiter.endTime.Add(-limiter.silentInterval/2)) ||
+			timeNow.Before(limiter.startTime.Add(limiter.silentInterval/2))) {
 		limiter.curPassRate = limiter.idealPassRate
 		return
 	}
@@ -244,7 +236,7 @@ func (limiter *ClusterLevelLimiter) Update() {
 	limiter.updatePassRate()
 
 	if limiter.resetDataInterval > 0 &&
-		time.Now().UnixNano() < limiter.initTime.UnixNano()+int64(limiter.silentInterval.Nanoseconds())/2 {
+		timeNow.Before(limiter.initTime.Add(limiter.silentInterval/2)) {
 		limiter.curPassRate = limiter.idealPassRate
 		return
 	}
@@ -265,8 +257,8 @@ func (limiter *ClusterLevelLimiter) getPacingReward() int64 {
 }
 
 func (limiter *ClusterLevelLimiter) updateIdealPassRate() {
-	timeNow := time.Now()
-	if time.Now().UnixNano()-limiter.prevUpdateTime.UnixNano() < limiter.silentInterval.Nanoseconds() {
+	timeNow := time.Now().Truncate(time.Second)
+	if timeNow.Before(limiter.prevUpdateTime.Add(limiter.silentInterval)) {
 		return
 	}
 
@@ -399,10 +391,10 @@ func (limiter *ClusterLevelLimiter) LostTime() float64 {
 }
 
 func (limiter *ClusterLevelLimiter) getLostTime() float64 {
-	if limiter.resetDataInterval > 0 && (
-		time.Now().UnixNano() < limiter.initTime.UnixNano()+int64(limiter.silentInterval.Nanoseconds())/2 ||
-			time.Now().UnixNano() >= limiter.endTime.UnixNano()-int64(limiter.silentInterval.Nanoseconds())/2 ||
-			time.Now().UnixNano() < limiter.startTime.UnixNano()+int64(limiter.silentInterval.Nanoseconds())/2) {
+	timeNow := time.Now()
+	if limiter.resetDataInterval > 0 && timeNow.Before(limiter.initTime.Add(limiter.silentInterval/2)) ||
+		timeNow.After(limiter.endTime.Add(-limiter.silentInterval/2)) ||
+		timeNow.Before(limiter.startTime.Add(limiter.silentInterval/2)) {
 		return 0.0
 	}
 
