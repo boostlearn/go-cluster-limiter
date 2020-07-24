@@ -64,7 +64,7 @@ func NewFactory(opts *ClusterCounterFactoryOpts, store DataStoreI) *ClusterCount
 // 新建计数器
 func (factory *ClusterCounterFactory) NewClusterCounterVec(opts *ClusterCounterOpts,
 	labelNames []string,
-) (ClusterCounterVecI, error) {
+) (*ClusterCounterVecI, error) {
 	if opts == nil || len(opts.Name) == 0 {
 		return nil, errors.New("name error")
 	}
@@ -86,7 +86,7 @@ func (factory *ClusterCounterFactory) NewClusterCounterVec(opts *ClusterCounterO
 	}
 
 	if counter, ok := factory.clusterCounterVectors.Load(opts.Name); ok {
-		return counter.(ClusterCounterVecI), nil
+		return counter.(*ClusterCounterVecI), nil
 	}
 
 	if opts.DefaultLocalTrafficRatio == 0 {
@@ -111,7 +111,7 @@ func (factory *ClusterCounterFactory) NewClusterCounterVec(opts *ClusterCounterO
 }
 
 func (factory *ClusterCounterFactory) NewClusterCounter(opts *ClusterCounterOpts,
-) (ClusterCounterI, error) {
+) (*ClusterCounter, error) {
 	if opts == nil || len(opts.Name) == 0 {
 		return nil, errors.New("name error")
 	}
@@ -129,7 +129,7 @@ func (factory *ClusterCounterFactory) NewClusterCounter(opts *ClusterCounterOpts
 	}
 
 	if counter, ok := factory.clusterCounters.Load(opts.Name); ok {
-		return counter.(ClusterCounterI), nil
+		return counter.(*ClusterCounter), nil
 	}
 
 	if opts.DefaultLocalTrafficRatio == 0 {

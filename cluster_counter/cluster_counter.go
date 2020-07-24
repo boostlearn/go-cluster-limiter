@@ -10,19 +10,6 @@ import (
 
 const SEP = "####"
 
-//
-type ClusterCounterI interface {
-	Add(value int64)
-
-	LocalCurrent() int64
-
-	ClusterLast() (int64, time.Time)
-
-	ClusterPredict() int64
-
-	LocalTrafficRatio() float64
-}
-
 // 集群计数器
 type ClusterCounter struct {
 	mu sync.RWMutex

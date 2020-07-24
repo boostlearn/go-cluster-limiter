@@ -6,10 +6,6 @@ import (
 	"time"
 )
 
-type ClusterCounterVecI interface {
-	WithLabelValues(lbs []string) ClusterCounterI
-}
-
 // 集群环境计数器对象
 type ClusterCounterVec struct {
 	mu sync.RWMutex
@@ -40,7 +36,7 @@ type ClusterCounterVec struct {
 	counters sync.Map
 }
 
-func (counterVec *ClusterCounterVec) WithLabelValues(lbs []string) ClusterCounterI {
+func (counterVec *ClusterCounterVec) WithLabelValues(lbs []string) *ClusterCounter {
 	if len(counterVec.labelNames) != len(lbs) {
 		return nil
 	}

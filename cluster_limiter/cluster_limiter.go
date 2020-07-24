@@ -15,9 +15,9 @@ type ClusterLimiter struct {
 
 	discardPreviousData bool
 
-	RequestCounter cluster_counter.ClusterCounterI
-	PassCounter    cluster_counter.ClusterCounterI
-	RewardCounter  cluster_counter.ClusterCounterI
+	RequestCounter *cluster_counter.ClusterCounter
+	PassCounter    *cluster_counter.ClusterCounter
+	RewardCounter  *cluster_counter.ClusterCounter
 
 	startTime time.Time
 	endTime   time.Time

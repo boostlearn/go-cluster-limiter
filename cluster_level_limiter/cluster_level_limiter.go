@@ -16,17 +16,17 @@ type ClusterLevelLimiter struct {
 
 	discardPreviousData bool
 
-	HighRequestCounter cluster_counter.ClusterCounterI
-	HighPassCounter    cluster_counter.ClusterCounterI
-	HighRewardCounter  cluster_counter.ClusterCounterI
+	HighRequestCounter *cluster_counter.ClusterCounter
+	HighPassCounter    *cluster_counter.ClusterCounter
+	HighRewardCounter  *cluster_counter.ClusterCounter
 
-	MiddleRequestCounter cluster_counter.ClusterCounterI
-	MiddlePassCounter    cluster_counter.ClusterCounterI
-	MiddleRewardCounter  cluster_counter.ClusterCounterI
+	MiddleRequestCounter *cluster_counter.ClusterCounter
+	MiddlePassCounter    *cluster_counter.ClusterCounter
+	MiddleRewardCounter  *cluster_counter.ClusterCounter
 
-	LowRequestCounter cluster_counter.ClusterCounterI
-	LowPassCounter    cluster_counter.ClusterCounterI
-	LowRewardCounter  cluster_counter.ClusterCounterI
+	LowRequestCounter *cluster_counter.ClusterCounter
+	LowPassCounter    *cluster_counter.ClusterCounter
+	LowRewardCounter  *cluster_counter.ClusterCounter
 
 	startTime         time.Time
 	endTime           time.Time

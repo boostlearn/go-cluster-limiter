@@ -14,17 +14,17 @@ type ClusterLevelLimiterVec struct {
 
 	discardPreviousData bool
 
-	HighRequestCounter cluster_counter.ClusterCounterVecI
-	HighPassCounter    cluster_counter.ClusterCounterVecI
-	HighRewardCounter  cluster_counter.ClusterCounterVecI
+	HighRequestCounter *cluster_counter.ClusterCounterVec
+	HighPassCounter    *cluster_counter.ClusterCounterVec
+	HighRewardCounter  *cluster_counter.ClusterCounterVec
 
-	MiddleRequestCounter cluster_counter.ClusterCounterVecI
-	MiddlePassCounter    cluster_counter.ClusterCounterVecI
-	MiddleRewardCounter  cluster_counter.ClusterCounterVecI
+	MiddleRequestCounter *cluster_counter.ClusterCounterVec
+	MiddlePassCounter    *cluster_counter.ClusterCounterVec
+	MiddleRewardCounter  *cluster_counter.ClusterCounterVec
 
-	LowRequestCounter cluster_counter.ClusterCounterVecI
-	LowPassCounter    cluster_counter.ClusterCounterVecI
-	LowRewardCounter  cluster_counter.ClusterCounterVecI
+	LowRequestCounter *cluster_counter.ClusterCounterVec
+	LowPassCounter    *cluster_counter.ClusterCounterVec
+	LowRewardCounter  *cluster_counter.ClusterCounterVec
 
 	startTime         time.Time
 	endTime           time.Time
