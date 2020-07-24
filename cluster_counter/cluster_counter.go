@@ -35,17 +35,18 @@ type ClusterCounter struct {
 	defaultTrafficRatio float64
 
 	// 本地数据
-	localValue int64
+	localCurrentValue int64
 
 	lastStoreDataTime time.Time
-	localPushed       int64
-	localLast         int64
-	localPrev         int64
+	localPushedValue       int64
+	localLastValue         int64
+	localPrevValue         int64
 
 	// 集群全局数据
 	lastLoadDataTime time.Time
-	clusterLast      int64
-	clusterPrev      int64
+	clusterLastValue      int64
+	clusterPrevValue      int64
+	clusterInitValue	int64
 
 	localTrafficRatio float64
 
@@ -58,17 +59,30 @@ type ClusterCounter struct {
 
 // 计数器增加
 func (counter *ClusterCounter) Add(v int64) {
-	atomic.AddInt64(&counter.localValue, v)
+	counter.mu.RLock()
+	defer counter.mu.RUnlock()
+
+	atomic.AddInt64(&counter.localCurrentValue, v)
 }
 
 // 本地当前值
 func (counter *ClusterCounter) LocalCurrent() int64 {
-	return atomic.LoadInt64(&counter.localValue)
+	counter.mu.RLock()
+	defer counter.mu.RUnlock()
+
+	return atomic.LoadInt64(&counter.localCurrentValue)
 }
 
 // 集群最后更新值
 func (counter *ClusterCounter) ClusterLast() (int64, time.Time) {
-	return atomic.LoadInt64(&counter.clusterLast), counter.lastLoadDataTime
+	counter.mu.RLock()
+	defer counter.mu.RUnlock()
+
+	clusterLast :=  atomic.LoadInt64(&counter.clusterLastValue)
+	if counter.discardPreviousData {
+		clusterLast -= counter.clusterInitValue
+	}
+	return clusterLast, counter.lastLoadDataTime
 }
 
 // 集群预测值
@@ -76,17 +90,20 @@ func (counter *ClusterCounter) ClusterPredict() int64 {
 	counter.mu.RLock()
 	defer counter.mu.RUnlock()
 
-	clusterLast := atomic.LoadInt64(&counter.clusterLast)
-	localValue := atomic.LoadInt64(&counter.localValue)
-	localLast := atomic.LoadInt64(&counter.localLast)
+	clusterLast := atomic.LoadInt64(&counter.clusterLastValue)
+	localValue := atomic.LoadInt64(&counter.localCurrentValue)
+	localLast := atomic.LoadInt64(&counter.localLastValue)
 
 	localTrafficRatio := counter.localTrafficRatio
 	if localTrafficRatio == 0.0 {
 		counter.localTrafficRatio = counter.defaultTrafficRatio
 	}
 
-	return clusterLast + int64(float64(localValue-localLast)/localTrafficRatio)
-
+	clusterPred := clusterLast + int64(float64(localValue-localLast)/localTrafficRatio)
+	if counter.discardPreviousData {
+		clusterPred -= counter.clusterInitValue
+	}
+	return clusterPred
 }
 
 // 集群放大系数
@@ -114,9 +131,6 @@ func (counter *ClusterCounter) init() {
 		startTs := interval * (nowTs / interval)
 		endTs := startTs + interval
 		counter.intervalKey = fmt.Sprintf("%v%v_%v", SEP, startTs, interval)
-		if counter.discardPreviousData {
-			counter.intervalKey += fmt.Sprintf("%v%v", SEP, timeNow.UnixNano())
-		}
 		counter.expireTime = time.Now().Add(time.Duration(endTs-nowTs+1) * time.Second)
 	}
 
@@ -134,8 +148,9 @@ func (counter *ClusterCounter) init() {
 			counter.lbs)
 		counter.mu.Lock()
 		if err == nil {
-			atomic.StoreInt64(&counter.clusterPrev, atomic.LoadInt64(&counter.clusterLast))
-			atomic.StoreInt64(&counter.clusterLast, value)
+			atomic.StoreInt64(&counter.clusterPrevValue, atomic.LoadInt64(&counter.clusterLastValue))
+			atomic.StoreInt64(&counter.clusterLastValue, value)
+			atomic.StoreInt64(&counter.clusterInitValue, value)
 			counter.lastLoadDataTime = timeNow
 			return
 		}
@@ -144,27 +159,28 @@ func (counter *ClusterCounter) init() {
 
 // 周期更新
 func (counter *ClusterCounter) Update() {
-	counter.CheckReset()
+	counter.ResetData()
 
-	counter.CheckStoreData()
+	counter.StoreData()
 
-	counter.CheckStoreData()
+	counter.StoreData()
 
 }
 
-func (counter *ClusterCounter) CheckReset() {
+func (counter *ClusterCounter) ResetData() {
 	counter.mu.Lock()
 	defer counter.mu.Unlock()
 
 	timeNow := time.Now()
 	if counter.expireTime.Unix() < timeNow.Unix() && counter.resetInterval.Seconds() > 0 {
-		var notPushValue = atomic.SwapInt64(&counter.localValue, 0) - atomic.SwapInt64(&counter.localPushed, 0)
+		var notPushValue = atomic.SwapInt64(&counter.localCurrentValue, 0) - atomic.SwapInt64(&counter.localPushedValue, 0)
 		var intervalName = counter.intervalKey
 
-		atomic.StoreInt64(&counter.localLast, 0)
-		atomic.StoreInt64(&counter.localPrev, 0)
-		atomic.StoreInt64(&counter.clusterLast, 0)
-		atomic.StoreInt64(&counter.clusterPrev, 0)
+		atomic.StoreInt64(&counter.localLastValue, 0)
+		atomic.StoreInt64(&counter.localPrevValue, 0)
+		atomic.StoreInt64(&counter.clusterLastValue, 0)
+		atomic.StoreInt64(&counter.clusterPrevValue, 0)
+		atomic.StoreInt64(&counter.clusterInitValue, 0)
 
 		nowTs := timeNow.Unix()
 		interval := int64(counter.resetInterval.Seconds())
@@ -195,7 +211,7 @@ func (counter *ClusterCounter) CheckReset() {
 
 }
 
-func (counter *ClusterCounter) CheckLoadData() {
+func (counter *ClusterCounter) LoadData() {
 	counter.mu.Lock()
 	defer counter.mu.Unlock()
 
@@ -211,12 +227,12 @@ func (counter *ClusterCounter) CheckLoadData() {
 			counter.lastLoadDataTime = timeNow
 			return
 		}
-		atomic.StoreInt64(&counter.localPrev, atomic.LoadInt64(&counter.localLast))
-		atomic.StoreInt64(&counter.localLast, atomic.LoadInt64(&counter.localValue))
+		atomic.StoreInt64(&counter.localPrevValue, atomic.LoadInt64(&counter.localLastValue))
+		atomic.StoreInt64(&counter.localLastValue, atomic.LoadInt64(&counter.localCurrentValue))
 
-		lastValue := atomic.LoadInt64(&counter.clusterLast)
-		atomic.StoreInt64(&counter.clusterPrev, atomic.LoadInt64(&counter.clusterLast))
-		atomic.StoreInt64(&counter.clusterLast, value)
+		lastValue := atomic.LoadInt64(&counter.clusterLastValue)
+		atomic.StoreInt64(&counter.clusterPrevValue, atomic.LoadInt64(&counter.clusterLastValue))
+		atomic.StoreInt64(&counter.clusterLastValue, value)
 		if value > lastValue {
 			counter.updateLocalTrafficRatio()
 		}
@@ -225,14 +241,14 @@ func (counter *ClusterCounter) CheckLoadData() {
 
 }
 
-func (counter *ClusterCounter) CheckStoreData() {
+func (counter *ClusterCounter) StoreData() {
 	counter.mu.Lock()
 	defer counter.mu.Unlock()
 
 	timeNow := time.Now()
 	if counter.storeDataInterval > 0 &&
 		timeNow.UnixNano()-counter.lastLoadDataTime.Add(1*time.Second).UnixNano() > counter.storeDataInterval.Nanoseconds() {
-		pushValue := atomic.LoadInt64(&counter.localValue) - atomic.LoadInt64(&counter.localPushed)
+		pushValue := atomic.LoadInt64(&counter.localCurrentValue) - atomic.LoadInt64(&counter.localPushedValue)
 		if pushValue > 0 {
 			counter.mu.Unlock()
 			err := counter.factory.Store.Store(counter.name, counter.intervalKey, counter.lbs,
@@ -241,7 +257,7 @@ func (counter *ClusterCounter) CheckStoreData() {
 
 			if err == nil {
 				counter.lastStoreDataTime = time.Now()
-				atomic.AddInt64(&counter.localPushed, pushValue)
+				atomic.AddInt64(&counter.localPushedValue, pushValue)
 			}
 			counter.lastStoreDataTime = time.Now()
 		}
@@ -250,10 +266,10 @@ func (counter *ClusterCounter) CheckStoreData() {
 
 // 重新计算放大系数
 func (counter *ClusterCounter) updateLocalTrafficRatio() {
-	clusterPrev := atomic.LoadInt64(&counter.clusterPrev)
-	localPrev := atomic.LoadInt64(&counter.localPrev)
-	localLast := atomic.LoadInt64(&counter.localLast)
-	clusterLast := atomic.LoadInt64(&counter.clusterLast)
+	clusterPrev := atomic.LoadInt64(&counter.clusterPrevValue)
+	localPrev := atomic.LoadInt64(&counter.localPrevValue)
+	localLast := atomic.LoadInt64(&counter.localLastValue)
+	clusterLast := atomic.LoadInt64(&counter.clusterLastValue)
 
 	if clusterPrev == 0 || localPrev == 0 ||
 		clusterPrev >= clusterLast || localPrev >= localLast ||
