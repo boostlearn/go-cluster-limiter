@@ -3,7 +3,6 @@ package cluster_counter
 
 import (
 	"fmt"
-	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -32,10 +31,10 @@ type ClusterCounter struct {
 	name        string
 	intervalKey string
 	// 标签
-	lbs []string
+	lbs map[string]string
 
 	// 生产者
-	Factory ClusterCounterFactoryI
+	factory *ClusterCounterFactory
 
 	// 重置周期
 	resetInterval time.Duration
@@ -144,8 +143,8 @@ func (counter *ClusterCounter) init() {
 
 	if counter.loadDataInterval > 0 {
 		counter.mu.Unlock()
-		value, err := counter.Factory.LoadData(counter.name, counter.intervalKey,
-			strings.Join(counter.lbs, SEP))
+		value, err := counter.factory.Store.Load(counter.name, counter.intervalKey,
+			counter.lbs)
 		counter.mu.Lock()
 		if err == nil {
 			atomic.StoreInt64(&counter.clusterPrev, atomic.LoadInt64(&counter.clusterLast))
@@ -197,7 +196,7 @@ func (counter *ClusterCounter) CheckReset() {
 
 		if notPushValue > 0 && len(intervalName) > 0 {
 			counter.mu.Unlock()
-			err := counter.Factory.StoreData(counter.name, intervalName, strings.Join(counter.lbs, SEP), notPushValue)
+			err := counter.factory.Store.Store(counter.name, intervalName, counter.lbs, notPushValue)
 			counter.mu.Lock()
 
 			if err != nil {
@@ -217,8 +216,8 @@ func (counter *ClusterCounter) CheckLoadData() {
 	if counter.loadDataInterval > 0 &&
 		timeNow.UnixNano()-counter.lastLoadDataTime.UnixNano() > counter.loadDataInterval.Nanoseconds() {
 		counter.mu.Unlock()
-		value, err := counter.Factory.LoadData(counter.name, counter.intervalKey,
-			strings.Join(counter.lbs, SEP))
+		value, err := counter.factory.Store.Load(counter.name, counter.intervalKey,
+			counter.lbs)
 		counter.mu.Lock()
 
 		if err != nil {
@@ -245,11 +244,11 @@ func (counter *ClusterCounter) CheckStoreData() {
 
 	timeNow := time.Now()
 	if counter.storeDataInterval > 0 &&
-		timeNow.UnixNano()-counter.lastLoadDataTime.Add(1 * time.Second).UnixNano() > counter.storeDataInterval.Nanoseconds() {
+		timeNow.UnixNano()-counter.lastLoadDataTime.Add(1*time.Second).UnixNano() > counter.storeDataInterval.Nanoseconds() {
 		pushValue := atomic.LoadInt64(&counter.localValue) - atomic.LoadInt64(&counter.localPushed)
 		if pushValue > 0 {
 			counter.mu.Unlock()
-			err := counter.Factory.StoreData(counter.name, counter.intervalKey, strings.Join(counter.lbs, SEP),
+			err := counter.factory.Store.Store(counter.name, counter.intervalKey, counter.lbs,
 				pushValue)
 			counter.mu.Lock()
 

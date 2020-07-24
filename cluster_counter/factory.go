@@ -2,7 +2,6 @@ package cluster_counter
 
 import (
 	"errors"
-	"fmt"
 	"sync"
 	"time"
 )
@@ -18,27 +17,13 @@ type ClusterCounterOpts struct {
 	DiscardPreviousData bool
 }
 
-type ClusterCounterFactoryI interface {
-	// 构建计数器
-	NewClusterCounter(opts *ClusterCounterOpts) (ClusterCounterI, error)
-
-	NewClusterCounterVec(opts *ClusterCounterOpts, labelNames []string) (ClusterCounterVecI, error)
-
-	// 向集群推送数据
-	StoreData(name string, measure string, key string, value int64) error
-
-	// 向集群推送数据
-	LoadData(name string, measure string, key string) (int64, error)
-
-	Delete(name string)
-}
-
 type ClusterCounterFactory struct {
 	clusterCounterVectors sync.Map
 	clusterCounters       sync.Map
 
 	keyPrefix string
-	store     DataStoreI
+
+	Store DataStoreI
 
 	syncStatus bool
 
@@ -67,7 +52,7 @@ func NewFactory(opts *ClusterCounterFactoryOpts, store DataStoreI) *ClusterCount
 
 	factory := &ClusterCounterFactory{
 		keyPrefix:                opts.KeyPrefix,
-		store:                    store,
+		Store:                    store,
 		syncStatus:               false,
 		defaultLocalTrafficRatio: opts.DefaultLocalTrafficRatio,
 		updateInterval:           opts.UpdateInterval,
@@ -109,7 +94,7 @@ func (factory *ClusterCounterFactory) NewClusterCounterVec(opts *ClusterCounterO
 	}
 
 	clusterCounterVec := &ClusterCounterVec{
-		Factory:                  factory,
+		factory:                  factory,
 		resetInterval:            opts.ResetInterval,
 		loadDataInterval:         opts.LoadDataInterval,
 		storeDataInterval:        opts.StoreDataInterval,
@@ -152,7 +137,7 @@ func (factory *ClusterCounterFactory) NewClusterCounter(opts *ClusterCounterOpts
 	}
 
 	clusterCounter := &ClusterCounter{
-		Factory:             factory,
+		factory:             factory,
 		resetInterval:       opts.ResetInterval,
 		loadDataInterval:    opts.LoadDataInterval,
 		storeDataInterval:   opts.StoreDataInterval,
@@ -196,16 +181,10 @@ func (factory *ClusterCounterFactory) WatchAndSync() {
 	}
 }
 
-func (factory *ClusterCounterFactory) StoreData(name string, measure string, key string, value int64) error {
-	storeKey := fmt.Sprintf("%v%v%v%v%v%v", factory.keyPrefix, name, SEP, measure, SEP, key)
-	return factory.store.Store(storeKey, value)
-}
-
-func (factory *ClusterCounterFactory) LoadData(name string, measure string, key string) (int64, error) {
-	storeKey := fmt.Sprintf("%v%v%v%v%v%v", factory.keyPrefix, name, SEP, measure, SEP, key)
-	return factory.store.Load(storeKey)
-}
-
 func (factory *ClusterCounterFactory) Delete(name string) {
+	factory.clusterCounters.Delete(name)
+}
+
+func (factory *ClusterCounterFactory) DeleteVec(name string) {
 	factory.clusterCounterVectors.Delete(name)
 }

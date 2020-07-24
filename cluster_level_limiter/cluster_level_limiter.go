@@ -13,8 +13,8 @@ type ClusterLevelLimiter struct {
 
 	name string
 	lbs  []string
- 
-	discardPreviousData bool 
+
+	discardPreviousData bool
 
 	HighRequestCounter cluster_counter.ClusterCounterI
 	HighPassCounter    cluster_counter.ClusterCounterI
@@ -28,15 +28,15 @@ type ClusterLevelLimiter struct {
 	LowPassCounter    cluster_counter.ClusterCounterI
 	LowRewardCounter  cluster_counter.ClusterCounterI
 
-	startTime      time.Time
-	endTime        time.Time
-	initTime       time.Time
-	resetDataInterval  time.Duration 
-	boostInterval  time.Duration
-	silentInterval time.Duration
+	startTime         time.Time
+	endTime           time.Time
+	initTime          time.Time
+	resetDataInterval time.Duration
+	boostInterval     time.Duration
+	silentInterval    time.Duration
 
 	maxBoostFactor float64
-  
+
 	levelSampleMax int64
 
 	totalTarget   int64

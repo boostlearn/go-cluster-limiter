@@ -21,7 +21,7 @@ type ClusterCounterVec struct {
 	labelNames []string
 
 	// factory
-	Factory ClusterCounterFactoryI
+	factory *ClusterCounterFactory
 
 	// 重置周期
 	resetInterval time.Duration
@@ -41,6 +41,10 @@ type ClusterCounterVec struct {
 }
 
 func (counterVec *ClusterCounterVec) WithLabelValues(lbs []string) ClusterCounterI {
+	if len(counterVec.labelNames) != len(lbs) {
+		return nil
+	}
+
 	key := strings.Join(lbs, SEP)
 	if v, ok := counterVec.counters.Load(key); ok {
 		if limiter, ok2 := v.(*ClusterCounter); ok2 {
@@ -48,11 +52,16 @@ func (counterVec *ClusterCounterVec) WithLabelValues(lbs []string) ClusterCounte
 		}
 	}
 
+	counterLabels := make(map[string]string)
+	for i, lableName := range counterVec.labelNames {
+		counterLabels[lableName] = lbs[i]
+	}
+
 	newCounter := &ClusterCounter{
 		name:                counterVec.name,
-		lbs:                 append([]string{}, lbs...),
+		lbs:                 counterLabels,
 		mu:                  sync.RWMutex{},
-		Factory:             counterVec.Factory,
+		factory:             counterVec.factory,
 		resetInterval:       counterVec.resetInterval,
 		loadDataInterval:    counterVec.loadDataInterval,
 		storeDataInterval:   counterVec.storeDataInterval,

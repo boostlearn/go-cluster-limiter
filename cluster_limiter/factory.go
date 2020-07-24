@@ -15,7 +15,7 @@ type ClusterLimiterFactory struct {
 	limiterVectors sync.Map
 	limiters       sync.Map
 
-	counterFactory cluster_counter.ClusterCounterFactoryI
+	counterFactory *cluster_counter.ClusterCounterFactory
 
 	defaultBoostInterval  time.Duration
 	defaultUpdateInterval time.Duration
@@ -60,7 +60,7 @@ type ClusterLimiterOpts struct {
 }
 
 func NewFactory(opts *ClusterLimiterFactoryOpts,
-	counterFactory cluster_counter.ClusterCounterFactoryI,
+	counterFactory *cluster_counter.ClusterCounterFactory,
 ) *ClusterLimiterFactory {
 
 	if opts.DefaultBoostInterval == 0 {
@@ -120,7 +120,7 @@ func (factory *ClusterLimiterFactory) NewClusterLimiterVec(opts *ClusterLimiterO
 		RewardCounter:       nil,
 		startTime:           opts.StartTime,
 		endTime:             opts.EndTime,
-		resetDataInterval:       opts.ResetInterval,
+		resetDataInterval:   opts.ResetInterval,
 		boostInterval:       opts.BoostInterval,
 		maxBoostFactor:      opts.MaxBoostFactor,
 		silentInterval:      opts.UpdateInterval,
@@ -187,7 +187,7 @@ func (factory *ClusterLimiterFactory) NewClusterLimiter(opts *ClusterLimiterOpts
 		RewardCounter:       nil,
 		startTime:           opts.StartTime,
 		endTime:             opts.EndTime,
-		resetDataInterval:       opts.ResetInterval,
+		resetDataInterval:   opts.ResetInterval,
 		boostInterval:       opts.BoostInterval,
 		maxBoostFactor:      opts.MaxBoostFactor,
 		silentInterval:      opts.UpdateInterval,

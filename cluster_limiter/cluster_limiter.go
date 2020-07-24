@@ -19,14 +19,14 @@ type ClusterLimiter struct {
 	PassCounter    cluster_counter.ClusterCounterI
 	RewardCounter  cluster_counter.ClusterCounterI
 
-	startTime      time.Time
-	endTime        time.Time
+	startTime time.Time
+	endTime   time.Time
 
-	initTime       time.Time
+	initTime time.Time
 
-	resetDataInterval  time.Duration
+	resetDataInterval time.Duration
 
-	boostInterval  time.Duration
+	boostInterval time.Duration
 
 	silentInterval time.Duration
 
