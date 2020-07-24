@@ -178,7 +178,7 @@ func (counter *ClusterCounter) ResetData() {
 		atomic.StoreInt64(&counter.clusterPrevValue, 0)
 		atomic.StoreInt64(&counter.clusterInitValue, 0)
 
-		counter.endTime = timeNow.Truncate(counter.resetInterval)
+		counter.beginTime = timeNow.Truncate(counter.resetInterval)
 		counter.endTime = counter.beginTime.Add(counter.resetInterval)
 
 		if counter.defaultTrafficRatio < 1.0 {
