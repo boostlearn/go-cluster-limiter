@@ -41,7 +41,7 @@ type ClusterLimiterFactoryOpts struct {
 	KeyPrefix string
 
 	// 集群内成员数目
-	ClusterMembersNum float64
+	DefaultLocalTrafficRate float64
 }
 
 type ClusterLimiterOpts struct {
