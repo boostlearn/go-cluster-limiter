@@ -159,7 +159,7 @@ func (counter *ClusterCounter) Update() {
 
 	counter.StoreData()
 
-	counter.StoreData()
+	counter.LoadData()
 
 }
 
