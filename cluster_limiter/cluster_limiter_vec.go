@@ -50,17 +50,11 @@ func (limiterVec *ClusterLimiterVec) WithLabelValues(lbs []string) *ClusterLimit
 		RewardCounter:       limiterVec.RewardCounter.WithLabelValues(lbs),
 		startTime:           limiterVec.startTime,
 		endTime:             limiterVec.endTime,
-		resetDataInterval:   limiterVec.resetDataInterval,
 		boostInterval:       limiterVec.boostInterval,
 		maxBoostFactor:      limiterVec.maxBoostFactor,
 		silentInterval:      limiterVec.silentInterval,
-		burstInterval: limiterVec.burstInterval,
+		burstInterval:       limiterVec.burstInterval,
 		mu:                  sync.RWMutex{},
-		prevRequest:         0,
-		prevPass:            0,
-		prevReward:          0,
-		prevPacingTarget:    0,
-		prevUpdateTime:      time.Time{},
 		discardPreviousData: limiterVec.discardPreviousData,
 	}
 	newLimiter.Init()

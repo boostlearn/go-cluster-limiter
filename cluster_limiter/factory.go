@@ -11,51 +11,33 @@ const LimiterPrefix = "lmt:"
 
 type ClusterLimiterFactory struct {
 	status bool
-
 	limiterVectors sync.Map
 	limiters       sync.Map
-
 	counterFactory *cluster_counter.ClusterCounterFactory
-
-	defaultBoostInterval  time.Duration
-	updateInterval time.Duration
-
+	defaultBoostInterval time.Duration
+	updateInterval       time.Duration
 	defaultMaxBoostFactor float64
-
-	limiterKeyPrefix string
-
+	name string
 	defaultClusterLocalTrafficRatio float64
 }
 
 // 构建参数
 type ClusterLimiterFactoryOpts struct {
-	// 加速观察周期
-	DefaultBoostInterval  time.Duration
-	DefaultUpdateInterval time.Duration
-
-	DefaultMaxBoostFactor float64
-
-	// KEY前缀
-	KeyPrefix string
-
-	// 集群内成员数目
+	Name                    string
+	DefaultBoostInterval    time.Duration
+	DefaultUpdateInterval   time.Duration
+	DefaultMaxBoostFactor   float64
 	DefaultLocalTrafficRate float64
 }
 
 type ClusterLimiterOpts struct {
-	Name          string
-	StartTime     time.Time
-	EndTime       time.Time
-	ResetInterval time.Duration
-
-	BoostInterval time.Duration
-
-	SilentInterval time.Duration
-
-	BurstInterval time.Duration
-
-	MaxBoostFactor float64
-
+	Name                string
+	StartTime           time.Time
+	EndTime             time.Time
+	BoostInterval       time.Duration
+	SilentInterval      time.Duration
+	BurstInterval       time.Duration
+	MaxBoostFactor      float64
 	DiscardPreviousData bool
 }
 
@@ -68,19 +50,19 @@ func NewFactory(opts *ClusterLimiterFactoryOpts,
 	}
 
 	if opts.DefaultUpdateInterval == 0 {
-		opts.DefaultUpdateInterval = time.Duration(5) * time.Second
+		opts.DefaultUpdateInterval = time.Duration(1) * time.Second
 	}
 
-	if len(opts.KeyPrefix) == 0 {
-		opts.KeyPrefix = LimiterPrefix
+	if len(opts.Name) == 0 {
+		opts.Name = LimiterPrefix
 	}
 
 	factory := &ClusterLimiterFactory{
-		limiterVectors:        sync.Map{},
-		counterFactory:        counterFactory,
-		defaultBoostInterval:  opts.DefaultBoostInterval,
-		updateInterval: opts.DefaultUpdateInterval,
-		limiterKeyPrefix:      opts.KeyPrefix,
+		limiterVectors:       sync.Map{},
+		counterFactory:       counterFactory,
+		defaultBoostInterval: opts.DefaultBoostInterval,
+		updateInterval:       opts.DefaultUpdateInterval,
+		name:     opts.Name,
 	}
 	factory.Start()
 	return factory
@@ -92,7 +74,7 @@ func (factory *ClusterLimiterFactory) NewClusterLimiterVec(opts *ClusterLimiterO
 	if len(opts.Name) == 0 {
 		return nil, errors.New("need name")
 	}
-	if opts.StartTime.UnixNano() >= opts.EndTime.UnixNano() || opts.ResetInterval.Seconds() < 5 {
+	if opts.StartTime.UnixNano() >= opts.EndTime.UnixNano() {
 		return nil, errors.New("time error")
 	}
 
@@ -118,23 +100,18 @@ func (factory *ClusterLimiterFactory) NewClusterLimiterVec(opts *ClusterLimiterO
 
 	var limiterVec = &ClusterLimiterVec{
 		name:                opts.Name,
-		RequestCounter:      nil,
-		PassCounter:         nil,
-		RewardCounter:       nil,
 		startTime:           opts.StartTime,
 		endTime:             opts.EndTime,
-		resetDataInterval:   opts.ResetInterval,
 		boostInterval:       opts.BoostInterval,
 		maxBoostFactor:      opts.MaxBoostFactor,
 		silentInterval:      opts.SilentInterval,
-		burstInterval: opts.BurstInterval,
+		burstInterval:       opts.BurstInterval,
 		discardPreviousData: opts.DiscardPreviousData,
 	}
 
 	var err error
 	limiterVec.RequestCounter, err = factory.counterFactory.NewClusterCounterVec(&cluster_counter.ClusterCounterOpts{
-		Name:                factory.limiterKeyPrefix + opts.Name + ":request",
-		ResetInterval:       opts.ResetInterval,
+		Name:                factory.name + opts.Name + ":request",
 		DiscardPreviousData: opts.DiscardPreviousData,
 	}, labelNames)
 	if err != nil {
@@ -142,7 +119,7 @@ func (factory *ClusterLimiterFactory) NewClusterLimiterVec(opts *ClusterLimiterO
 	}
 
 	limiterVec.PassCounter, err = factory.counterFactory.NewClusterCounterVec(&cluster_counter.ClusterCounterOpts{
-		Name:                factory.limiterKeyPrefix + opts.Name + ":pass",
+		Name:                factory.name + opts.Name + ":pass",
 		ResetInterval:       limiterVec.resetDataInterval,
 		DiscardPreviousData: opts.DiscardPreviousData,
 	}, labelNames)
@@ -151,7 +128,7 @@ func (factory *ClusterLimiterFactory) NewClusterLimiterVec(opts *ClusterLimiterO
 	}
 
 	limiterVec.RewardCounter, err = factory.counterFactory.NewClusterCounterVec(&cluster_counter.ClusterCounterOpts{
-		Name:                factory.limiterKeyPrefix + opts.Name + ":reward",
+		Name:                factory.name + opts.Name + ":reward",
 		ResetInterval:       limiterVec.resetDataInterval,
 		DiscardPreviousData: opts.DiscardPreviousData,
 	}, labelNames)
@@ -168,7 +145,7 @@ func (factory *ClusterLimiterFactory) NewClusterLimiter(opts *ClusterLimiterOpts
 	if len(opts.Name) == 0 {
 		return nil, errors.New("need name")
 	}
-	if opts.StartTime.UnixNano() >= opts.EndTime.UnixNano() || opts.ResetInterval.Seconds() < 5 {
+	if opts.StartTime.UnixNano() >= opts.EndTime.UnixNano() {
 		return nil, errors.New("time error")
 	}
 
@@ -191,7 +168,6 @@ func (factory *ClusterLimiterFactory) NewClusterLimiter(opts *ClusterLimiterOpts
 		RewardCounter:       nil,
 		startTime:           opts.StartTime,
 		endTime:             opts.EndTime,
-		resetDataInterval:   opts.ResetInterval,
 		boostInterval:       opts.BoostInterval,
 		maxBoostFactor:      opts.MaxBoostFactor,
 		silentInterval:      opts.SilentInterval,
@@ -200,8 +176,7 @@ func (factory *ClusterLimiterFactory) NewClusterLimiter(opts *ClusterLimiterOpts
 
 	var err error
 	limiterVec.RequestCounter, err = factory.counterFactory.NewClusterCounter(&cluster_counter.ClusterCounterOpts{
-		Name:                factory.limiterKeyPrefix + opts.Name + ":request",
-		ResetInterval:       opts.ResetInterval,
+		Name:                factory.name + opts.Name + ":request",
 		DiscardPreviousData: opts.DiscardPreviousData,
 	})
 	if err != nil {
@@ -209,8 +184,7 @@ func (factory *ClusterLimiterFactory) NewClusterLimiter(opts *ClusterLimiterOpts
 	}
 
 	limiterVec.PassCounter, err = factory.counterFactory.NewClusterCounter(&cluster_counter.ClusterCounterOpts{
-		Name:                factory.limiterKeyPrefix + opts.Name + ":pass",
-		ResetInterval:       limiterVec.resetDataInterval,
+		Name:                factory.name + opts.Name + ":pass",
 		DiscardPreviousData: opts.DiscardPreviousData,
 	})
 	if err != nil {
@@ -218,8 +192,7 @@ func (factory *ClusterLimiterFactory) NewClusterLimiter(opts *ClusterLimiterOpts
 	}
 
 	limiterVec.RewardCounter, err = factory.counterFactory.NewClusterCounter(&cluster_counter.ClusterCounterOpts{
-		Name:                factory.limiterKeyPrefix + opts.Name + ":reward",
-		ResetInterval:       limiterVec.resetDataInterval,
+		Name:                factory.name + opts.Name + ":reward",
 		DiscardPreviousData: opts.DiscardPreviousData,
 	})
 	if err != nil {

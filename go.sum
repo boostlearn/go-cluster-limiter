@@ -2,3 +2,11 @@ github.com/boostlearn/go-cluster-counter v0.0.1 h1:59wJYHJ6XwIWRN5HFvacXWKAmwhT+
 github.com/boostlearn/go-cluster-counter v0.0.1/go.mod h1:L7Xh2MI9fcjW1qxd6ZVFFRyZwa1X3rPcZpnYm8wK56c=
 github.com/boostlearn/go-cluster-counter v0.0.2 h1:JIylnwJgCPEDONwaUk5msM1HXmMpGMb5qCVYoC3fkio=
 github.com/boostlearn/go-cluster-counter v0.0.2/go.mod h1:L7Xh2MI9fcjW1qxd6ZVFFRyZwa1X3rPcZpnYm8wK56c=
+github.com/boostlearn/go-cluster-counter v0.0.3 h1:KeIJXrhok79yJ0jYokNyIEWBuM8RStVeIbv0cGcnjTg=
+github.com/boostlearn/go-cluster-counter v0.0.3/go.mod h1:L7Xh2MI9fcjW1qxd6ZVFFRyZwa1X3rPcZpnYm8wK56c=
+github.com/boostlearn/go-cluster-counter v0.0.4 h1:LqZohVicWsNZ2vAYSxHUPXr2/rbyXjDzX0VAqDZJSgI=
+github.com/boostlearn/go-cluster-counter v0.0.4/go.mod h1:L7Xh2MI9fcjW1qxd6ZVFFRyZwa1X3rPcZpnYm8wK56c=
+github.com/boostlearn/go-cluster-counter v0.0.5 h1:USuP9g8wRDLOO3MHoRF9Tw+TviralUuBW/WkEIrcoog=
+github.com/boostlearn/go-cluster-counter v0.0.5/go.mod h1:L7Xh2MI9fcjW1qxd6ZVFFRyZwa1X3rPcZpnYm8wK56c=
+github.com/boostlearn/go-cluster-counter v0.0.6 h1:139ykuPnSoGJvh2iMSnL5EVaI6Mwxl1mNirKN1Nky/w=
+github.com/boostlearn/go-cluster-counter v0.0.6/go.mod h1:L7Xh2MI9fcjW1qxd6ZVFFRyZwa1X3rPcZpnYm8wK56c=
