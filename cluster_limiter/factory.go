@@ -2,7 +2,7 @@ package cluster_limiter
 
 import (
 	"errors"
-	"github.com/boostlearn/go-cluster-counter/cluster_counter"
+	"github.com/boostlearn/go-cluster-limiter/cluster_counter"
 	"sync"
 	"time"
 )
