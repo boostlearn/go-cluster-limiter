@@ -44,17 +44,17 @@ func generateRedisKey(name string, startTime time.Time, endTime time.Time, lbs m
 	return key
 }
 
-func (store *RedisStore) Store(name string, startTime time.Time, endTime time.Time, lbs map[string]string, value int64) error {
-	v := store.cli.IncrBy(store.prefix + generateRedisKey(name, startTime, endTime, lbs), value)
+func (store *RedisStore) Store(name string, startTime time.Time, endTime time.Time, lbs map[string]string, value float64) error {
+	v := store.cli.IncrBy(store.prefix + generateRedisKey(name, startTime, endTime, lbs), int64(value))
 	return v.Err()
 }
 
-func (store *RedisStore) Load(name string, startTime time.Time, endTime time.Time, lbs map[string]string) (int64, error) {
+func (store *RedisStore) Load(name string, startTime time.Time, endTime time.Time, lbs map[string]string) (float64, error) {
 	v := store.cli.Get(store.prefix + generateRedisKey(name, startTime, endTime, lbs))
 	if v.Err() == nil {
 		t, err := v.Result()
 		if err == nil {
-			return strconv.ParseInt(t, 10, 64)
+			return strconv.ParseFloat(t, 64)
 		}
 		return 0, err
 	} else {
