@@ -20,6 +20,7 @@ type ClusterLimiterVec struct {
 
 	beginTime time.Time
 	endTime   time.Time
+	periodInterval time.Duration
 
 	resetDataInterval time.Duration
 

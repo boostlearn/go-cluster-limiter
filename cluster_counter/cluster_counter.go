@@ -78,8 +78,8 @@ func (counter *ClusterCounter) Init() {
 }
 
 func (counter *ClusterCounter)Expire() bool {
-	counter.mu.RLock()
-	defer counter.mu.RUnlock()
+	counter.mu.Lock()
+	defer counter.mu.Unlock()
 
 	timeNow := time.Now().Truncate(time.Second)
 	if counter.periodInterval > 0 {

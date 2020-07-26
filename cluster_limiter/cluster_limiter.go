@@ -16,6 +16,7 @@ type ClusterLimiter struct {
 
 	beginTime time.Time
 	endTime   time.Time
+	periodInterval time.Duration
 
 	targetReward        float64
 	discardPreviousData bool
