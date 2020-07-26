@@ -8,28 +8,26 @@ import (
 
 type ClusterCounterOpts struct {
 	Name             string
-	ResetInterval    time.Duration
+	BeginTime time.Time
+	EndTime time.Time
+
 	LoadDataInterval time.Duration
-
-	StoreDataInterval        time.Duration
-	DefaultLocalTrafficRatio float64
-
 	DiscardPreviousData bool
+	StoreDataInterval        time.Duration
+
+	DefaultLocalTrafficRatio float64
 }
 
 type ClusterCounterFactory struct {
-	clusterCounterVectors sync.Map
-	clusterCounters       sync.Map
-
-	keyPrefix string
-
+	name string
 	Store DataStoreI
-
 	status bool
 
 	defaultLocalTrafficRatio float64
+	heartbeatInterval time.Duration
 
-	updateInterval time.Duration
+	clusterCounterVectors sync.Map
+	clusterCounters       sync.Map
 }
 
 type ClusterCounterFactoryOpts struct {
@@ -51,11 +49,11 @@ func NewFactory(opts *ClusterCounterFactoryOpts, store DataStoreI) *ClusterCount
 	}
 
 	factory := &ClusterCounterFactory{
-		keyPrefix:                opts.KeyPrefix,
+		name:                opts.KeyPrefix,
 		Store:                    store,
 		status:               false,
 		defaultLocalTrafficRatio: opts.DefaultLocalTrafficRatio,
-		updateInterval:           opts.HeartBeatInterval,
+		heartbeatInterval:           opts.HeartBeatInterval,
 	}
 	factory.Start()
 	return factory
@@ -95,6 +93,8 @@ func (factory *ClusterCounterFactory) NewClusterCounterVec(opts *ClusterCounterO
 
 	clusterCounterVec := &ClusterCounterVec{
 		factory:                  factory,
+		beginTime: opts.BeginTime,
+		endTime: opts.EndTime,
 		loadDataInterval:         opts.LoadDataInterval.Truncate(time.Second),
 		storeDataInterval:        opts.StoreDataInterval.Truncate(time.Second),
 		name:                     opts.Name,
@@ -136,6 +136,8 @@ func (factory *ClusterCounterFactory) NewClusterCounter(opts *ClusterCounterOpts
 
 	clusterCounter := &ClusterCounter{
 		factory:             factory,
+		beginTime: opts.BeginTime,
+		endTime: opts.EndTime,
 		loadDataInterval:    opts.LoadDataInterval.Truncate(time.Second),
 		storeDataInterval:   opts.StoreDataInterval.Truncate(time.Second),
 		name:                opts.Name,
@@ -159,7 +161,7 @@ func (factory *ClusterCounterFactory) Stop() {
 }
 
 func (factory *ClusterCounterFactory) WatchAndSync() {
-	for {
+	for factory.status {
 		factory.clusterCounterVectors.Range(func(k interface{}, v interface{}) bool {
 			if counterVec, ok := v.(*ClusterCounterVec); ok {
 				counterVec.HeartBeat()
@@ -182,7 +184,7 @@ func (factory *ClusterCounterFactory) WatchAndSync() {
 			return true
 		})
 
-		time.Sleep(factory.updateInterval)
+		time.Sleep(factory.heartbeatInterval)
 	}
 }
 

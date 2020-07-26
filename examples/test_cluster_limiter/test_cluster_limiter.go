@@ -54,7 +54,7 @@ func main() {
 
 	limiterVec, err := factory.NewClusterLimiterVec(&cluster_limiter.ClusterLimiterOpts{
 		Name:                limiterName,
-		StartTime:           time.Now(),
+		BeginTime:           time.Now(),
 		EndTime:             time.Now().Add(time.Duration(24) * time.Hour),
 		DiscardPreviousData: true,
 	}, []string{"label1", "label2"})

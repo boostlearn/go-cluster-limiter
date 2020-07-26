@@ -14,7 +14,7 @@ type ClusterLimiter struct {
 	lbs  []string
 	initTime  time.Time
 
-	startTime time.Time
+	beginTime time.Time
 	endTime   time.Time
 
 	targetReward        float64
@@ -105,11 +105,11 @@ func (limiter *ClusterLimiter) PacingReward() float64 {
 
 func (limiter *ClusterLimiter) getPacingReward(t time.Time) float64 {
 	if limiter.discardPreviousData && limiter.initTime.Before(limiter.endTime) &&
-		limiter.initTime.After(limiter.startTime) {
+		limiter.initTime.After(limiter.beginTime) {
 		targetTotalReward := limiter.targetReward
 		pacingReward := (targetTotalReward) *
 			float64(t.UnixNano()-limiter.initTime.UnixNano()) /
-			float64(limiter.endTime.UnixNano()-limiter.startTime.UnixNano()-limiter.silentInterval.Nanoseconds())
+			float64(limiter.endTime.UnixNano()-limiter.beginTime.UnixNano()-limiter.silentInterval.Nanoseconds())
 		if pacingReward > limiter.targetReward {
 			pacingReward = limiter.targetReward
 		}
@@ -117,8 +117,8 @@ func (limiter *ClusterLimiter) getPacingReward(t time.Time) float64 {
 	} else {
 		targetTotalReward := limiter.targetReward
 		pacingReward := float64(targetTotalReward) *
-			float64(t.UnixNano()-limiter.startTime.UnixNano()) /
-			float64(limiter.endTime.UnixNano()-limiter.startTime.UnixNano()-limiter.silentInterval.Nanoseconds())
+			float64(t.UnixNano()-limiter.beginTime.UnixNano()) /
+			float64(limiter.endTime.UnixNano()-limiter.beginTime.UnixNano()-limiter.silentInterval.Nanoseconds())
 		if pacingReward > limiter.targetReward {
 			pacingReward = limiter.targetReward
 		}
@@ -134,18 +134,18 @@ func (limiter *ClusterLimiter) LostTime(reward float64, t time.Time) float64 {
 }
 
 func (limiter *ClusterLimiter) getLostTime(reward float64, t time.Time) float64 {
-	if limiter.targetReward == 0 || limiter.endTime.After(limiter.startTime) == false {
+	if limiter.targetReward == 0 || limiter.endTime.After(limiter.beginTime) == false {
 		return 0
 	}
 
 	if t.Before(limiter.initTime.Add(limiter.silentInterval)) ||
 		t.After(limiter.endTime.Add(-limiter.silentInterval)) ||
-		t.Before(limiter.startTime.Add(limiter.silentInterval)) {
+		t.Before(limiter.beginTime.Add(limiter.silentInterval)) {
 		return 0
 	}
 
 	pacingReward := limiter.getPacingReward(t)
-	interval := float64(limiter.endTime.UnixNano()-limiter.startTime.UnixNano()) / 1e9
+	interval := float64(limiter.endTime.UnixNano()-limiter.beginTime.UnixNano()) / 1e9
 	return (pacingReward - reward) * interval / limiter.targetReward
 }
 
@@ -170,7 +170,7 @@ func (limiter *ClusterLimiter) HeartBeat() {
 	defer limiter.mu.Unlock()
 
 	timeNow := time.Now().Truncate(time.Second)
-	if timeNow.After(limiter.endTime) || timeNow.Before(limiter.startTime) {
+	if timeNow.After(limiter.endTime) || timeNow.Before(limiter.beginTime) {
 		return
 	}
 
@@ -231,7 +231,7 @@ func (limiter *ClusterLimiter) updateRealPassRate() {
 	timeNow := time.Now().Truncate(time.Second)
 	if timeNow.Before(limiter.initTime.Add(limiter.silentInterval)) ||
 		timeNow.After(limiter.endTime.Add(-limiter.silentInterval)) ||
-		timeNow.Before(limiter.startTime.Add(limiter.silentInterval)) {
+		timeNow.Before(limiter.beginTime.Add(limiter.silentInterval)) {
 		limiter.realPassRate = limiter.idealPassRate
 		return
 	}

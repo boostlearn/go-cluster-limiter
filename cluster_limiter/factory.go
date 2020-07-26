@@ -32,7 +32,7 @@ type ClusterLimiterFactoryOpts struct {
 
 type ClusterLimiterOpts struct {
 	Name                string
-	StartTime           time.Time
+	BeginTime           time.Time
 	EndTime             time.Time
 	BoostInterval       time.Duration
 	SilentInterval      time.Duration
@@ -74,7 +74,7 @@ func (factory *ClusterLimiterFactory) NewClusterLimiterVec(opts *ClusterLimiterO
 	if len(opts.Name) == 0 {
 		return nil, errors.New("need name")
 	}
-	if opts.StartTime.UnixNano() >= opts.EndTime.UnixNano() {
+	if opts.BeginTime.UnixNano() >= opts.EndTime.UnixNano() {
 		return nil, errors.New("time error")
 	}
 
@@ -100,7 +100,7 @@ func (factory *ClusterLimiterFactory) NewClusterLimiterVec(opts *ClusterLimiterO
 
 	var limiterVec = &ClusterLimiterVec{
 		name:                opts.Name,
-		startTime:           opts.StartTime,
+		beginTime:           opts.BeginTime,
 		endTime:             opts.EndTime,
 		boostInterval:       opts.BoostInterval,
 		maxBoostFactor:      opts.MaxBoostFactor,
@@ -145,7 +145,7 @@ func (factory *ClusterLimiterFactory) NewClusterLimiter(opts *ClusterLimiterOpts
 	if len(opts.Name) == 0 {
 		return nil, errors.New("need name")
 	}
-	if opts.StartTime.UnixNano() >= opts.EndTime.UnixNano() {
+	if opts.BeginTime.UnixNano() >= opts.EndTime.UnixNano() {
 		return nil, errors.New("time error")
 	}
 
@@ -166,7 +166,7 @@ func (factory *ClusterLimiterFactory) NewClusterLimiter(opts *ClusterLimiterOpts
 		RequestCounter:      nil,
 		PassCounter:         nil,
 		RewardCounter:       nil,
-		startTime:           opts.StartTime,
+		beginTime:           opts.BeginTime,
 		endTime:             opts.EndTime,
 		boostInterval:       opts.BoostInterval,
 		maxBoostFactor:      opts.MaxBoostFactor,

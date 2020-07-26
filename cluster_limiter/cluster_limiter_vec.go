@@ -18,7 +18,7 @@ type ClusterLimiterVec struct {
 	PassCounter    *cluster_counter.ClusterCounterVec
 	RewardCounter  *cluster_counter.ClusterCounterVec
 
-	startTime time.Time
+	beginTime time.Time
 	endTime   time.Time
 
 	resetDataInterval time.Duration
@@ -48,7 +48,7 @@ func (limiterVec *ClusterLimiterVec) WithLabelValues(lbs []string) *ClusterLimit
 		RequestCounter:      limiterVec.RequestCounter.WithLabelValues(lbs),
 		PassCounter:         limiterVec.PassCounter.WithLabelValues(lbs),
 		RewardCounter:       limiterVec.RewardCounter.WithLabelValues(lbs),
-		startTime:           limiterVec.startTime,
+		beginTime:           limiterVec.beginTime,
 		endTime:             limiterVec.endTime,
 		boostInterval:       limiterVec.boostInterval,
 		maxBoostFactor:      limiterVec.maxBoostFactor,
