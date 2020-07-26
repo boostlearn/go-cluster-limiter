@@ -21,6 +21,7 @@ type ClusterCounterVec struct {
 
 	beginTime time.Time
 	endTime   time.Time
+	periodInterval time.Duration
 
 	// 更新周期
 	loadDataInterval time.Duration
@@ -58,6 +59,7 @@ func (counterVec *ClusterCounterVec) WithLabelValues(lbs []string) *ClusterCount
 		lbs:                 counterLabels,
 		beginTime: counterVec.beginTime,
 		endTime: counterVec.endTime,
+		periodInterval: counterVec.periodInterval,
 		mu:                  sync.RWMutex{},
 		factory:             counterVec.factory,
 		loadDataInterval:    counterVec.loadDataInterval,
@@ -84,5 +86,16 @@ func (counterVec *ClusterCounterVec)Expire() bool {
 	counterVec.mu.RLock()
 	defer counterVec.mu.RUnlock()
 
-	return time.Now().After(counterVec.endTime)
+	allExpired := true
+	counterVec.counters.Range(func(k interface{}, v interface{}) bool {
+		if counter, ok := v.(*ClusterCounter); ok {
+			if counter.Expire() {
+				counterVec.counters.Delete(k)
+			} else {
+				allExpired = false
+			}
+		}
+		return true
+	})
+	return allExpired
 }

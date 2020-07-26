@@ -16,7 +16,7 @@ var (
 	discardPreviousData bool
 
 	updateInterval int64
-	resetInterval  int64
+	periodInterval  int64
 
 	mockTrafficFactor int64
 
@@ -31,7 +31,7 @@ var (
 func init() {
 	flag.StringVar(&counterName, "a", "test_cluster_counter", "cluster counter's unique name")
 	flag.StringVar(&instanceName, "b", "test1", "test instance name")
-	flag.Int64Var(&resetInterval, "c", 600, "reset data interval")
+	flag.Int64Var(&periodInterval, "c", 60, "reset data interval")
 	flag.Int64Var(&updateInterval, "d", 1000, "calculate traffic ratio interval [ms]")
 	flag.Float64Var(&localTrafficRate, "e", 0.5, "default local traffic ratio of all cluster")
 	flag.StringVar(&redisAddr, "f", "127.0.0.1:6379", "store: redis address")
@@ -50,7 +50,7 @@ func main() {
 
 	counterVec, err := factory.NewClusterCounterVec(&cluster_counter.ClusterCounterOpts{
 		Name:                     counterName,
-		ResetInterval:            time.Duration(resetInterval) * time.Second,
+		PeriodInterval:            time.Duration(periodInterval) * time.Second,
 		DefaultLocalTrafficRatio: localTrafficRate,
 		DiscardPreviousData:      discardPreviousData,
 	}, []string{"label1", "label2"})

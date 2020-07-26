@@ -19,6 +19,7 @@ type ClusterCounter struct {
 
 	beginTime time.Time
 	endTime   time.Time
+	periodInterval time.Duration
 
 	localCurrentValue float64
 	storeDataInterval time.Duration
@@ -44,6 +45,12 @@ func (counter *ClusterCounter) Init() {
 
 	timeNow := time.Now().Truncate(time.Second)
 	counter.initTime = timeNow
+
+	counter.periodInterval = counter.periodInterval.Truncate(time.Second)
+	if counter.periodInterval > 0 {
+		counter.beginTime = timeNow.Truncate(counter.periodInterval)
+		counter.endTime = counter.beginTime.Add(counter.periodInterval)
+	}
 
 	if counter.defaultTrafficRatio == 0.0 {
 		counter.defaultTrafficRatio = 1.0
@@ -74,7 +81,20 @@ func (counter *ClusterCounter)Expire() bool {
 	counter.mu.RLock()
 	defer counter.mu.RUnlock()
 
-	return time.Now().After(counter.endTime)
+	timeNow := time.Now().Truncate(time.Second)
+	if counter.periodInterval > 0 {
+		if timeNow.After(counter.endTime) {
+			counter.beginTime = timeNow.Truncate(counter.periodInterval)
+			counter.endTime = counter.beginTime.Add(counter.periodInterval)
+
+			counter.localCurrentValue = 0
+			counter.localPushedValue = 0
+			counter.historyPos = 0
+		}
+		return false
+	} else {
+		return timeNow.After(counter.endTime)
+	}
 }
 
 //

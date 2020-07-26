@@ -10,6 +10,7 @@ type ClusterCounterOpts struct {
 	Name             string
 	BeginTime time.Time
 	EndTime time.Time
+	PeriodInterval time.Duration
 
 	LoadDataInterval time.Duration
 	DiscardPreviousData bool
@@ -95,6 +96,7 @@ func (factory *ClusterCounterFactory) NewClusterCounterVec(opts *ClusterCounterO
 		factory:                  factory,
 		beginTime: opts.BeginTime,
 		endTime: opts.EndTime,
+		periodInterval: opts.PeriodInterval,
 		loadDataInterval:         opts.LoadDataInterval.Truncate(time.Second),
 		storeDataInterval:        opts.StoreDataInterval.Truncate(time.Second),
 		name:                     opts.Name,
@@ -138,6 +140,7 @@ func (factory *ClusterCounterFactory) NewClusterCounter(opts *ClusterCounterOpts
 		factory:             factory,
 		beginTime: opts.BeginTime,
 		endTime: opts.EndTime,
+		periodInterval: opts.PeriodInterval,
 		loadDataInterval:    opts.LoadDataInterval.Truncate(time.Second),
 		storeDataInterval:   opts.StoreDataInterval.Truncate(time.Second),
 		name:                opts.Name,
