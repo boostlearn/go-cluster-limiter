@@ -10,12 +10,12 @@ import (
 type ClusterLimiter struct {
 	mu sync.RWMutex
 
-	name string
-	lbs  []string
-	initTime  time.Time
+	name     string
+	lbs      []string
+	initTime time.Time
 
-	beginTime time.Time
-	endTime   time.Time
+	beginTime      time.Time
+	endTime        time.Time
 	periodInterval time.Duration
 
 	targetReward        float64
@@ -117,7 +117,7 @@ func (limiter *ClusterLimiter) getPacingReward(t time.Time) float64 {
 		return pacingReward
 	} else {
 		targetTotalReward := limiter.targetReward
-		pacingReward := float64(targetTotalReward) *
+		pacingReward := targetTotalReward *
 			float64(t.UnixNano()-limiter.beginTime.UnixNano()) /
 			float64(limiter.endTime.UnixNano()-limiter.beginTime.UnixNano()-limiter.silentInterval.Nanoseconds())
 		if pacingReward > limiter.targetReward {
@@ -166,7 +166,7 @@ func (limiter *ClusterLimiter) IdealPassRate() float64 {
 	return limiter.idealPassRate
 }
 
-func (limiter *ClusterLimiter)Expire() bool {
+func (limiter *ClusterLimiter) Expire() bool {
 	limiter.mu.Lock()
 	defer limiter.mu.Unlock()
 
@@ -181,7 +181,6 @@ func (limiter *ClusterLimiter)Expire() bool {
 		return timeNow.After(limiter.endTime)
 	}
 }
-
 
 func (limiter *ClusterLimiter) HeartBeat() {
 	limiter.mu.Lock()
@@ -208,41 +207,87 @@ func (limiter *ClusterLimiter) HeartBeat() {
 func (limiter *ClusterLimiter) updateIdealPassRate(last int) bool {
 	timeNow := time.Now()
 	var curReward = limiter.getPacingReward(time.Now())
-	var prevReward, prevRewardTime = limiter.RewardCounter.ClusterValue(last)
-	if prevReward == 0.0 || prevRewardTime.Unix() == 0 {
-		curRequest, _ := limiter.RequestCounter.ClusterValue(0)
-		if curRequest > 0 {
-			limiter.idealPassRate = curReward / curRequest
+	var _, lastLoadTime = limiter.RewardCounter.ClusterValue(last)
+	if lastLoadTime.Unix() == 0 {
+		var prevReward, prevRewardTime = limiter.RewardCounter.LocalStoreValue(last)
+		if prevRewardTime.Unix() == 0 {
+			return true
 		}
+
+		var curPass, _ = limiter.PassCounter.LocalStoreValue(0)
+		curRequest, _ := limiter.RequestCounter.LocalStoreValue(0)
+		if curPass == 0 || curReward == 0 {
+			if curRequest > 0 {
+				initPacingReward := limiter.getPacingReward(limiter.initTime)
+				limiter.idealPassRate = (curReward - initPacingReward) / curRequest
+				if limiter.idealPassRate > 1.0 {
+					limiter.idealPassRate = 1.0
+				}
+			}
+			return true
+		}
+
+		var prevPacingReward = limiter.getPacingReward(prevRewardTime)
+		if prevPacingReward == 0 {
+			return true
+		}
+
+		var prevRequest, _ = limiter.RequestCounter.LocalStoreValue(last)
+		var prevPass, _ = limiter.PassCounter.LocalStoreValue(last)
+		curPacingTarget := limiter.getPacingReward(timeNow)
+
+		if prevRequest == curRequest ||
+			prevPass == curPass || prevReward == curReward ||
+			prevPacingReward == curPacingTarget {
+			return false
+		}
+
+		idealPassRate := (curPacingTarget - prevPacingReward) * (curPass - prevPass) /
+			(curRequest - prevRequest) * (curReward - prevReward)
+
+		if idealPassRate <= 0.0 || idealPassRate > 1.0 {
+			return false
+		}
+		limiter.idealPassRate = limiter.idealPassRate*0.5 + idealPassRate*0.5
+		return true
+	} else {
+		var prevReward, prevRewardTime = limiter.RewardCounter.ClusterValue(last)
+		var curPass, _ = limiter.PassCounter.ClusterValue(0)
+		curRequest, _ := limiter.RequestCounter.ClusterValue(0)
+		if curPass == 0 || curReward == 0 {
+			if curRequest > 0 {
+				initPacingReward := limiter.getPacingReward(limiter.initTime)
+				limiter.idealPassRate = (curReward - initPacingReward) / curRequest
+				if limiter.idealPassRate > 1.0 {
+					limiter.idealPassRate = 1.0
+				}
+			}
+			return true
+		}
+		var prevPacingReward = limiter.getPacingReward(prevRewardTime)
+		if prevPacingReward == 0 {
+			return true
+		}
+
+		var prevRequest, _ = limiter.RequestCounter.ClusterValue(last)
+		var prevPass, _ = limiter.PassCounter.ClusterValue(last)
+		curPacingTarget := limiter.getPacingReward(timeNow)
+
+		if prevRequest == curRequest ||
+			prevPass == curPass || prevReward == curReward ||
+			prevPacingReward == curPacingTarget {
+			return false
+		}
+
+		idealPassRate := (curPacingTarget - prevPacingReward) * (curPass - prevPass) /
+			(curRequest - prevRequest) * (curReward - prevReward)
+
+		if idealPassRate <= 0.0 || idealPassRate > 1.0 {
+			return false
+		}
+		limiter.idealPassRate = limiter.idealPassRate*0.5 + idealPassRate*0.5
 		return true
 	}
-
-	var prevPacingReward = limiter.getPacingReward(prevRewardTime)
-	if prevPacingReward == 0 {
-		return true
-	}
-
-	var prevRequest, _ = limiter.RequestCounter.ClusterValue(-1)
-	var prevPass, _ = limiter.PassCounter.ClusterValue(-1)
-
-	var curRequest, _ = limiter.RequestCounter.ClusterValue(0)
-	var curPass, _ = limiter.PassCounter.ClusterValue(0)
-	curPacingTarget := limiter.getPacingReward(timeNow)
-
-	if prevRequest == curRequest ||
-		prevPass == curPass || prevReward == curReward ||
-		prevPacingReward == curPacingTarget {
-		return false
-	}
-
-	idealPassRate := (curPacingTarget - prevPacingReward) * (curPass - prevPass) /
-		(curRequest - prevRequest) * (curReward - prevReward)
-
-	if idealPassRate <= 0.0 || idealPassRate > 1.0 {
-		return false
-	}
-	limiter.idealPassRate = limiter.idealPassRate*0.5 + idealPassRate*0.5
-	return true
 }
 
 func (limiter *ClusterLimiter) updateRealPassRate() {

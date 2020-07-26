@@ -10,7 +10,7 @@ import (
 )
 
 type RedisStore struct {
-	cli *redis.Client
+	cli    *redis.Client
 	prefix string
 }
 
@@ -45,7 +45,7 @@ func generateRedisKey(name string, beginTime time.Time, endTime time.Time, lbs m
 }
 
 func (store *RedisStore) Store(name string, beginTime time.Time, endTime time.Time, lbs map[string]string, value float64) error {
-	v := store.cli.IncrBy(store.prefix + generateRedisKey(name, beginTime, endTime, lbs), int64(value*10000))
+	v := store.cli.IncrBy(store.prefix+generateRedisKey(name, beginTime, endTime, lbs), int64(value*10000))
 	return v.Err()
 }
 
@@ -55,7 +55,7 @@ func (store *RedisStore) Load(name string, beginTime time.Time, endTime time.Tim
 		t, err := v.Result()
 		if err == nil {
 			value, err := strconv.ParseFloat(t, 64)
-			return value/10000, err
+			return value / 10000, err
 		}
 		return 0, err
 	} else {

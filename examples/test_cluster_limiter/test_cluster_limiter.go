@@ -6,6 +6,7 @@ import (
 	"github.com/boostlearn/go-cluster-limiter/cluster_counter"
 	"github.com/boostlearn/go-cluster-limiter/cluster_counter/redis_store"
 	"github.com/boostlearn/go-cluster-limiter/cluster_limiter"
+	"log"
 
 	"math/rand"
 	"time"
@@ -44,20 +45,23 @@ func main() {
 
 	counterFactory := cluster_counter.NewFactory(&cluster_counter.ClusterCounterFactoryOpts{
 		DefaultLocalTrafficRatio: 0.5,
-		HeartBeatInterval:           1 * time.Second,
+		HeartBeatInterval:        1 * time.Second,
 	}, redis_store.NewStore(redisAddr, redisPass, "blcl:"))
 
 	factory := cluster_limiter.NewFactory(&cluster_limiter.ClusterLimiterFactoryOpts{
-		DefaultBoostInterval:  time.Duration(10) * time.Second,
+		DefaultBoostInterval:     time.Duration(10) * time.Second,
 		DefaultHeartBeatInterval: 5 * time.Second,
 	}, counterFactory)
 
 	limiterVec, err := factory.NewClusterLimiterVec(&cluster_limiter.ClusterLimiterOpts{
 		Name:                limiterName,
-		BeginTime:           time.Now(),
-		EndTime:             time.Now().Add(time.Duration(24) * time.Hour),
+		PeriodInterval:      time.Duration(resetInterval) * time.Second,
 		DiscardPreviousData: true,
 	}, []string{"label1", "label2"})
+
+	if err != nil {
+		log.Fatal(err)
+	}
 
 	lbs := []string{"c1", "c2"}
 	limiter := limiterVec.WithLabelValues(lbs)

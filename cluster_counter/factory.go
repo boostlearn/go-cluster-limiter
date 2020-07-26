@@ -7,25 +7,25 @@ import (
 )
 
 type ClusterCounterOpts struct {
-	Name             string
-	BeginTime time.Time
-	EndTime time.Time
+	Name           string
+	BeginTime      time.Time
+	EndTime        time.Time
 	PeriodInterval time.Duration
 
-	LoadDataInterval time.Duration
+	LoadDataInterval    time.Duration
 	DiscardPreviousData bool
-	StoreDataInterval        time.Duration
+	StoreDataInterval   time.Duration
 
 	DefaultLocalTrafficRatio float64
 }
 
 type ClusterCounterFactory struct {
-	name string
-	Store DataStoreI
+	name   string
+	Store  DataStoreI
 	status bool
 
 	defaultLocalTrafficRatio float64
-	heartbeatInterval time.Duration
+	heartbeatInterval        time.Duration
 
 	clusterCounterVectors sync.Map
 	clusterCounters       sync.Map
@@ -34,7 +34,7 @@ type ClusterCounterFactory struct {
 type ClusterCounterFactoryOpts struct {
 	KeyPrefix                string
 	DefaultLocalTrafficRatio float64
-	HeartBeatInterval           time.Duration
+	HeartBeatInterval        time.Duration
 }
 
 func NewFactory(opts *ClusterCounterFactoryOpts, store DataStoreI) *ClusterCounterFactory {
@@ -50,11 +50,11 @@ func NewFactory(opts *ClusterCounterFactoryOpts, store DataStoreI) *ClusterCount
 	}
 
 	factory := &ClusterCounterFactory{
-		name:                opts.KeyPrefix,
+		name:                     opts.KeyPrefix,
 		Store:                    store,
-		status:               false,
+		status:                   false,
 		defaultLocalTrafficRatio: opts.DefaultLocalTrafficRatio,
-		heartbeatInterval:           opts.HeartBeatInterval,
+		heartbeatInterval:        opts.HeartBeatInterval,
 	}
 	factory.Start()
 	return factory
@@ -94,9 +94,9 @@ func (factory *ClusterCounterFactory) NewClusterCounterVec(opts *ClusterCounterO
 
 	clusterCounterVec := &ClusterCounterVec{
 		factory:                  factory,
-		beginTime: opts.BeginTime,
-		endTime: opts.EndTime,
-		periodInterval: opts.PeriodInterval,
+		beginTime:                opts.BeginTime,
+		endTime:                  opts.EndTime,
+		periodInterval:           opts.PeriodInterval,
 		loadDataInterval:         opts.LoadDataInterval.Truncate(time.Second),
 		storeDataInterval:        opts.StoreDataInterval.Truncate(time.Second),
 		name:                     opts.Name,
@@ -138,9 +138,9 @@ func (factory *ClusterCounterFactory) NewClusterCounter(opts *ClusterCounterOpts
 
 	clusterCounter := &ClusterCounter{
 		factory:             factory,
-		beginTime: opts.BeginTime,
-		endTime: opts.EndTime,
-		periodInterval: opts.PeriodInterval,
+		beginTime:           opts.BeginTime,
+		endTime:             opts.EndTime,
+		periodInterval:      opts.PeriodInterval,
 		loadDataInterval:    opts.LoadDataInterval.Truncate(time.Second),
 		storeDataInterval:   opts.StoreDataInterval.Truncate(time.Second),
 		name:                opts.Name,
