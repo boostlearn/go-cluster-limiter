@@ -19,6 +19,9 @@ type ClusterCounterVec struct {
 	// factory
 	factory *ClusterCounterFactory
 
+	beginTime time.Time
+	endTime   time.Time
+
 	// 更新周期
 	loadDataInterval time.Duration
 
@@ -53,6 +56,8 @@ func (counterVec *ClusterCounterVec) WithLabelValues(lbs []string) *ClusterCount
 	newCounter := &ClusterCounter{
 		name:                counterVec.name,
 		lbs:                 counterLabels,
+		beginTime: counterVec.beginTime,
+		endTime: counterVec.endTime,
 		mu:                  sync.RWMutex{},
 		factory:             counterVec.factory,
 		loadDataInterval:    counterVec.loadDataInterval,
@@ -73,4 +78,11 @@ func (counterVec *ClusterCounterVec) HeartBeat() {
 		}
 		return true
 	})
+}
+
+func (counterVec *ClusterCounterVec)Expire() bool {
+	counterVec.mu.RLock()
+	defer counterVec.mu.RUnlock()
+
+	return time.Now().After(counterVec.endTime)
 }

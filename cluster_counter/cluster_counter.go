@@ -70,6 +70,13 @@ func (counter *ClusterCounter) Init() {
 
 }
 
+func (counter *ClusterCounter)Expire() bool {
+	counter.mu.RLock()
+	defer counter.mu.RUnlock()
+
+	return time.Now().After(counter.endTime)
+}
+
 //
 func (counter *ClusterCounter) Add(v float64) {
 	counter.mu.RLock()

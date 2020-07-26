@@ -161,8 +161,12 @@ func (factory *ClusterCounterFactory) Stop() {
 func (factory *ClusterCounterFactory) WatchAndSync() {
 	for {
 		factory.clusterCounterVectors.Range(func(k interface{}, v interface{}) bool {
-			if counter, ok := v.(*ClusterCounterVec); ok {
-				counter.HeartBeat()
+			if counterVec, ok := v.(*ClusterCounterVec); ok {
+				counterVec.HeartBeat()
+
+				if counterVec.Expire() {
+					factory.clusterCounters.Delete(k)
+				}
 			}
 			return true
 		})
@@ -170,6 +174,10 @@ func (factory *ClusterCounterFactory) WatchAndSync() {
 		factory.clusterCounters.Range(func(k interface{}, v interface{}) bool {
 			if counter, ok := v.(*ClusterCounter); ok {
 				counter.HeartBeat()
+
+				if counter.Expire() {
+					factory.clusterCounters.Delete(k)
+				}
 			}
 			return true
 		})
