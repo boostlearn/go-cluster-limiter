@@ -25,7 +25,7 @@ type ClusterLimiterFactory struct {
 type ClusterLimiterFactoryOpts struct {
 	Name                    string
 	DefaultBoostInterval    time.Duration
-	DefaultUpdateInterval   time.Duration
+	DefaultHeartBeatInterval   time.Duration
 	DefaultMaxBoostFactor   float64
 	DefaultLocalTrafficRate float64
 }
@@ -49,8 +49,8 @@ func NewFactory(opts *ClusterLimiterFactoryOpts,
 		opts.DefaultBoostInterval = time.Duration(60) * time.Second
 	}
 
-	if opts.DefaultUpdateInterval == 0 {
-		opts.DefaultUpdateInterval = time.Duration(1) * time.Second
+	if opts.DefaultHeartBeatInterval == 0 {
+		opts.DefaultHeartBeatInterval = time.Duration(1) * time.Second
 	}
 
 	if len(opts.Name) == 0 {
@@ -61,7 +61,7 @@ func NewFactory(opts *ClusterLimiterFactoryOpts,
 		limiterVectors:       sync.Map{},
 		counterFactory:       counterFactory,
 		defaultBoostInterval: opts.DefaultBoostInterval,
-		updateInterval:       opts.DefaultUpdateInterval,
+		updateInterval:       opts.DefaultHeartBeatInterval,
 		name:     opts.Name,
 	}
 	factory.Start()
@@ -222,14 +222,14 @@ func (factory *ClusterLimiterFactory) WatchAndSync() {
 	for factory.status {
 		factory.limiters.Range(func(k interface{}, v interface{}) bool {
 			if limiter, ok := v.(*ClusterLimiter); ok {
-				limiter.Update()
+				limiter.HeartBeat()
 			}
 			return true
 		})
 
 		factory.limiterVectors.Range(func(k interface{}, v interface{}) bool {
 			if limiter, ok := v.(*ClusterLimiterVec); ok {
-				limiter.Update()
+				limiter.HeartBeat()
 			}
 			return true
 		})

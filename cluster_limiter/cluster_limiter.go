@@ -12,6 +12,10 @@ type ClusterLimiter struct {
 
 	name string
 	lbs  []string
+	initTime  time.Time
+
+	startTime time.Time
+	endTime   time.Time
 
 	targetReward        float64
 	discardPreviousData bool
@@ -19,10 +23,6 @@ type ClusterLimiter struct {
 	RequestCounter *cluster_counter.ClusterCounter
 	PassCounter    *cluster_counter.ClusterCounter
 	RewardCounter  *cluster_counter.ClusterCounter
-
-	startTime time.Time
-	endTime   time.Time
-	initTime  time.Time
 
 	boostInterval  time.Duration
 	maxBoostFactor float64
@@ -165,7 +165,7 @@ func (limiter *ClusterLimiter) IdealPassRate() float64 {
 	return limiter.idealPassRate
 }
 
-func (limiter *ClusterLimiter) Update() {
+func (limiter *ClusterLimiter) HeartBeat() {
 	limiter.mu.Lock()
 	defer limiter.mu.Unlock()
 

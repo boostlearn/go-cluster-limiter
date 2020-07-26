@@ -45,7 +45,7 @@ func main() {
 	flag.Parse()
 	factory := cluster_counter.NewFactory(&cluster_counter.ClusterCounterFactoryOpts{
 		DefaultLocalTrafficRatio: localTrafficRate,
-		UpdateInterval:           time.Duration(updateInterval) * time.Millisecond,
+		HeartBeatInterval:           time.Duration(updateInterval) * time.Millisecond,
 	}, redis_store.NewStore(redisAddr, redisPass, "blcl:"))
 
 	counterVec, err := factory.NewClusterCounterVec(&cluster_counter.ClusterCounterOpts{

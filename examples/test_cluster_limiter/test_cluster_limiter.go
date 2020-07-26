@@ -44,12 +44,12 @@ func main() {
 
 	counterFactory := cluster_counter.NewFactory(&cluster_counter.ClusterCounterFactoryOpts{
 		DefaultLocalTrafficRatio: 0.5,
-		UpdateInterval:           1 * time.Second,
+		HeartBeatInterval:           1 * time.Second,
 	}, redis_store.NewStore(redisAddr, redisPass, "blcl:"))
 
 	factory := cluster_limiter.NewFactory(&cluster_limiter.ClusterLimiterFactoryOpts{
 		DefaultBoostInterval:  time.Duration(10) * time.Second,
-		DefaultUpdateInterval: 5 * time.Second,
+		DefaultHeartBeatInterval: 5 * time.Second,
 	}, counterFactory)
 
 	limiterVec, err := factory.NewClusterLimiterVec(&cluster_limiter.ClusterLimiterOpts{

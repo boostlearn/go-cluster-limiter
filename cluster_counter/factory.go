@@ -35,7 +35,7 @@ type ClusterCounterFactory struct {
 type ClusterCounterFactoryOpts struct {
 	KeyPrefix                string
 	DefaultLocalTrafficRatio float64
-	UpdateInterval           time.Duration
+	HeartBeatInterval           time.Duration
 }
 
 func NewFactory(opts *ClusterCounterFactoryOpts, store DataStoreI) *ClusterCounterFactory {
@@ -46,8 +46,8 @@ func NewFactory(opts *ClusterCounterFactoryOpts, store DataStoreI) *ClusterCount
 		opts.DefaultLocalTrafficRatio = 1.0
 	}
 
-	if opts.UpdateInterval == 0 {
-		opts.UpdateInterval = time.Duration(1) * time.Second
+	if opts.HeartBeatInterval == 0 {
+		opts.HeartBeatInterval = time.Duration(1) * time.Second
 	}
 
 	factory := &ClusterCounterFactory{
@@ -55,7 +55,7 @@ func NewFactory(opts *ClusterCounterFactoryOpts, store DataStoreI) *ClusterCount
 		Store:                    store,
 		status:               false,
 		defaultLocalTrafficRatio: opts.DefaultLocalTrafficRatio,
-		updateInterval:           opts.UpdateInterval,
+		updateInterval:           opts.HeartBeatInterval,
 	}
 	factory.Start()
 	return factory
@@ -95,7 +95,6 @@ func (factory *ClusterCounterFactory) NewClusterCounterVec(opts *ClusterCounterO
 
 	clusterCounterVec := &ClusterCounterVec{
 		factory:                  factory,
-		resetInterval:            opts.ResetInterval.Truncate(time.Second),
 		loadDataInterval:         opts.LoadDataInterval.Truncate(time.Second),
 		storeDataInterval:        opts.StoreDataInterval.Truncate(time.Second),
 		name:                     opts.Name,
@@ -163,14 +162,14 @@ func (factory *ClusterCounterFactory) WatchAndSync() {
 	for {
 		factory.clusterCounterVectors.Range(func(k interface{}, v interface{}) bool {
 			if counter, ok := v.(*ClusterCounterVec); ok {
-				counter.Update()
+				counter.HeartBeat()
 			}
 			return true
 		})
 
 		factory.clusterCounters.Range(func(k interface{}, v interface{}) bool {
 			if counter, ok := v.(*ClusterCounter); ok {
-				counter.Update()
+				counter.HeartBeat()
 			}
 			return true
 		})

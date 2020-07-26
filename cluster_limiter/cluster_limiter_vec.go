@@ -58,16 +58,16 @@ func (limiterVec *ClusterLimiterVec) WithLabelValues(lbs []string) *ClusterLimit
 		discardPreviousData: limiterVec.discardPreviousData,
 	}
 	newLimiter.Init()
-	newLimiter.Update()
+	newLimiter.HeartBeat()
 
 	limiterVec.limiters.Store(key, newLimiter)
 	return limiterVec.WithLabelValues(lbs)
 }
 
-func (limiterVec *ClusterLimiterVec) Update() {
+func (limiterVec *ClusterLimiterVec) HeartBeat() {
 	limiterVec.limiters.Range(func(k interface{}, v interface{}) bool {
 		if limiter, ok := v.(*ClusterLimiter); ok {
-			limiter.Update()
+			limiter.HeartBeat()
 		}
 		return true
 	})

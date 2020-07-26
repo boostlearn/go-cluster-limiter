@@ -6,7 +6,7 @@ import (
 	"time"
 )
 
-// 集群环境计数器对象
+//
 type ClusterCounterVec struct {
 	mu sync.RWMutex
 
@@ -18,9 +18,6 @@ type ClusterCounterVec struct {
 
 	// factory
 	factory *ClusterCounterFactory
-
-	// 重置周期
-	resetInterval time.Duration
 
 	// 更新周期
 	loadDataInterval time.Duration
@@ -69,10 +66,10 @@ func (counterVec *ClusterCounterVec) WithLabelValues(lbs []string) *ClusterCount
 	return counterVec.WithLabelValues(lbs)
 }
 
-func (counterVec *ClusterCounterVec) Update() {
+func (counterVec *ClusterCounterVec) HeartBeat() {
 	counterVec.counters.Range(func(k interface{}, v interface{}) bool {
 		if counter, ok := v.(*ClusterCounter); ok {
-			counter.Update()
+			counter.HeartBeat()
 		}
 		return true
 	})

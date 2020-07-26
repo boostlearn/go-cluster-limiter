@@ -7,24 +7,21 @@ import (
 )
 
 const SEP = "####"
-const HISTORYMAX = 10
+const HistoryMax = 10
 
-// 集群计数器
 type ClusterCounter struct {
 	mu sync.RWMutex
 
 	name    string
 	lbs     map[string]string
 	factory *ClusterCounterFactory
+	initTime  time.Time
 
 	beginTime time.Time
 	endTime   time.Time
-	initTime  time.Time
 
-	historyPos int64
-
-	storeDataInterval time.Duration
 	localCurrentValue float64
+	storeDataInterval time.Duration
 	localPushedValue  float64
 	lastStoreDataTime time.Time
 
@@ -32,9 +29,10 @@ type ClusterCounter struct {
 	discardPreviousData bool
 	clusterInitValue    float64
 
-	loadDataHistoryTime [HISTORYMAX]time.Time
-	localHistoryValue   [HISTORYMAX]float64
-	clusterHistoryValue [HISTORYMAX]float64
+	historyPos int64
+	loadDataHistoryTime [HistoryMax]time.Time
+	localHistoryValue   [HistoryMax]float64
+	clusterHistoryValue [HistoryMax]float64
 
 	defaultTrafficRatio float64
 	localTrafficRatio   float64
@@ -61,9 +59,9 @@ func (counter *ClusterCounter) Init() {
 		counter.mu.Lock()
 
 		if err == nil {
-			counter.clusterHistoryValue[(counter.historyPos)%HISTORYMAX] = value
-			counter.localHistoryValue[(counter.historyPos)%HISTORYMAX] = counter.localCurrentValue
-			counter.loadDataHistoryTime[(counter.historyPos)%HISTORYMAX] = timeNow
+			counter.clusterHistoryValue[(counter.historyPos)%HistoryMax] = value
+			counter.localHistoryValue[(counter.historyPos)%HistoryMax] = counter.localCurrentValue
+			counter.loadDataHistoryTime[(counter.historyPos)%HistoryMax] = timeNow
 			counter.historyPos += 1
 			counter.clusterInitValue = value
 			return
@@ -72,7 +70,7 @@ func (counter *ClusterCounter) Init() {
 
 }
 
-// 计数器增加
+//
 func (counter *ClusterCounter) Add(v float64) {
 	counter.mu.RLock()
 	defer counter.mu.RUnlock()
@@ -80,7 +78,7 @@ func (counter *ClusterCounter) Add(v float64) {
 	counter.localCurrentValue += v
 }
 
-// 本地当前值
+//
 func (counter *ClusterCounter) LocalValue(last int) (float64, time.Time) {
 	counter.mu.RLock()
 	defer counter.mu.RUnlock()
@@ -88,13 +86,9 @@ func (counter *ClusterCounter) LocalValue(last int) (float64, time.Time) {
 	if last == 0 {
 		return counter.localCurrentValue, time.Now()
 	}
-	if last > HISTORYMAX || last < -HISTORYMAX {
-		return 0, time.Unix(0, 0)
-	}
-
-	if last < 0 && last > -HISTORYMAX && int64(last) > -counter.historyPos {
-		return counter.localHistoryValue[(counter.historyPos+int64(last)+HISTORYMAX)%HISTORYMAX],
-			counter.loadDataHistoryTime[(counter.historyPos+int64(last)+HISTORYMAX)%HISTORYMAX]
+	if last < 0 && last > -HistoryMax && int64(last) > -counter.historyPos {
+		return counter.localHistoryValue[(counter.historyPos+int64(last)+HistoryMax)%HistoryMax],
+			counter.loadDataHistoryTime[(counter.historyPos+int64(last)+HistoryMax)%HistoryMax]
 	}
 
 	return 0, time.Unix(0, 0)
@@ -105,9 +99,9 @@ func (counter *ClusterCounter) ClusterValue(last int) (float64, time.Time) {
 	defer counter.mu.RUnlock()
 
 	if last == 0 {
-		clusterLast := counter.clusterHistoryValue[(counter.historyPos-1+HISTORYMAX)%HISTORYMAX]
+		clusterLast := counter.clusterHistoryValue[(counter.historyPos-1+HistoryMax)%HistoryMax]
 		localValue := counter.localCurrentValue
-		localLast := counter.localHistoryValue[(counter.historyPos-1+HISTORYMAX)%HISTORYMAX]
+		localLast := counter.localHistoryValue[(counter.historyPos-1+HistoryMax)%HistoryMax]
 
 		localTrafficRatio := counter.localTrafficRatio
 		if localTrafficRatio == 0.0 {
@@ -121,19 +115,19 @@ func (counter *ClusterCounter) ClusterValue(last int) (float64, time.Time) {
 		return clusterPred, time.Now()
 	}
 
-	if last < 0 && last > -HISTORYMAX && int64(last) > -counter.historyPos {
-		clusterLast := counter.clusterHistoryValue[(counter.historyPos+int64(last)+HISTORYMAX)%HISTORYMAX]
+	if last < 0 && last > -HistoryMax && int64(last) > -counter.historyPos {
+		clusterLast := counter.clusterHistoryValue[(counter.historyPos+int64(last)+HistoryMax)%HistoryMax]
 		if counter.discardPreviousData && counter.initTime.After(counter.beginTime) &&
 			counter.initTime.Before(counter.endTime) {
 			clusterLast -= counter.clusterInitValue
 		}
-		return clusterLast, counter.loadDataHistoryTime[(counter.historyPos+int64(last)+HISTORYMAX)%HISTORYMAX]
+		return clusterLast, counter.loadDataHistoryTime[(counter.historyPos+int64(last)+HistoryMax)%HistoryMax]
 	}
 
 	return 0, time.Unix(0, 0)
 }
 
-// 集群放大系数
+//
 func (counter *ClusterCounter) LocalTrafficRatio() float64 {
 	counter.mu.RLock()
 	defer counter.mu.RUnlock()
@@ -145,8 +139,8 @@ func (counter *ClusterCounter) LocalTrafficRatio() float64 {
 	return counter.localTrafficRatio
 }
 
-// 周期更新
-func (counter *ClusterCounter) Update() {
+//
+func (counter *ClusterCounter) HeartBeat() {
 	counter.StoreData()
 	counter.LoadData()
 }
@@ -162,7 +156,7 @@ func (counter *ClusterCounter) LoadData() bool {
 	timeNow := time.Now()
 	if counter.loadDataInterval > 0 &&
 		timeNow.After(counter.loadDataHistoryTime[
-			(counter.historyPos-1+HISTORYMAX)%HISTORYMAX].Add(counter.loadDataInterval)) {
+			(counter.historyPos-1+HistoryMax)%HistoryMax].Add(counter.loadDataInterval)) {
 		counter.mu.Unlock()
 		value, err := counter.factory.Store.Load(counter.name, counter.beginTime, counter.endTime,
 			counter.lbs)
@@ -172,15 +166,39 @@ func (counter *ClusterCounter) LoadData() bool {
 			return false
 		}
 
-		counter.localHistoryValue[counter.historyPos%HISTORYMAX] = counter.localCurrentValue
-		counter.clusterHistoryValue[counter.historyPos%HISTORYMAX] = value
-		counter.loadDataHistoryTime[counter.historyPos%HISTORYMAX] = timeNow
+		counter.localHistoryValue[counter.historyPos%HistoryMax] = counter.localCurrentValue
+		counter.clusterHistoryValue[counter.historyPos%HistoryMax] = value
+		counter.loadDataHistoryTime[counter.historyPos%HistoryMax] = timeNow
 		counter.historyPos += 1
 		counter.updateLocalTrafficRatio()
 		return true
 	}
 	return false
 }
+
+
+func (counter *ClusterCounter) updateLocalTrafficRatio() {
+	if counter.localTrafficRatio == 0.0 {
+		counter.localTrafficRatio = counter.defaultTrafficRatio
+	}
+
+	var localIncrease float64
+	var clusterIncrease float64
+	for i := -1; i > -int(counter.historyPos%HistoryMax); i-- {
+		clusterPrev := counter.clusterHistoryValue[(counter.historyPos+int64(i)-1+HistoryMax)%HistoryMax]
+		clusterCur := counter.clusterHistoryValue[(counter.historyPos+int64(i)+HistoryMax)%HistoryMax]
+		clusterIncrease = clusterIncrease*0.5 + (clusterPrev-clusterCur)*0.5
+
+		localPrev := counter.localHistoryValue[(counter.historyPos+int64(i)-1+HistoryMax)%HistoryMax]
+		localCur := counter.localHistoryValue[(counter.historyPos+int64(i)+HistoryMax)%HistoryMax]
+		localIncrease = localIncrease*0.5 + (localPrev-localCur)*0.5
+	}
+
+	if localIncrease > 0.0 && clusterIncrease > 0.0 {
+		counter.localTrafficRatio = counter.localTrafficRatio*0.5 + (localIncrease/clusterIncrease)*0.5
+	}
+}
+
 
 func (counter *ClusterCounter) StoreData() bool {
 	counter.mu.Lock()
@@ -192,8 +210,7 @@ func (counter *ClusterCounter) StoreData() bool {
 
 	timeNow := time.Now()
 	if counter.storeDataInterval > 0 &&
-		timeNow.UnixNano()-counter.lastStoreDataTime.Add(1*time.Second).UnixNano() >
-			counter.storeDataInterval.Nanoseconds() {
+		timeNow.After(counter.lastStoreDataTime.Add(counter.storeDataInterval)) {
 		pushValue := counter.localCurrentValue - counter.localPushedValue
 		if pushValue > 0 {
 			counter.mu.Unlock()
@@ -201,36 +218,12 @@ func (counter *ClusterCounter) StoreData() bool {
 				pushValue)
 			counter.mu.Lock()
 			if err == nil {
-				counter.lastStoreDataTime = time.Now()
-				counter.localPushedValue -= pushValue
-				counter.lastStoreDataTime = time.Now()
+				counter.localPushedValue += pushValue
+				counter.lastStoreDataTime = timeNow
 				return true
 			}
 
 		}
 	}
 	return false
-}
-
-// 重新计算放大系数
-func (counter *ClusterCounter) updateLocalTrafficRatio() {
-	if counter.localTrafficRatio == 0.0 {
-		counter.localTrafficRatio = counter.defaultTrafficRatio
-	}
-
-	var localIncrease float64
-	var clusterIncrease float64
-	for i := 1; i > -int(counter.historyPos%HISTORYMAX); i-- {
-		clusterPrev := counter.clusterHistoryValue[(counter.historyPos-int64(i)-1+HISTORYMAX)%HISTORYMAX]
-		clusterCur := counter.clusterHistoryValue[(counter.historyPos-int64(i)+HISTORYMAX)%HISTORYMAX]
-		clusterIncrease = clusterIncrease*0.5 + (clusterPrev-clusterCur)*0.5
-
-		localPrev := counter.localHistoryValue[(counter.historyPos-int64(i)-1+HISTORYMAX)%HISTORYMAX]
-		localCur := counter.localHistoryValue[(counter.historyPos-int64(i)+HISTORYMAX)%HISTORYMAX]
-		localIncrease = localIncrease*0.5 + (localPrev-localCur)*0.5
-	}
-
-	if localIncrease > 0.0 && clusterIncrease > 0.0 {
-		counter.localTrafficRatio = counter.localTrafficRatio*0.5 + (localIncrease/clusterIncrease)*0.5
-	}
 }
