@@ -84,12 +84,21 @@ func (counter *ClusterCounter)Expire() bool {
 	timeNow := time.Now().Truncate(time.Second)
 	if counter.periodInterval > 0 {
 		if timeNow.After(counter.endTime) {
+			lastBeginTime := counter.beginTime
+			lastEndTime := counter.endTime
 			counter.beginTime = timeNow.Truncate(counter.periodInterval)
 			counter.endTime = counter.beginTime.Add(counter.periodInterval)
-
+			pushValue := counter.localCurrentValue - counter.localPushedValue
 			counter.localCurrentValue = 0
 			counter.localPushedValue = 0
 			counter.historyPos = 0
+
+			if pushValue > 0 {
+				counter.mu.Unlock()
+				_ = counter.factory.Store.Store(counter.name, lastBeginTime, lastEndTime, counter.lbs,
+					pushValue)
+				counter.mu.Lock()
+			}
 		}
 		return false
 	} else {
