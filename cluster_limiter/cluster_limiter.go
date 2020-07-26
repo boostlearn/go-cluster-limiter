@@ -166,6 +166,23 @@ func (limiter *ClusterLimiter) IdealPassRate() float64 {
 	return limiter.idealPassRate
 }
 
+func (limiter *ClusterLimiter)Expire() bool {
+	limiter.mu.Lock()
+	defer limiter.mu.Unlock()
+
+	timeNow := time.Now().Truncate(time.Second)
+	if limiter.periodInterval > 0 {
+		if timeNow.After(limiter.endTime) {
+			limiter.beginTime = timeNow.Truncate(limiter.periodInterval)
+			limiter.endTime = limiter.beginTime.Add(limiter.periodInterval)
+		}
+		return false
+	} else {
+		return timeNow.After(limiter.endTime)
+	}
+}
+
+
 func (limiter *ClusterLimiter) HeartBeat() {
 	limiter.mu.Lock()
 	defer limiter.mu.Unlock()

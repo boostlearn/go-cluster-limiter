@@ -97,5 +97,15 @@ func (counterVec *ClusterCounterVec)Expire() bool {
 		}
 		return true
 	})
+
+	timeNow := time.Now().Truncate(time.Second)
+	if counterVec.periodInterval > 0 {
+		if timeNow.After(counterVec.endTime) {
+			counterVec.beginTime = timeNow.Truncate(counterVec.periodInterval)
+			counterVec.endTime = counterVec.beginTime.Add(counterVec.periodInterval)
+		}
+		return false
+	}
+
 	return allExpired
 }

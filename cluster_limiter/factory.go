@@ -230,6 +230,9 @@ func (factory *ClusterLimiterFactory) WatchAndSync() {
 		factory.limiters.Range(func(k interface{}, v interface{}) bool {
 			if limiter, ok := v.(*ClusterLimiter); ok {
 				limiter.HeartBeat()
+				if limiter.Expire() {
+					factory.limiters.Delete(k)
+				}
 			}
 			return true
 		})
@@ -237,6 +240,9 @@ func (factory *ClusterLimiterFactory) WatchAndSync() {
 		factory.limiterVectors.Range(func(k interface{}, v interface{}) bool {
 			if limiter, ok := v.(*ClusterLimiterVec); ok {
 				limiter.HeartBeat()
+				if limiter.Expire() {
+					factory.limiterVectors.Delete(k)
+				}
 			}
 			return true
 		})

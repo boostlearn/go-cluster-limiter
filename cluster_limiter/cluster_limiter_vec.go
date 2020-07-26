@@ -73,3 +73,31 @@ func (limiterVec *ClusterLimiterVec) HeartBeat() {
 		return true
 	})
 }
+
+func (limiterVec *ClusterLimiterVec)Expire() bool {
+	limiterVec.mu.RLock()
+	defer limiterVec.mu.RUnlock()
+
+	allExpired := true
+	limiterVec.limiters.Range(func(k interface{}, v interface{}) bool {
+		if counter, ok := v.(*ClusterLimiter); ok {
+			if counter.Expire() {
+				limiterVec.limiters.Delete(k)
+			} else {
+				allExpired = false
+			}
+		}
+		return true
+	})
+
+	timeNow := time.Now().Truncate(time.Second)
+	if limiterVec.periodInterval > 0 {
+		if timeNow.After(limiterVec.endTime) {
+			limiterVec.beginTime = timeNow.Truncate(limiterVec.periodInterval)
+			limiterVec.endTime = limiterVec.beginTime.Add(limiterVec.periodInterval)
+		}
+		return false
+	}
+
+	return allExpired
+}
