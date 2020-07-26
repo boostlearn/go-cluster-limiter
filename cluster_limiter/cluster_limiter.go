@@ -206,20 +206,21 @@ func (limiter *ClusterLimiter) HeartBeat() {
 
 func (limiter *ClusterLimiter) updateIdealPassRate(last int) bool {
 	timeNow := time.Now()
-	var curReward = limiter.getPacingReward(time.Now())
 	var _, lastLoadTime = limiter.RewardCounter.ClusterValue(last)
 	if lastLoadTime.Unix() == 0 {
+		var curPacingReward = limiter.getPacingReward(timeNow)
 		var prevReward, prevRewardTime = limiter.RewardCounter.LocalStoreValue(last)
 		if prevRewardTime.Unix() == 0 {
 			return true
 		}
 
 		var curPass, _ = limiter.PassCounter.LocalStoreValue(0)
-		curRequest, _ := limiter.RequestCounter.LocalStoreValue(0)
-		if curPass == 0 || curReward == 0 {
+		var curRequest, _ = limiter.RequestCounter.LocalStoreValue(0)
+		var curReward, _ = limiter.RewardCounter.LocalStoreValue(0)
+		if curPass == 0 || curPacingReward == 0 {
 			if curRequest > 0 {
 				initPacingReward := limiter.getPacingReward(limiter.initTime)
-				limiter.idealPassRate = (curReward - initPacingReward) / curRequest
+				limiter.idealPassRate = (curPacingReward - initPacingReward) / curRequest
 				if limiter.idealPassRate > 1.0 {
 					limiter.idealPassRate = 1.0
 				}
@@ -231,59 +232,62 @@ func (limiter *ClusterLimiter) updateIdealPassRate(last int) bool {
 		if prevPacingReward == 0 {
 			return true
 		}
-
 		var prevRequest, _ = limiter.RequestCounter.LocalStoreValue(last)
 		var prevPass, _ = limiter.PassCounter.LocalStoreValue(last)
-		curPacingTarget := limiter.getPacingReward(timeNow)
-
 		if prevRequest == curRequest ||
-			prevPass == curPass || prevReward == curReward ||
-			prevPacingReward == curPacingTarget {
+			prevPass == curPass || prevReward == curPacingReward ||
+			prevPacingReward == curPacingReward {
 			return false
 		}
 
-		idealPassRate := (curPacingTarget - prevPacingReward) * (curPass - prevPass) /
-			(curRequest - prevRequest) * (curReward - prevReward)
+		idealPassRate := (curPacingReward - prevPacingReward) * (curPass - prevPass) /
+			((curRequest - prevRequest) * (curReward - prevReward))
 
-		if idealPassRate <= 0.0 || idealPassRate > 1.0 {
-			return false
+		if idealPassRate <= 0.0 {
+			idealPassRate = 0.0
+		}
+		if idealPassRate > 1.0 {
+			idealPassRate = 1.0
 		}
 		limiter.idealPassRate = limiter.idealPassRate*0.5 + idealPassRate*0.5
 		return true
 	} else {
+		var curPacingReward = limiter.getPacingReward(timeNow)
 		var prevReward, prevRewardTime = limiter.RewardCounter.ClusterValue(last)
 		var curPass, _ = limiter.PassCounter.ClusterValue(0)
-		curRequest, _ := limiter.RequestCounter.ClusterValue(0)
+		var curRequest, _ = limiter.RequestCounter.ClusterValue(0)
+		var curReward, _ = limiter.RewardCounter.ClusterValue(0)
 		if curPass == 0 || curReward == 0 {
 			if curRequest > 0 {
 				initPacingReward := limiter.getPacingReward(limiter.initTime)
-				limiter.idealPassRate = (curReward - initPacingReward) / curRequest
+				limiter.idealPassRate = (curPacingReward - initPacingReward) / curRequest
 				if limiter.idealPassRate > 1.0 {
 					limiter.idealPassRate = 1.0
 				}
 			}
 			return true
 		}
+
 		var prevPacingReward = limiter.getPacingReward(prevRewardTime)
 		if prevPacingReward == 0 {
 			return true
 		}
-
 		var prevRequest, _ = limiter.RequestCounter.ClusterValue(last)
 		var prevPass, _ = limiter.PassCounter.ClusterValue(last)
-		curPacingTarget := limiter.getPacingReward(timeNow)
-
 		if prevRequest == curRequest ||
 			prevPass == curPass || prevReward == curReward ||
-			prevPacingReward == curPacingTarget {
+			prevPacingReward == curPacingReward {
 			return false
 		}
 
-		idealPassRate := (curPacingTarget - prevPacingReward) * (curPass - prevPass) /
-			(curRequest - prevRequest) * (curReward - prevReward)
+		idealPassRate := (curPacingReward - prevPacingReward) * (curPass - prevPass) /
+			((curRequest - prevRequest) * (curReward - prevReward))
 
-		if idealPassRate <= 0.0 || idealPassRate > 1.0 {
-			return false
+		if idealPassRate <= 0.0 {
+			idealPassRate = 0.0
+		}
+		if idealPassRate > 1.0 {
+			idealPassRate = 1.0
 		}
 		limiter.idealPassRate = limiter.idealPassRate*0.5 + idealPassRate*0.5
 		return true
