@@ -14,10 +14,10 @@ type ClusterLimiter struct {
 	lbs      []string
 	initTime time.Time
 
-	beginTime      time.Time
-	endTime        time.Time
-	completionTime time.Time
-	periodInterval time.Duration
+	beginTime       time.Time
+	endTime         time.Time
+	completionTime  time.Time
+	periodInterval  time.Duration
 	reserveInterval time.Duration
 
 	targetReward        float64
@@ -27,8 +27,8 @@ type ClusterLimiter struct {
 	PassCounter    *cluster_counter.ClusterCounter
 	RewardCounter  *cluster_counter.ClusterCounter
 
-	maxBoostFactor float64
-	burstInterval  time.Duration
+	maxBoostFactor         float64
+	burstInterval          time.Duration
 	lastUpdatePassRateTime time.Time
 
 	realPassRate  float64

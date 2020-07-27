@@ -21,13 +21,13 @@ type ClusterLimiterOpts struct {
 
 type ClusterLimiterFactory struct {
 	name                            string
-	ticker *time.Ticker
-	heartbeatInterval                  time.Duration
+	ticker                          *time.Ticker
+	heartbeatInterval               time.Duration
 	defaultClusterLocalTrafficRatio float64
 
-	limiterVectors                  sync.Map
-	limiters                        sync.Map
-	counterFactory                  *cluster_counter.ClusterCounterFactory
+	limiterVectors sync.Map
+	limiters       sync.Map
+	counterFactory *cluster_counter.ClusterCounterFactory
 }
 
 // 构建参数
@@ -49,10 +49,10 @@ func NewFactory(opts *ClusterLimiterFactoryOpts,
 	}
 
 	factory := &ClusterLimiterFactory{
-		limiterVectors:       sync.Map{},
-		counterFactory:       counterFactory,
-		heartbeatInterval:       opts.DefaultHeartBeatInterval,
-		name:                 opts.Name,
+		limiterVectors:    sync.Map{},
+		counterFactory:    counterFactory,
+		heartbeatInterval: opts.DefaultHeartBeatInterval,
+		name:              opts.Name,
 	}
 	factory.Start()
 	return factory
@@ -91,8 +91,8 @@ func (factory *ClusterLimiterFactory) NewClusterLimiterVec(opts *ClusterLimiterO
 		Name:                factory.name + opts.Name + ":request",
 		PeriodInterval:      opts.PeriodInterval,
 		DiscardPreviousData: opts.DiscardPreviousData,
-		LoadDataInterval: opts.BurstInterval/2,
-		StoreDataInterval: opts.BurstInterval/2,
+		LoadDataInterval:    opts.BurstInterval / 2,
+		StoreDataInterval:   opts.BurstInterval / 2,
 	}, labelNames)
 	if err != nil {
 		return nil, err
@@ -102,8 +102,8 @@ func (factory *ClusterLimiterFactory) NewClusterLimiterVec(opts *ClusterLimiterO
 		Name:                factory.name + opts.Name + ":pass",
 		PeriodInterval:      limiterVec.periodInterval,
 		DiscardPreviousData: opts.DiscardPreviousData,
-		LoadDataInterval: opts.BurstInterval/2,
-		StoreDataInterval: opts.BurstInterval/2,
+		LoadDataInterval:    opts.BurstInterval / 2,
+		StoreDataInterval:   opts.BurstInterval / 2,
 	}, labelNames)
 	if err != nil {
 		return nil, err
@@ -113,8 +113,8 @@ func (factory *ClusterLimiterFactory) NewClusterLimiterVec(opts *ClusterLimiterO
 		Name:                factory.name + opts.Name + ":reward",
 		PeriodInterval:      limiterVec.periodInterval,
 		DiscardPreviousData: opts.DiscardPreviousData,
-		LoadDataInterval: opts.BurstInterval/2,
-		StoreDataInterval: opts.BurstInterval/2,
+		LoadDataInterval:    opts.BurstInterval / 2,
+		StoreDataInterval:   opts.BurstInterval / 2,
 	}, labelNames)
 	if err != nil {
 		return nil, err
@@ -154,8 +154,8 @@ func (factory *ClusterLimiterFactory) NewClusterLimiter(opts *ClusterLimiterOpts
 		Name:                factory.name + opts.Name + ":request",
 		PeriodInterval:      opts.PeriodInterval,
 		DiscardPreviousData: opts.DiscardPreviousData,
-		LoadDataInterval: opts.BurstInterval/2,
-		StoreDataInterval: opts.BurstInterval/2,
+		LoadDataInterval:    opts.BurstInterval / 2,
+		StoreDataInterval:   opts.BurstInterval / 2,
 	})
 	if err != nil {
 		return nil, err
@@ -165,8 +165,8 @@ func (factory *ClusterLimiterFactory) NewClusterLimiter(opts *ClusterLimiterOpts
 		Name:                factory.name + opts.Name + ":pass",
 		PeriodInterval:      opts.PeriodInterval,
 		DiscardPreviousData: opts.DiscardPreviousData,
-		LoadDataInterval: opts.BurstInterval/2,
-		StoreDataInterval: opts.BurstInterval/2,
+		LoadDataInterval:    opts.BurstInterval / 2,
+		StoreDataInterval:   opts.BurstInterval / 2,
 	})
 	if err != nil {
 		return nil, err
@@ -176,8 +176,8 @@ func (factory *ClusterLimiterFactory) NewClusterLimiter(opts *ClusterLimiterOpts
 		Name:                factory.name + opts.Name + ":reward",
 		PeriodInterval:      opts.PeriodInterval,
 		DiscardPreviousData: opts.DiscardPreviousData,
-		LoadDataInterval: opts.BurstInterval/2,
-		StoreDataInterval: opts.BurstInterval/2,
+		LoadDataInterval:    opts.BurstInterval / 2,
+		StoreDataInterval:   opts.BurstInterval / 2,
 	})
 	if err != nil {
 		return nil, err

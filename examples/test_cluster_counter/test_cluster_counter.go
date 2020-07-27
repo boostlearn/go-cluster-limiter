@@ -69,7 +69,8 @@ func main() {
 	go mockTraffic(counter)
 	go httpServer()
 
-	ticker := time.NewTicker(100 * time.Microsecond)
+	i := 0
+	ticker := time.NewTicker(100000 * time.Microsecond)
 	for range ticker.C {
 		clusterLast, _ := counter.ClusterValue(-1)
 		clusterCur, _ := counter.ClusterValue(0)
@@ -85,7 +86,10 @@ func main() {
 			metrics.WithLabelValues(instanceName, k).Set(v)
 		}
 
-		fmt.Println(data)
+		if i%10 == 0 {
+			fmt.Println(data)
+		}
+		i++
 	}
 
 }

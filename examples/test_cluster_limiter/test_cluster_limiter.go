@@ -82,7 +82,8 @@ func main() {
 	go httpServer()
 	go fakeTraffic(limiter)
 
-	ticker := time.NewTicker(100 * time.Microsecond)
+	ticker := time.NewTicker(100000 * time.Microsecond)
+	i := 0
 	for range ticker.C {
 		data := make(map[string]float64)
 
@@ -115,7 +116,10 @@ func main() {
 			metrics.WithLabelValues(instanceName, k).Set(v)
 		}
 
-		fmt.Println(data)
+		if i%10 == 0 {
+			fmt.Println(data)
+		}
+        i++
 	}
 
 }
