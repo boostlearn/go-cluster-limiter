@@ -5,20 +5,32 @@ import (
 	"fmt"
 	"github.com/boostlearn/go-cluster-limiter/cluster_counter"
 	"github.com/boostlearn/go-cluster-limiter/cluster_counter/redis_store"
+	"log"
+	"net/http"
+
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"math/rand"
 	"time"
 )
 
 var (
-	counterName  string
-	instanceName string
+	counterName         string
+	instanceName        string
 	discardPreviousData bool
-	periodInterval int64
-	mockTrafficFactor int64
-	listenPort int64
-	localTrafficRate float64
-	redisAddr string
-	redisPass string
+	periodInterval      int64
+	mockTrafficFactor   int64
+	listenPort          int64
+	localTrafficRate    float64
+	redisAddr           string
+	redisPass           string
+
+	metrics = prometheus.NewGaugeVec(prometheus.GaugeOpts{
+		Namespace: "boostlearn",
+		Subsystem: "test",
+		Name:      "cluster_counter",
+		Help:      "数量",
+	}, []string{"counter_instance", "metric_name"})
 )
 
 func init() {
@@ -31,6 +43,7 @@ func init() {
 	flag.Int64Var(&listenPort, "h", 20002, "prometheus listen port")
 	flag.Int64Var(&mockTrafficFactor, "i", 60, "mock traffic factor")
 	flag.BoolVar(&discardPreviousData, "j", true, "whether discard previous data")
+	prometheus.MustRegister(metrics)
 }
 
 func main() {
@@ -54,8 +67,10 @@ func main() {
 	counter := counterVec.WithLabelValues(lbs)
 
 	go mockTraffic(counter)
+	go httpServer()
 
-	for {
+	ticker := time.NewTicker(100 * time.Microsecond)
+	for range ticker.C {
 		clusterLast, _ := counter.ClusterValue(-1)
 		clusterCur, _ := counter.ClusterValue(0)
 		localCur, _ := counter.LocalValue(0)
@@ -66,10 +81,19 @@ func main() {
 			"local_traffic_ratio": counter.LocalTrafficRatio(),
 		}
 
+		for k, v := range data {
+			metrics.WithLabelValues(instanceName, k).Set(v)
+		}
+
 		fmt.Println(data)
-		time.Sleep(10 * time.Millisecond)
 	}
 
+}
+
+func httpServer() {
+	http.Handle("/metrics", promhttp.Handler())
+	err := http.ListenAndServe(fmt.Sprintf("0.0.0.0:%v", listenPort), nil)
+	log.Fatal(err)
 }
 
 func mockTraffic(counter *cluster_counter.ClusterCounter) {

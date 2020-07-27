@@ -7,6 +7,10 @@ import (
 	"github.com/boostlearn/go-cluster-limiter/cluster_counter/redis_store"
 	"github.com/boostlearn/go-cluster-limiter/cluster_limiter"
 	"log"
+	"net/http"
+
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 
 	"math/rand"
 	"time"
@@ -26,6 +30,13 @@ var (
 	redisPass string
 
 	listenPort int64
+
+	metrics = prometheus.NewGaugeVec(prometheus.GaugeOpts{
+		Namespace: "boostlearn",
+		Subsystem: "test",
+		Name:      "cluster_limiter",
+		Help:      "数量",
+	}, []string{"counter_instance", "metric_name"})
 )
 
 func init() {
@@ -38,6 +49,8 @@ func init() {
 	flag.StringVar(&redisPass, "g", "", "store: redis pass")
 	flag.Int64Var(&listenPort, "h", 20001, "prometheus: listen port")
 	flag.BoolVar(&discardPreviousData, "i", true, "whether discard previous data")
+
+	prometheus.MustRegister(metrics)
 }
 
 func main() {
@@ -66,9 +79,11 @@ func main() {
 		return
 	}
 
+	go httpServer()
 	go fakeTraffic(limiter)
 
-	for {
+	ticker := time.NewTicker(100 * time.Microsecond)
+	for range ticker.C {
 		data := make(map[string]float64)
 
 		data["pass_rate"] = float64(limiter.PassRate())
@@ -96,11 +111,19 @@ func main() {
 		data["request_local_traffic_ratio"] = limiter.RequestCounter.LocalTrafficRatio()
 		data["reward_local_traffic_ratio"] = limiter.RewardCounter.LocalTrafficRatio()
 
-		fmt.Println(data)
+		for k, v := range data {
+			metrics.WithLabelValues(instanceName, k).Set(v)
+		}
 
-		time.Sleep(100 * time.Millisecond)
+		fmt.Println(data)
 	}
 
+}
+
+func httpServer() {
+	http.Handle("/metrics", promhttp.Handler())
+	err := http.ListenAndServe(fmt.Sprintf("0.0.0.0:%v", listenPort), nil)
+	log.Fatal(err)
 }
 
 func fakeTraffic(counter *cluster_limiter.ClusterLimiter) {
