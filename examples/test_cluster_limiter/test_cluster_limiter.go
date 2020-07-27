@@ -43,17 +43,11 @@ func init() {
 func main() {
 	flag.Parse()
 
-	counterFactory := cluster_counter.NewFactory(&cluster_counter.ClusterCounterFactoryOpts{
-		DefaultLocalTrafficRatio: 0.5,
-		HeartBeatInterval:        1 * time.Second,
-	}, redis_store.NewStore(redisAddr, redisPass, "blcl:"))
+	counterStore := redis_store.NewStore(redisAddr, redisPass, "blcl:")
+	counterFactory := cluster_counter.NewFactory(&cluster_counter.ClusterCounterFactoryOpts{}, counterStore)
+	limiterFactory := cluster_limiter.NewFactory(&cluster_limiter.ClusterLimiterFactoryOpts{}, counterFactory)
 
-	factory := cluster_limiter.NewFactory(&cluster_limiter.ClusterLimiterFactoryOpts{
-		DefaultBoostInterval:     time.Duration(10) * time.Second,
-		DefaultHeartBeatInterval: 5 * time.Second,
-	}, counterFactory)
-
-	limiterVec, err := factory.NewClusterLimiterVec(&cluster_limiter.ClusterLimiterOpts{
+	limiterVec, err := limiterFactory.NewClusterLimiterVec(&cluster_limiter.ClusterLimiterOpts{
 		Name:                limiterName,
 		PeriodInterval:      time.Duration(resetInterval) * time.Second,
 		DiscardPreviousData: true,
