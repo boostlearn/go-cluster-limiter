@@ -211,8 +211,7 @@ func (counter *ClusterCounter) LoadData() bool {
 
 	timeNow := time.Now()
 	if counter.loadInterval > 0 &&
-		timeNow.After(counter.loadTimeHistory[
-			(counter.loadHistoryPos-1+HistoryMax)%HistoryMax].Add(counter.loadInterval)) {
+		timeNow.After(counter.loadTimeHistory[(counter.loadHistoryPos-1+HistoryMax)%HistoryMax].Add(counter.loadInterval)) {
 		counter.mu.Unlock()
 		value, err := counter.factory.Store.Load(counter.name, counter.beginTime, counter.endTime,
 			counter.lbs)
@@ -233,8 +232,9 @@ func (counter *ClusterCounter) LoadData() bool {
 }
 
 func (counter *ClusterCounter) updateLocalTrafficRatio() {
-	if counter.localTrafficRatio == 0.0 {
+	if counter.localTrafficRatio == 0.0 || counter.loadHistoryPos < 4 {
 		counter.localTrafficRatio = counter.defaultTrafficRatio
+		return
 	}
 
 	var localIncrease float64
@@ -242,14 +242,14 @@ func (counter *ClusterCounter) updateLocalTrafficRatio() {
 	for i := -1; i > -int(counter.loadHistoryPos%HistoryMax); i-- {
 		clusterPrev := counter.loadClusterHistory[(counter.loadHistoryPos+int64(i)-1+HistoryMax)%HistoryMax]
 		clusterCur := counter.loadClusterHistory[(counter.loadHistoryPos+int64(i)+HistoryMax)%HistoryMax]
-		clusterIncrease = clusterIncrease*0.5 + (clusterPrev-clusterCur)*0.5
+		clusterIncrease = clusterIncrease*0.5 + (clusterCur-clusterPrev)*0.5
 
 		localPrev := counter.loadLocalHistory[(counter.loadHistoryPos+int64(i)-1+HistoryMax)%HistoryMax]
 		localCur := counter.loadLocalHistory[(counter.loadHistoryPos+int64(i)+HistoryMax)%HistoryMax]
-		localIncrease = localIncrease*0.5 + (localPrev-localCur)*0.5
+		localIncrease = localIncrease*0.5 + (localCur-localPrev)*0.5
 	}
 
-	if localIncrease > 0.0 && clusterIncrease > 0.0 {
+	if localIncrease != 0.0 && clusterIncrease != 0.0 && localIncrease/clusterIncrease <= 1.0 {
 		counter.localTrafficRatio = counter.localTrafficRatio*0.5 + (localIncrease/clusterIncrease)*0.5
 	}
 }
