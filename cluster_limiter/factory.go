@@ -21,7 +21,7 @@ type ClusterLimiterOpts struct {
 
 type ClusterLimiterFactory struct {
 	name                            string
-	status                          bool
+	ticker *time.Ticker
 	heartbeatInterval                  time.Duration
 	defaultClusterLocalTrafficRatio float64
 
@@ -194,16 +194,18 @@ func (factory *ClusterLimiterFactory) Delete(name string) {
 }
 
 func (factory *ClusterLimiterFactory) Start() {
-	factory.status = true
+	factory.ticker = time.NewTicker(factory.heartbeatInterval)
 	go factory.WatchAndSync()
 }
 
 func (factory *ClusterLimiterFactory) Stop() {
-	factory.status = false
+	if factory.ticker != nil {
+		factory.ticker.Stop()
+	}
 }
 
 func (factory *ClusterLimiterFactory) WatchAndSync() {
-	for factory.status {
+	for range factory.ticker.C {
 		factory.limiters.Range(func(k interface{}, v interface{}) bool {
 			if limiter, ok := v.(*ClusterLimiter); ok {
 				limiter.HeartBeat()

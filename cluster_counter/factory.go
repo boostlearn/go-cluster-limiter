@@ -22,7 +22,7 @@ type ClusterCounterOpts struct {
 type ClusterCounterFactory struct {
 	name   string
 	Store  DataStoreI
-	status bool
+	ticker *time.Ticker
 
 	defaultLocalTrafficRatio float64
 	heartbeatInterval        time.Duration
@@ -52,7 +52,7 @@ func NewFactory(opts *ClusterCounterFactoryOpts, store DataStoreI) *ClusterCount
 	factory := &ClusterCounterFactory{
 		name:                     opts.KeyPrefix,
 		Store:                    store,
-		status:                   false,
+		ticker:                   time.NewTicker(opts.HeartBeatInterval),
 		defaultLocalTrafficRatio: opts.DefaultLocalTrafficRatio,
 		heartbeatInterval:        opts.HeartBeatInterval,
 	}
@@ -155,16 +155,15 @@ func (factory *ClusterCounterFactory) NewClusterCounter(opts *ClusterCounterOpts
 }
 
 func (factory *ClusterCounterFactory) Start() {
-	factory.status = true
 	go factory.WatchAndSync()
 }
 
 func (factory *ClusterCounterFactory) Stop() {
-	factory.status = false
+	factory.ticker.Stop()
 }
 
 func (factory *ClusterCounterFactory) WatchAndSync() {
-	for factory.status {
+	for range factory.ticker.C {
 		factory.clusterCounterVectors.Range(func(k interface{}, v interface{}) bool {
 			if counterVec, ok := v.(*ClusterCounterVec); ok {
 				counterVec.HeartBeat()
@@ -186,8 +185,6 @@ func (factory *ClusterCounterFactory) WatchAndSync() {
 			}
 			return true
 		})
-
-		time.Sleep(factory.heartbeatInterval)
 	}
 }
 
