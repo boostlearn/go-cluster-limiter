@@ -12,18 +12,11 @@ import (
 var (
 	counterName  string
 	instanceName string
-
 	discardPreviousData bool
-
-	updateInterval int64
 	periodInterval int64
-
 	mockTrafficFactor int64
-
 	listenPort int64
-
 	localTrafficRate float64
-
 	redisAddr string
 	redisPass string
 )
@@ -32,7 +25,6 @@ func init() {
 	flag.StringVar(&counterName, "a", "test_cluster_counter", "cluster counter's unique name")
 	flag.StringVar(&instanceName, "b", "test1", "test instance name")
 	flag.Int64Var(&periodInterval, "c", 60, "reset data interval")
-	flag.Int64Var(&updateInterval, "d", 1000, "calculate traffic ratio interval [ms]")
 	flag.Float64Var(&localTrafficRate, "e", 0.5, "default local traffic ratio of all cluster")
 	flag.StringVar(&redisAddr, "f", "127.0.0.1:6379", "store: redis address")
 	flag.StringVar(&redisPass, "g", "", "store: redis pass")
@@ -45,7 +37,6 @@ func main() {
 	flag.Parse()
 	factory := cluster_counter.NewFactory(&cluster_counter.ClusterCounterFactoryOpts{
 		DefaultLocalTrafficRatio: localTrafficRate,
-		HeartBeatInterval:        time.Duration(updateInterval) * time.Millisecond,
 	}, redis_store.NewStore(redisAddr, redisPass, "blcl:"))
 
 	counterVec, err := factory.NewClusterCounterVec(&cluster_counter.ClusterCounterOpts{

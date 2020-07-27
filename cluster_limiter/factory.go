@@ -27,7 +27,7 @@ type ClusterLimiterFactory struct {
 	limiters                        sync.Map
 	counterFactory                  *cluster_counter.ClusterCounterFactory
 	defaultBoostInterval            time.Duration
-	updateInterval                  time.Duration
+	heartbeatInterval                  time.Duration
 	defaultMaxBoostFactor           float64
 	name                            string
 	defaultClusterLocalTrafficRatio float64
@@ -51,7 +51,7 @@ func NewFactory(opts *ClusterLimiterFactoryOpts,
 	}
 
 	if opts.DefaultHeartBeatInterval == 0 {
-		opts.DefaultHeartBeatInterval = time.Duration(1) * time.Second
+		opts.DefaultHeartBeatInterval = time.Duration(100) * time.Millisecond
 	}
 
 	if len(opts.Name) == 0 {
@@ -62,7 +62,7 @@ func NewFactory(opts *ClusterLimiterFactoryOpts,
 		limiterVectors:       sync.Map{},
 		counterFactory:       counterFactory,
 		defaultBoostInterval: opts.DefaultBoostInterval,
-		updateInterval:       opts.DefaultHeartBeatInterval,
+		heartbeatInterval:       opts.DefaultHeartBeatInterval,
 		name:                 opts.Name,
 	}
 	factory.Start()
@@ -89,11 +89,11 @@ func (factory *ClusterLimiterFactory) NewClusterLimiterVec(opts *ClusterLimiterO
 	}
 
 	if opts.SilentInterval == 0 {
-		opts.SilentInterval = factory.updateInterval
+		opts.SilentInterval = factory.heartbeatInterval
 	}
 
 	if opts.BurstInterval == 0 {
-		opts.BurstInterval = factory.updateInterval
+		opts.BurstInterval = factory.heartbeatInterval
 	}
 
 	if opts.BoostInterval == 0 {
@@ -158,7 +158,7 @@ func (factory *ClusterLimiterFactory) NewClusterLimiter(opts *ClusterLimiterOpts
 	}
 
 	if opts.SilentInterval == 0 {
-		opts.SilentInterval = factory.updateInterval
+		opts.SilentInterval = factory.heartbeatInterval
 	}
 
 	if opts.BoostInterval == 0 {
@@ -247,6 +247,6 @@ func (factory *ClusterLimiterFactory) WatchAndSync() {
 			}
 			return true
 		})
-		time.Sleep(factory.updateInterval)
+		time.Sleep(factory.heartbeatInterval)
 	}
 }

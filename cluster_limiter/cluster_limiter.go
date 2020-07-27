@@ -170,7 +170,7 @@ func (limiter *ClusterLimiter) Expire() bool {
 	limiter.mu.Lock()
 	defer limiter.mu.Unlock()
 
-	timeNow := time.Now().Truncate(time.Second)
+	timeNow := time.Now()
 	if limiter.periodInterval > 0 {
 		if timeNow.After(limiter.endTime) {
 			limiter.beginTime = timeNow.Truncate(limiter.periodInterval)

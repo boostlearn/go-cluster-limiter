@@ -44,7 +44,7 @@ func generateRedisKey(name string, beginTime time.Time, endTime time.Time, lbs m
 	return key
 }
 
-func (store *RedisStore) Store(name string, beginTime time.Time, endTime time.Time, lbs map[string]string, value float64) error {
+func (store *RedisStore) Store(name string, beginTime time.Time, endTime time.Time, lbs map[string]string, value float64, force bool) error {
 	v := store.cli.IncrBy(store.prefix+generateRedisKey(name, beginTime, endTime, lbs), int64(value*10000))
 	return v.Err()
 }

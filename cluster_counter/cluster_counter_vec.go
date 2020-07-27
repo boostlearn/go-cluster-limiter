@@ -8,33 +8,18 @@ import (
 
 //
 type ClusterCounterVec struct {
-	mu sync.RWMutex
-
-	// 名称
-	name string
-
-	// 标签
-	labelNames []string
-
-	// factory
-	factory *ClusterCounterFactory
-
-	beginTime      time.Time
-	endTime        time.Time
-	periodInterval time.Duration
-
-	// 更新周期
-	loadDataInterval time.Duration
-
-	// 更新周期
-	storeDataInterval time.Duration
-
-	// 集群内机器数目
+	mu                       sync.RWMutex
+	name                     string
+	labelNames               []string
+	factory                  *ClusterCounterFactory
+	beginTime                time.Time
+	endTime                  time.Time
+	periodInterval           time.Duration
+	loadInterval             time.Duration
+	storeInterval            time.Duration
 	defaultLocalTrafficRatio float64
-
-	discardPreviousData bool
-
-	counters sync.Map
+	discardPreviousData      bool
+	counters                 sync.Map
 }
 
 func (counterVec *ClusterCounterVec) WithLabelValues(lbs []string) *ClusterCounter {
@@ -62,8 +47,8 @@ func (counterVec *ClusterCounterVec) WithLabelValues(lbs []string) *ClusterCount
 		periodInterval:      counterVec.periodInterval,
 		mu:                  sync.RWMutex{},
 		factory:             counterVec.factory,
-		loadDataInterval:    counterVec.loadDataInterval,
-		storeDataInterval:   counterVec.storeDataInterval,
+		loadInterval:        counterVec.loadInterval,
+		storeInterval:       counterVec.storeInterval,
 		localTrafficRatio:   counterVec.defaultLocalTrafficRatio,
 		discardPreviousData: counterVec.discardPreviousData,
 	}

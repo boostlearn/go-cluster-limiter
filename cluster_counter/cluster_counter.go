@@ -2,6 +2,7 @@
 package cluster_counter
 
 import (
+	"fmt"
 	"sync"
 	"time"
 )
@@ -22,21 +23,21 @@ type ClusterCounter struct {
 	periodInterval time.Duration
 
 	localValue        float64
-	storeDataInterval time.Duration
+	storeInterval     time.Duration
 	storeHistoryPos   int64
 	storeLocalHistory [HistoryMax]float64
 	storeTimeHistory  [HistoryMax]time.Time
 	lastStoreValue    float64
-	storeLastTime     time.Time
+	lastStoreTime     time.Time
 
-	loadDataInterval    time.Duration
+	loadInterval        time.Duration
 	discardPreviousData bool
-	clusterInitValue    float64
+	loadInitValue       float64
 
-	loadHistoryPos          int64
-	loadDataTimeHistory     [HistoryMax]time.Time
-	loadLocalValueHistory   [HistoryMax]float64
-	loadClusterValueHistory [HistoryMax]float64
+	loadHistoryPos     int64
+	loadTimeHistory    [HistoryMax]time.Time
+	loadLocalHistory   [HistoryMax]float64
+	loadClusterHistory [HistoryMax]float64
 
 	defaultTrafficRatio float64
 	localTrafficRatio   float64
@@ -69,11 +70,11 @@ func (counter *ClusterCounter) Init() {
 		counter.mu.Lock()
 
 		if err == nil {
-			counter.loadClusterValueHistory[(counter.loadHistoryPos)%HistoryMax] = value
-			counter.loadLocalValueHistory[(counter.loadHistoryPos)%HistoryMax] = counter.localValue
-			counter.loadDataTimeHistory[(counter.loadHistoryPos)%HistoryMax] = timeNow
+			counter.loadClusterHistory[(counter.loadHistoryPos)%HistoryMax] = value
+			counter.loadLocalHistory[(counter.loadHistoryPos)%HistoryMax] = counter.localValue
+			counter.loadTimeHistory[(counter.loadHistoryPos)%HistoryMax] = timeNow
 			counter.loadHistoryPos += 1
-			counter.clusterInitValue = value
+			counter.loadInitValue = value
 			return
 		}
 	}
@@ -84,9 +85,10 @@ func (counter *ClusterCounter) Expire() bool {
 	counter.mu.Lock()
 	defer counter.mu.Unlock()
 
-	timeNow := time.Now().Truncate(time.Second)
+	timeNow := time.Now()
 	if counter.periodInterval > 0 {
 		if timeNow.After(counter.endTime) {
+			fmt.Println(timeNow.Format("2006-01-02 15:04:05 .9999"), counter.endTime.Format("2006-01-02 15:04:05 .9999"))
 			lastBeginTime := counter.beginTime
 			lastEndTime := counter.endTime
 			counter.beginTime = timeNow.Truncate(counter.periodInterval)
@@ -99,7 +101,7 @@ func (counter *ClusterCounter) Expire() bool {
 			if pushValue > 0 {
 				counter.mu.Unlock()
 				_ = counter.factory.Store.Store(counter.name, lastBeginTime, lastEndTime, counter.lbs,
-					pushValue)
+					pushValue, true)
 				counter.mu.Lock()
 			}
 		}
@@ -126,8 +128,8 @@ func (counter *ClusterCounter) LocalValue(last int) (float64, time.Time) {
 		return counter.localValue, time.Now()
 	}
 	if last < 0 && last > -HistoryMax && int64(last) > -counter.loadHistoryPos {
-		return counter.loadLocalValueHistory[(counter.loadHistoryPos+int64(last)+HistoryMax)%HistoryMax],
-			counter.loadDataTimeHistory[(counter.loadHistoryPos+int64(last)+HistoryMax)%HistoryMax]
+		return counter.loadLocalHistory[(counter.loadHistoryPos+int64(last)+HistoryMax)%HistoryMax],
+			counter.loadTimeHistory[(counter.loadHistoryPos+int64(last)+HistoryMax)%HistoryMax]
 	}
 
 	return 0, time.Unix(0, 0)
@@ -153,9 +155,9 @@ func (counter *ClusterCounter) ClusterValue(last int) (float64, time.Time) {
 	defer counter.mu.RUnlock()
 
 	if last == 0 {
-		clusterLast := counter.loadClusterValueHistory[(counter.loadHistoryPos-1+HistoryMax)%HistoryMax]
+		clusterLast := counter.loadClusterHistory[(counter.loadHistoryPos-1+HistoryMax)%HistoryMax]
 		localValue := counter.localValue
-		localLast := counter.loadLocalValueHistory[(counter.loadHistoryPos-1+HistoryMax)%HistoryMax]
+		localLast := counter.loadLocalHistory[(counter.loadHistoryPos-1+HistoryMax)%HistoryMax]
 
 		localTrafficRatio := counter.localTrafficRatio
 		if localTrafficRatio == 0.0 {
@@ -164,18 +166,18 @@ func (counter *ClusterCounter) ClusterValue(last int) (float64, time.Time) {
 
 		clusterPred := clusterLast + (localValue-localLast)/localTrafficRatio
 		if counter.discardPreviousData {
-			clusterPred -= counter.clusterInitValue
+			clusterPred -= counter.loadInitValue
 		}
 		return clusterPred, time.Now()
 	}
 
 	if last < 0 && last > -HistoryMax && int64(last) > -counter.loadHistoryPos {
-		clusterLast := counter.loadClusterValueHistory[(counter.loadHistoryPos+int64(last)+HistoryMax)%HistoryMax]
+		clusterLast := counter.loadClusterHistory[(counter.loadHistoryPos+int64(last)+HistoryMax)%HistoryMax]
 		if counter.discardPreviousData && counter.initTime.After(counter.beginTime) &&
 			counter.initTime.Before(counter.endTime) {
-			clusterLast -= counter.clusterInitValue
+			clusterLast -= counter.loadInitValue
 		}
-		return clusterLast, counter.loadDataTimeHistory[(counter.loadHistoryPos+int64(last)+HistoryMax)%HistoryMax]
+		return clusterLast, counter.loadTimeHistory[(counter.loadHistoryPos+int64(last)+HistoryMax)%HistoryMax]
 	}
 
 	return 0, time.Unix(0, 0)
@@ -208,9 +210,9 @@ func (counter *ClusterCounter) LoadData() bool {
 	}
 
 	timeNow := time.Now()
-	if counter.loadDataInterval > 0 &&
-		timeNow.After(counter.loadDataTimeHistory[
-			(counter.loadHistoryPos-1+HistoryMax)%HistoryMax].Add(counter.loadDataInterval)) {
+	if counter.loadInterval > 0 &&
+		timeNow.After(counter.loadTimeHistory[
+			(counter.loadHistoryPos-1+HistoryMax)%HistoryMax].Add(counter.loadInterval)) {
 		counter.mu.Unlock()
 		value, err := counter.factory.Store.Load(counter.name, counter.beginTime, counter.endTime,
 			counter.lbs)
@@ -220,9 +222,9 @@ func (counter *ClusterCounter) LoadData() bool {
 			return false
 		}
 
-		counter.loadLocalValueHistory[counter.loadHistoryPos%HistoryMax] = counter.localValue
-		counter.loadClusterValueHistory[counter.loadHistoryPos%HistoryMax] = value
-		counter.loadDataTimeHistory[counter.loadHistoryPos%HistoryMax] = timeNow
+		counter.loadLocalHistory[counter.loadHistoryPos%HistoryMax] = counter.localValue
+		counter.loadClusterHistory[counter.loadHistoryPos%HistoryMax] = value
+		counter.loadTimeHistory[counter.loadHistoryPos%HistoryMax] = timeNow
 		counter.loadHistoryPos += 1
 		counter.updateLocalTrafficRatio()
 		return true
@@ -238,12 +240,12 @@ func (counter *ClusterCounter) updateLocalTrafficRatio() {
 	var localIncrease float64
 	var clusterIncrease float64
 	for i := -1; i > -int(counter.loadHistoryPos%HistoryMax); i-- {
-		clusterPrev := counter.loadClusterValueHistory[(counter.loadHistoryPos+int64(i)-1+HistoryMax)%HistoryMax]
-		clusterCur := counter.loadClusterValueHistory[(counter.loadHistoryPos+int64(i)+HistoryMax)%HistoryMax]
+		clusterPrev := counter.loadClusterHistory[(counter.loadHistoryPos+int64(i)-1+HistoryMax)%HistoryMax]
+		clusterCur := counter.loadClusterHistory[(counter.loadHistoryPos+int64(i)+HistoryMax)%HistoryMax]
 		clusterIncrease = clusterIncrease*0.5 + (clusterPrev-clusterCur)*0.5
 
-		localPrev := counter.loadLocalValueHistory[(counter.loadHistoryPos+int64(i)-1+HistoryMax)%HistoryMax]
-		localCur := counter.loadLocalValueHistory[(counter.loadHistoryPos+int64(i)+HistoryMax)%HistoryMax]
+		localPrev := counter.loadLocalHistory[(counter.loadHistoryPos+int64(i)-1+HistoryMax)%HistoryMax]
+		localCur := counter.loadLocalHistory[(counter.loadHistoryPos+int64(i)+HistoryMax)%HistoryMax]
 		localIncrease = localIncrease*0.5 + (localPrev-localCur)*0.5
 	}
 
@@ -261,8 +263,8 @@ func (counter *ClusterCounter) StoreData() bool {
 	}
 
 	timeNow := time.Now()
-	if counter.storeDataInterval > 0 &&
-		timeNow.After(counter.storeLastTime.Add(counter.storeDataInterval)) {
+	if counter.storeInterval > 0 &&
+		timeNow.After(counter.lastStoreTime.Add(counter.storeInterval)) {
 		counter.storeLocalHistory[counter.storeHistoryPos%HistoryMax] = counter.localValue
 		counter.storeTimeHistory[counter.storeHistoryPos%HistoryMax] = timeNow
 		counter.storeHistoryPos += 1
@@ -271,11 +273,11 @@ func (counter *ClusterCounter) StoreData() bool {
 		if pushValue > 0 {
 			counter.mu.Unlock()
 			err := counter.factory.Store.Store(counter.name, counter.beginTime, counter.endTime, counter.lbs,
-				pushValue)
+				pushValue, false)
 			counter.mu.Lock()
 			if err == nil {
 				counter.lastStoreValue += pushValue
-				counter.storeLastTime = timeNow
+				counter.lastStoreTime = timeNow
 				return true
 			}
 
