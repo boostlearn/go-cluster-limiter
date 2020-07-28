@@ -141,7 +141,6 @@ func (factory *ClusterCounterFactory) NewClusterCounter(opts *ClusterCounterOpts
 		beginTime:           opts.BeginTime,
 		endTime:             opts.EndTime,
 		periodInterval:      opts.PeriodInterval,
-		loadInterval:        opts.LoadDataInterval.Truncate(time.Second),
 		storeInterval:       opts.StoreDataInterval.Truncate(time.Second),
 		name:                opts.Name,
 		defaultTrafficRatio: opts.DefaultLocalTrafficRatio,

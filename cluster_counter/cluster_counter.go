@@ -21,19 +21,17 @@ type ClusterCounter struct {
 	beginTime      time.Time
 	endTime        time.Time
 	periodInterval time.Duration
+	storeInterval     time.Duration
 
 	localValue        float64
-	storeInterval     time.Duration
 	storeHistoryPos   int64
 	storeLocalHistory [HistoryMax]float64
 	storeTimeHistory  [HistoryMax]time.Time
 	lastStoreValue    float64
 	lastStoreTime     time.Time
 
-	loadInterval        time.Duration
 	discardPreviousData bool
 	loadInitValue       float64
-
 	loadHistoryPos     int64
 	loadTimeHistory    [HistoryMax]time.Time
 	loadLocalHistory   [HistoryMax]float64
@@ -213,8 +211,8 @@ func (counter *ClusterCounter) LoadData() bool {
 	}
 
 	timeNow := time.Now()
-	if counter.loadInterval > 0 &&
-		timeNow.After(counter.loadTimeHistory[(counter.loadHistoryPos-1+HistoryMax)%HistoryMax].Add(counter.loadInterval)) {
+	if counter.storeInterval > 0 &&
+		timeNow.After(counter.loadTimeHistory[(counter.loadHistoryPos-1+HistoryMax)%HistoryMax].Add(counter.storeInterval)) {
 		counter.mu.Unlock()
 		value, err := counter.factory.Store.Load(counter.name, counter.beginTime, counter.endTime,
 			counter.lbs)
@@ -228,7 +226,8 @@ func (counter *ClusterCounter) LoadData() bool {
 
 		counter.loadLocalHistory[counter.loadHistoryPos%HistoryMax] = counter.localValue
 		counter.loadClusterHistory[counter.loadHistoryPos%HistoryMax] = value
-		counter.loadTimeHistory[counter.loadHistoryPos%HistoryMax] = timeNow
+		counter.loadTimeHistory[counter.loadHistoryPos%HistoryMax] =
+			timeNow.Truncate(counter.storeInterval.Truncate(counter.storeInterval/2)).Add(counter.storeInterval/2)
 		counter.loadHistoryPos += 1
 		counter.updateLocalTrafficRatio()
 		return true
@@ -278,7 +277,7 @@ func (counter *ClusterCounter) StoreData() bool {
 	if counter.storeInterval > 0 &&
 		timeNow.After(counter.lastStoreTime.Add(counter.storeInterval)) {
 		counter.storeLocalHistory[counter.storeHistoryPos%HistoryMax] = counter.localValue
-		counter.storeTimeHistory[counter.storeHistoryPos%HistoryMax] = timeNow
+		counter.storeTimeHistory[counter.storeHistoryPos%HistoryMax] = timeNow.Truncate(counter.storeInterval)
 		counter.storeHistoryPos += 1
 
 		pushValue := counter.localValue - counter.lastStoreValue

@@ -47,7 +47,6 @@ func (counterVec *ClusterCounterVec) WithLabelValues(lbs []string) *ClusterCount
 		periodInterval:      counterVec.periodInterval,
 		mu:                  sync.RWMutex{},
 		factory:             counterVec.factory,
-		loadInterval:        counterVec.loadInterval,
 		storeInterval:       counterVec.storeInterval,
 		localTrafficRatio:   counterVec.defaultLocalTrafficRatio,
 		discardPreviousData: counterVec.discardPreviousData,
