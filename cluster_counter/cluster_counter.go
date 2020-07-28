@@ -45,7 +45,7 @@ func (counter *ClusterCounter) Init() {
 	counter.mu.Lock()
 	defer counter.mu.Unlock()
 
-	timeNow := time.Now().Truncate(time.Second)
+	timeNow := time.Now()
 	counter.initTime = timeNow
 
 	counter.periodInterval = counter.periodInterval.Truncate(time.Second)
@@ -55,7 +55,7 @@ func (counter *ClusterCounter) Init() {
 	}
 
 	if counter.defaultTrafficRatio == 0.0 {
-		counter.defaultTrafficRatio = 0.1 
+		counter.defaultTrafficRatio = 0.1
 	}
 
 	if counter.storeInterval == 0 {
@@ -80,6 +80,10 @@ func (counter *ClusterCounter) Init() {
 			return
 		}
 	}
+
+	counter.storeLocalHistory[counter.storeHistoryPos%HistoryMax] = counter.localValue
+	counter.storeTimeHistory[counter.storeHistoryPos%HistoryMax] = timeNow.Truncate(counter.storeInterval)
+	counter.storeHistoryPos += 1
 
 }
 
@@ -200,6 +204,22 @@ func (counter *ClusterCounter) LocalTrafficRatio() float64 {
 	return counter.localTrafficRatio
 }
 
+func (counter *ClusterCounter) LoadHistorySize() int {
+	if counter.loadHistoryPos < HistoryMax {
+		return int(counter.loadHistoryPos)
+	} else {
+		return HistoryMax
+	}
+}
+
+func (counter *ClusterCounter) StoreHistorySize() int {
+	if counter.storeHistoryPos < HistoryMax {
+		return int(counter.storeHistoryPos)
+	} else {
+		return HistoryMax
+	}
+}
+
 //
 func (counter *ClusterCounter) HeartBeat() {
 	counter.StoreData()
@@ -215,8 +235,8 @@ func (counter *ClusterCounter) LoadData() bool {
 	}
 
 	timeNow := time.Now()
-	if counter.storeInterval > 0 &&
-		timeNow.After(counter.loadTimeHistory[(counter.loadHistoryPos-1+HistoryMax)%HistoryMax].Add(counter.storeInterval)) {
+	if counter.storeInterval > 0 && (counter.loadHistoryPos == 0 ||
+		timeNow.After(counter.loadTimeHistory[(counter.loadHistoryPos-1)%HistoryMax].Add(counter.storeInterval))) {
 		counter.mu.Unlock()
 		value, err := counter.factory.Store.Load(counter.name, counter.beginTime, counter.endTime,
 			counter.lbs)
@@ -280,8 +300,9 @@ func (counter *ClusterCounter) StoreData() bool {
 	}
 
 	timeNow := time.Now()
-	if counter.storeInterval > 0 &&
-		timeNow.After(counter.lastStoreTime.Add(counter.storeInterval)) {
+	if counter.storeInterval > 0 && (counter.storeHistoryPos == 0 ||
+		timeNow.After(counter.storeTimeHistory[(counter.storeHistoryPos-1)%HistoryMax].Add(counter.storeInterval))) {
+
 		counter.storeLocalHistory[counter.storeHistoryPos%HistoryMax] = counter.localValue
 		counter.storeTimeHistory[counter.storeHistoryPos%HistoryMax] = timeNow.Truncate(counter.storeInterval)
 		counter.storeHistoryPos += 1

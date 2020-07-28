@@ -45,7 +45,7 @@ func generateRedisKey(name string, beginTime time.Time, endTime time.Time, lbs m
 }
 
 func (store *RedisStore) Store(name string, beginTime time.Time, endTime time.Time, lbs map[string]string, value float64, force bool) error {
-	key := store.prefix+generateRedisKey(name, beginTime, endTime, lbs)
+	key := store.prefix + generateRedisKey(name, beginTime, endTime, lbs)
 	v := store.cli.IncrBy(key, int64(value*10000))
 	if endTime.After(beginTime) {
 		store.cli.Expire(key, endTime.Sub(beginTime))

@@ -119,7 +119,7 @@ func main() {
 		if i%10 == 0 {
 			fmt.Println(data)
 		}
-        i++
+		i++
 	}
 
 }
@@ -135,18 +135,17 @@ func fakeTraffic(counter *cluster_limiter.ClusterLimiter) {
 
 	ticker := time.NewTicker(100000 * time.Microsecond)
 	for range ticker.C {
-        k := (time.Now().Unix() / 600) % 6
+		k := (time.Now().Unix() / 600) % 6
 		if k >= 3 {
 			k = 6 - k
 		}
 		v := k + 3
 		v = v * mockTrafficFactor
 
-
-        for j := 0; j < int(v); j++ {
-            if counter.Take(float64(1)) == true {
-                counter.Reward(float64(1))
-            }
-        }
+		for j := 0; j < int(v); j++ {
+			if counter.Take(float64(1)) == true {
+				counter.Reward(float64(1))
+			}
+		}
 	}
 }
