@@ -342,7 +342,7 @@ func (limiter *ClusterLimiter) updateRealPassRate() {
 	lostTime := limiter.getLostTime(curReward, timeNow)
 	if lostTime > 0 {
 		smoothPassRate := limiter.idealPassRate * (1 + lostTime*1e9/
-			float64(limiter.burstInterval.Nanoseconds()))
+			float64(4 * limiter.burstInterval.Nanoseconds()))
 		if limiter.maxBoostFactor > 1.0 && smoothPassRate > limiter.maxBoostFactor*limiter.idealPassRate {
 			smoothPassRate = limiter.maxBoostFactor * limiter.idealPassRate
 		}
@@ -353,7 +353,7 @@ func (limiter *ClusterLimiter) updateRealPassRate() {
 		}
 	} else {
 		smoothPassRate := limiter.idealPassRate * (1 + lostTime*4*1e9/
-			float64(limiter.burstInterval.Nanoseconds()))
+			float64(4 * limiter.burstInterval.Nanoseconds()))
 		if smoothPassRate < 0 {
 			limiter.realPassRate = limiter.idealPassRate / 10000
 		} else {
