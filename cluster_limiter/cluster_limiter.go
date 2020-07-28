@@ -1,7 +1,6 @@
 package cluster_limiter
 
 import (
-	"fmt"
 	"github.com/boostlearn/go-cluster-limiter/cluster_counter"
 	"math/rand"
 	"sync"
@@ -44,7 +43,7 @@ func (limiter *ClusterLimiter) Init() {
 	timeNow := time.Now().Truncate(time.Second)
 	limiter.initTime = timeNow
 	if limiter.burstInterval.Truncate(time.Second) == 0 {
-		limiter.burstInterval = 5 * time.Second
+		limiter.burstInterval = 6 * time.Second
 	}
 
 	if limiter.reserveInterval > 0 {
@@ -202,7 +201,7 @@ func (limiter *ClusterLimiter) Expire() bool {
 	}
 }
 
-func (limiter *ClusterLimiter) HeartBeat() {
+func (limiter *ClusterLimiter) Heartbeat() {
 	limiter.mu.Lock()
 	defer limiter.mu.Unlock()
 
@@ -227,6 +226,13 @@ func (limiter *ClusterLimiter) updateIdealPassRate() {
 		return
 	}
 	limiter.lastIdealPassRateTime = time.Now()
+
+	if timeNow.Before(limiter.initTime.Add(limiter.burstInterval)) ||
+		timeNow.After(limiter.endTime.Add(-limiter.burstInterval/2)) ||
+		timeNow.Before(limiter.beginTime.Add(limiter.burstInterval/2)) {
+		limiter.realPassRate = limiter.idealPassRate
+		return
+	}
 
 	var _, lastLoadTime = limiter.RewardCounter.ClusterValue(-1)
 	if timeNow.After(lastLoadTime.Add(limiter.burstInterval * 10)) {
@@ -264,11 +270,6 @@ func (limiter *ClusterLimiter) updateIdealPassRate() {
 		idealPassRate := (lastPacingReward - prevPacingReward) * (lastPass - prevPass) /
 			((lastRequest - prevRequest) * (lastReward - prevReward))
 
-		fmt.Println(">>>>>", (lastPacingReward - prevPacingReward), " ",
-			(lastPass - prevPass), " ",
-			(lastRequest - prevRequest), " ",
-			(lastReward - prevReward), "",
-			idealPassRate, lastRewardTime.Format("2006-01-02 15:04:05 .9999"), prevRewardTime.Format("2006-01-02 15:04:05 .9999"))
 		if idealPassRate <= 0.0 {
 			idealPassRate = 0.0
 		}
@@ -342,7 +343,7 @@ func (limiter *ClusterLimiter) updateRealPassRate() {
 	lostTime := limiter.getLostTime(curReward, timeNow)
 	if lostTime > 0 {
 		smoothPassRate := limiter.idealPassRate * (1 + lostTime*1e9/
-			float64(4 * limiter.burstInterval.Nanoseconds()))
+			float64(4*limiter.burstInterval.Nanoseconds()))
 		if limiter.maxBoostFactor > 1.0 && smoothPassRate > limiter.maxBoostFactor*limiter.idealPassRate {
 			smoothPassRate = limiter.maxBoostFactor * limiter.idealPassRate
 		}
@@ -353,7 +354,7 @@ func (limiter *ClusterLimiter) updateRealPassRate() {
 		}
 	} else {
 		smoothPassRate := limiter.idealPassRate * (1 + lostTime*4*1e9/
-			float64(4 * limiter.burstInterval.Nanoseconds()))
+			float64(4*limiter.burstInterval.Nanoseconds()))
 		if smoothPassRate < 0 {
 			limiter.realPassRate = limiter.idealPassRate / 10000
 		} else {

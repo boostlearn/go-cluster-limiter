@@ -56,10 +56,10 @@ func (counterVec *ClusterCounterVec) WithLabelValues(lbs []string) *ClusterCount
 	return counterVec.WithLabelValues(lbs)
 }
 
-func (counterVec *ClusterCounterVec) HeartBeat() {
+func (counterVec *ClusterCounterVec) Heartbeat() {
 	counterVec.counters.Range(func(k interface{}, v interface{}) bool {
 		if counter, ok := v.(*ClusterCounter); ok {
-			counter.HeartBeat()
+			counter.Heartbeat()
 		}
 		return true
 	})

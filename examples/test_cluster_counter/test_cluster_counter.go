@@ -51,6 +51,7 @@ func main() {
 	factory := cluster_counter.NewFactory(&cluster_counter.ClusterCounterFactoryOpts{
 		DefaultLocalTrafficRatio: localTrafficRate,
 	}, redis_store.NewStore(redisAddr, redisPass, "blcl:"))
+	factory.Start()
 
 	counterVec, err := factory.NewClusterCounterVec(&cluster_counter.ClusterCounterOpts{
 		Name:                     counterName,

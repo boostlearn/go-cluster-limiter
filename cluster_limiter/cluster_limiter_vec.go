@@ -20,7 +20,9 @@ type ClusterLimiterVec struct {
 
 	beginTime      time.Time
 	endTime        time.Time
+	completionTime  time.Time
 	periodInterval time.Duration
+	reserveInterval time.Duration
 
 	resetDataInterval time.Duration
 
@@ -51,6 +53,7 @@ func (limiterVec *ClusterLimiterVec) WithLabelValues(lbs []string) *ClusterLimit
 		RewardCounter:       limiterVec.RewardCounter.WithLabelValues(lbs),
 		beginTime:           limiterVec.beginTime,
 		endTime:             limiterVec.endTime,
+		reserveInterval:limiterVec.reserveInterval,
 		periodInterval:      limiterVec.periodInterval,
 		maxBoostFactor:      limiterVec.maxBoostFactor,
 		burstInterval:       limiterVec.burstInterval,
@@ -58,16 +61,16 @@ func (limiterVec *ClusterLimiterVec) WithLabelValues(lbs []string) *ClusterLimit
 		discardPreviousData: limiterVec.discardPreviousData,
 	}
 	newLimiter.Init()
-	newLimiter.HeartBeat()
+	newLimiter.Heartbeat()
 
 	limiterVec.limiters.Store(key, newLimiter)
 	return limiterVec.WithLabelValues(lbs)
 }
 
-func (limiterVec *ClusterLimiterVec) HeartBeat() {
+func (limiterVec *ClusterLimiterVec) Heartbeat() {
 	limiterVec.limiters.Range(func(k interface{}, v interface{}) bool {
 		if limiter, ok := v.(*ClusterLimiter); ok {
-			limiter.HeartBeat()
+			limiter.Heartbeat()
 		}
 		return true
 	})
@@ -94,6 +97,12 @@ func (limiterVec *ClusterLimiterVec) Expire() bool {
 		if timeNow.After(limiterVec.endTime) {
 			limiterVec.beginTime = timeNow.Truncate(limiterVec.periodInterval)
 			limiterVec.endTime = limiterVec.beginTime.Add(limiterVec.periodInterval)
+			if limiterVec.reserveInterval > 0 && limiterVec.endTime.After(
+				limiterVec.beginTime.Add(limiterVec.reserveInterval)) {
+				limiterVec.completionTime = limiterVec.endTime.Add(-limiterVec.reserveInterval)
+			} else {
+				limiterVec.completionTime = limiterVec.endTime
+			}
 		}
 		return false
 	}

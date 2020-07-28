@@ -221,7 +221,7 @@ func (counter *ClusterCounter) StoreHistorySize() int {
 }
 
 //
-func (counter *ClusterCounter) HeartBeat() {
+func (counter *ClusterCounter) Heartbeat() {
 	counter.StoreData()
 	counter.LoadData()
 }
@@ -269,7 +269,7 @@ func (counter *ClusterCounter) updateLocalTrafficRatio() {
 
 	var localIncrease float64
 	var clusterIncrease float64
-	for last := -1; last > -int((counter.loadHistoryPos-1)%HistoryMax); last-- {
+	for last := -1; last > -int((counter.loadHistoryPos - 1) % HistoryMax); last-- {
 		clusterPrev := counter.loadClusterHistory[(counter.loadHistoryPos+int64(last)-1+HistoryMax)%HistoryMax]
 		clusterCur := counter.loadClusterHistory[(counter.loadHistoryPos+int64(last)+HistoryMax)%HistoryMax]
 		clusterIncrease = clusterIncrease*0.5 + (clusterCur-clusterPrev)*0.5

@@ -3,7 +3,6 @@ package main
 import (
 	"flag"
 	"fmt"
-	"github.com/boostlearn/go-cluster-limiter/cluster_counter"
 	"github.com/boostlearn/go-cluster-limiter/cluster_counter/redis_store"
 	"github.com/boostlearn/go-cluster-limiter/cluster_limiter"
 	"log"
@@ -56,15 +55,20 @@ func init() {
 func main() {
 	flag.Parse()
 
-	counterStore := redis_store.NewStore(redisAddr, redisPass, "blcl:")
-	counterFactory := cluster_counter.NewFactory(&cluster_counter.ClusterCounterFactoryOpts{}, counterStore)
-	limiterFactory := cluster_limiter.NewFactory(&cluster_limiter.ClusterLimiterFactoryOpts{}, counterFactory)
+	counterStore := redis_store.NewStore(redisAddr,
+		redisPass,
+		"blcl:")
+	limiterFactory := cluster_limiter.NewFactory(
+		&cluster_limiter.ClusterLimiterFactoryOpts{},
+		counterStore)
 
-	limiterVec, err := limiterFactory.NewClusterLimiterVec(&cluster_limiter.ClusterLimiterOpts{
-		Name:                limiterName,
-		PeriodInterval:      time.Duration(resetInterval) * time.Second,
-		DiscardPreviousData: true,
-	}, []string{"label1", "label2"})
+	limiterVec, err := limiterFactory.NewClusterLimiterVec(
+		&cluster_limiter.ClusterLimiterOpts{
+			Name:                limiterName,
+			PeriodInterval:      time.Duration(resetInterval) * time.Second,
+			DiscardPreviousData: true,
+		},
+		[]string{"label1", "label2"})
 
 	if err != nil {
 		log.Fatal(err)
@@ -73,12 +77,7 @@ func main() {
 	lbs := []string{"c1", "c2"}
 	limiter := limiterVec.WithLabelValues(lbs)
 	limiter.SetTarget(float64(targetNum))
-
-	if err != nil {
-		fmt.Println(err)
-		return
-	}
-
+	
 	go httpServer()
 	go fakeTraffic(limiter)
 

@@ -33,7 +33,7 @@ type ClusterCounterFactory struct {
 type ClusterCounterFactoryOpts struct {
 	KeyPrefix                string
 	DefaultLocalTrafficRatio float64
-	HeartBeatInterval        time.Duration
+	HeartbeatInterval        time.Duration
 }
 
 func NewFactory(opts *ClusterCounterFactoryOpts, store DataStoreI) *ClusterCounterFactory {
@@ -44,16 +44,16 @@ func NewFactory(opts *ClusterCounterFactoryOpts, store DataStoreI) *ClusterCount
 		opts.DefaultLocalTrafficRatio = 1.0
 	}
 
-	if opts.HeartBeatInterval == 0 {
-		opts.HeartBeatInterval = time.Duration(100) * time.Millisecond
+	if opts.HeartbeatInterval == 0 {
+		opts.HeartbeatInterval = time.Duration(100) * time.Millisecond
 	}
 
 	factory := &ClusterCounterFactory{
-		name:                     opts.KeyPrefix,
-		Store:                    store,
-		ticker:                   time.NewTicker(opts.HeartBeatInterval),
+		name:  opts.KeyPrefix,
+		Store: store,
+
 		defaultLocalTrafficRatio: opts.DefaultLocalTrafficRatio,
-		heartbeatInterval:        opts.HeartBeatInterval,
+		heartbeatInterval:        opts.HeartbeatInterval,
 	}
 	factory.Start()
 	return factory
@@ -144,37 +144,46 @@ func (factory *ClusterCounterFactory) NewClusterCounter(opts *ClusterCounterOpts
 }
 
 func (factory *ClusterCounterFactory) Start() {
+	if factory.ticker == nil {
+		factory.ticker = time.NewTicker(factory.heartbeatInterval)
+	}
 	go factory.WatchAndSync()
 }
 
 func (factory *ClusterCounterFactory) Stop() {
-	factory.ticker.Stop()
+	if factory.ticker != nil {
+		factory.ticker.Stop()
+	}
 }
 
 func (factory *ClusterCounterFactory) WatchAndSync() {
 	for range factory.ticker.C {
-		factory.clusterCounterVectors.Range(func(k interface{}, v interface{}) bool {
-			if counterVec, ok := v.(*ClusterCounterVec); ok {
-				counterVec.HeartBeat()
-
-				if counterVec.Expire() {
-					factory.clusterCounters.Delete(k)
-				}
-			}
-			return true
-		})
-
-		factory.clusterCounters.Range(func(k interface{}, v interface{}) bool {
-			if counter, ok := v.(*ClusterCounter); ok {
-				counter.HeartBeat()
-
-				if counter.Expire() {
-					factory.clusterCounters.Delete(k)
-				}
-			}
-			return true
-		})
+		factory.Heartbeat()
 	}
+}
+
+func (factory *ClusterCounterFactory) Heartbeat() {
+	factory.clusterCounterVectors.Range(func(k interface{}, v interface{}) bool {
+		if counterVec, ok := v.(*ClusterCounterVec); ok {
+			counterVec.Heartbeat()
+
+			if counterVec.Expire() {
+				factory.clusterCounters.Delete(k)
+			}
+		}
+		return true
+	})
+
+	factory.clusterCounters.Range(func(k interface{}, v interface{}) bool {
+		if counter, ok := v.(*ClusterCounter); ok {
+			counter.Heartbeat()
+
+			if counter.Expire() {
+				factory.clusterCounters.Delete(k)
+			}
+		}
+		return true
+	})
 }
 
 func (factory *ClusterCounterFactory) Delete(name string) {
