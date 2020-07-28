@@ -5,6 +5,7 @@ import (
 	"math/rand"
 	"sync"
 	"time"
+    "fmt"
 )
 
 type ClusterLimiter struct {
@@ -225,6 +226,8 @@ func (limiter *ClusterLimiter) HeartBeat() {
 		if limiter.updateIdealPassRate(-2) == false {
 			limiter.updateIdealPassRate(-4)
 		}
+
+        limiter.lastUpdatePassRateTime = time.Now()
 	}
 	limiter.updateRealPassRate()
 }
@@ -308,6 +311,8 @@ func (limiter *ClusterLimiter) updateIdealPassRate(last int) bool {
 		idealPassRate := (curPacingReward - prevPacingReward) * (curPass - prevPass) /
 			((curRequest - prevRequest) * (curReward - prevReward))
 
+        fmt.Println(">>>>>>>", (curPacingReward - prevPacingReward), " ",  (curPass - prevPass),  " ",
+        (curRequest - prevRequest), " ",  (curReward - prevReward),  " ", idealPassRate)
 		if idealPassRate <= 0.0 {
 			idealPassRate = 0.0
 		}
