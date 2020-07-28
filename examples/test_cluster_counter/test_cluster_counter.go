@@ -40,7 +40,7 @@ func init() {
 	flag.Float64Var(&localTrafficRate, "e", 0.5, "default local traffic ratio of all cluster")
 	flag.StringVar(&redisAddr, "f", "127.0.0.1:6379", "store: redis address")
 	flag.StringVar(&redisPass, "g", "", "store: redis pass")
-	flag.Int64Var(&listenPort, "h", 20002, "prometheus listen port")
+	flag.Int64Var(&listenPort, "h", 20001, "prometheus listen port")
 	flag.Int64Var(&mockTrafficFactor, "i", 60, "mock traffic factor")
 	flag.BoolVar(&discardPreviousData, "j", true, "whether discard previous data")
 	prometheus.MustRegister(metrics)

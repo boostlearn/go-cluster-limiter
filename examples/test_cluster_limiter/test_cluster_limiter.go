@@ -143,9 +143,11 @@ func fakeTraffic(counter *cluster_limiter.ClusterLimiter) {
 		}
 		v := k + mockTrafficFactor/2
 
-		if counter.Take(float64(v)) == true {
-			counter.Reward(float64(v))
-		}
-		time.Sleep(time.Duration(10) * time.Microsecond)
+        for j := 0; j < int(v); j++ {
+            if counter.Take(float64(1)) == true {
+                counter.Reward(float64(1))
+            }
+        }
+        time.Sleep(time.Duration(10) * time.Microsecond)
 	}
 }

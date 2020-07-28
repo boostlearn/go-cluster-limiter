@@ -224,6 +224,8 @@ func (counter *ClusterCounter) LoadData() bool {
 			return false
 		}
 
+        fmt.Println("load value:", value)
+
 		counter.loadLocalHistory[counter.loadHistoryPos%HistoryMax] = counter.localValue
 		counter.loadClusterHistory[counter.loadHistoryPos%HistoryMax] = value
 		counter.loadTimeHistory[counter.loadHistoryPos%HistoryMax] = timeNow
@@ -235,25 +237,32 @@ func (counter *ClusterCounter) LoadData() bool {
 }
 
 func (counter *ClusterCounter) updateLocalTrafficRatio() {
-	if counter.localTrafficRatio == 0.0 || counter.loadHistoryPos < 4 {
+	if counter.localTrafficRatio == 0.0 || (counter.loadHistoryPos < 4 && counter.initTime.After(counter.beginTime)) {
 		counter.localTrafficRatio = counter.defaultTrafficRatio
 		return
 	}
 
 	var localIncrease float64
 	var clusterIncrease float64
-	for i := -1; i > -int((counter.loadHistoryPos-1)%HistoryMax); i-- {
-		clusterPrev := counter.loadClusterHistory[(counter.loadHistoryPos+int64(i)-1+HistoryMax)%HistoryMax]
-		clusterCur := counter.loadClusterHistory[(counter.loadHistoryPos+int64(i)+HistoryMax)%HistoryMax]
+	for last := -1; last > -int((counter.loadHistoryPos-1)%HistoryMax); last-- {
+		clusterPrev := counter.loadClusterHistory[(counter.loadHistoryPos+int64(last)-1+HistoryMax)%HistoryMax]
+		clusterCur := counter.loadClusterHistory[(counter.loadHistoryPos+int64(last)+HistoryMax)%HistoryMax]
 		clusterIncrease = clusterIncrease*0.5 + (clusterCur-clusterPrev)*0.5
 
-		localPrev := counter.loadLocalHistory[(counter.loadHistoryPos+int64(i)-1+HistoryMax)%HistoryMax]
-		localCur := counter.loadLocalHistory[(counter.loadHistoryPos+int64(i)+HistoryMax)%HistoryMax]
+		localPrev := counter.loadLocalHistory[(counter.loadHistoryPos+int64(last)-1+HistoryMax)%HistoryMax]
+		localCur := counter.loadLocalHistory[(counter.loadHistoryPos+int64(last)+HistoryMax)%HistoryMax]
 		localIncrease = localIncrease*0.5 + (localCur-localPrev)*0.5
 	}
 
-	if localIncrease != 0.0 && clusterIncrease != 0.0 && localIncrease/clusterIncrease <= 1.0 {
-		counter.localTrafficRatio = counter.localTrafficRatio*0.5 + (localIncrease/clusterIncrease)*0.5
+    fmt.Println(">>>>>>>>>>>", localIncrease, " ", clusterIncrease, " -> ", localIncrease/clusterIncrease)
+
+	if localIncrease != 0.0 && clusterIncrease != 0.0 {
+        ratio := localIncrease/clusterIncrease
+        if ratio > 1.0 {
+            ratio = 1.0
+        }
+
+		counter.localTrafficRatio = counter.localTrafficRatio*0.5 + ratio*0.5
 	}
 }
 
