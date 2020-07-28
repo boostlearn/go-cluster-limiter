@@ -61,6 +61,7 @@ func main() {
 	limiterFactory := cluster_limiter.NewFactory(
 		&cluster_limiter.ClusterLimiterFactoryOpts{},
 		counterStore)
+    limiterFactory.Start()
 
 	limiterVec, err := limiterFactory.NewClusterLimiterVec(
 		&cluster_limiter.ClusterLimiterOpts{

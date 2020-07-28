@@ -13,9 +13,9 @@ type ClusterLimiterOpts struct {
 	Name                string
 	BeginTime           time.Time
 	EndTime             time.Time
-	CompletionTime             time.Time
+	CompletionTime      time.Time
 	PeriodInterval      time.Duration
-	ReserveInterval      time.Duration
+	ReserveInterval     time.Duration
 	BurstInterval       time.Duration
 	MaxBoostFactor      float64
 	DiscardPreviousData bool
@@ -91,9 +91,9 @@ func (factory *ClusterLimiterFactory) NewClusterLimiterVec(opts *ClusterLimiterO
 		name:                opts.Name,
 		beginTime:           opts.BeginTime,
 		endTime:             opts.EndTime,
-		completionTime:opts.CompletionTime,
+		completionTime:      opts.CompletionTime,
 		periodInterval:      opts.PeriodInterval,
-		reserveInterval:opts.ReserveInterval,
+		reserveInterval:     opts.ReserveInterval,
 		maxBoostFactor:      opts.MaxBoostFactor,
 		burstInterval:       opts.BurstInterval,
 		discardPreviousData: opts.DiscardPreviousData,
@@ -158,9 +158,9 @@ func (factory *ClusterLimiterFactory) NewClusterLimiter(opts *ClusterLimiterOpts
 		RewardCounter:       nil,
 		beginTime:           opts.BeginTime,
 		endTime:             opts.EndTime,
-		completionTime:opts.EndTime,
+		completionTime:      opts.EndTime,
 		periodInterval:      opts.PeriodInterval,
-		reserveInterval:opts.ReserveInterval,
+		reserveInterval:     opts.ReserveInterval,
 		maxBoostFactor:      opts.MaxBoostFactor,
 		discardPreviousData: opts.DiscardPreviousData,
 	}
