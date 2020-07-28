@@ -12,7 +12,6 @@ type ClusterCounterOpts struct {
 	EndTime        time.Time
 	PeriodInterval time.Duration
 
-	LoadDataInterval    time.Duration
 	DiscardPreviousData bool
 	StoreDataInterval   time.Duration
 
@@ -77,11 +76,7 @@ func (factory *ClusterCounterFactory) NewClusterCounterVec(opts *ClusterCounterO
 	}
 
 	if opts.StoreDataInterval.Truncate(time.Second) == 0 {
-		opts.StoreDataInterval = time.Duration(1) * time.Second
-	}
-
-	if opts.LoadDataInterval.Truncate(time.Second) == 0 {
-		opts.LoadDataInterval = time.Duration(1) * time.Second
+		opts.StoreDataInterval = time.Duration(2) * time.Second
 	}
 
 	if counter, ok := factory.clusterCounterVectors.Load(opts.Name); ok {
@@ -97,7 +92,6 @@ func (factory *ClusterCounterFactory) NewClusterCounterVec(opts *ClusterCounterO
 		beginTime:                opts.BeginTime,
 		endTime:                  opts.EndTime,
 		periodInterval:           opts.PeriodInterval,
-		loadInterval:             opts.LoadDataInterval.Truncate(time.Second),
 		storeInterval:            opts.StoreDataInterval.Truncate(time.Second),
 		name:                     opts.Name,
 		labelNames:               append([]string{}, labelNames...),
@@ -121,11 +115,7 @@ func (factory *ClusterCounterFactory) NewClusterCounter(opts *ClusterCounterOpts
 	}
 
 	if opts.StoreDataInterval.Truncate(time.Second) == 0 {
-		opts.StoreDataInterval = time.Duration(1) * time.Second
-	}
-
-	if opts.LoadDataInterval.Truncate(time.Second) == 0 {
-		opts.LoadDataInterval = time.Duration(1) * time.Second
+		opts.StoreDataInterval = time.Duration(2) * time.Second
 	}
 
 	if counter, ok := factory.clusterCounters.Load(opts.Name); ok {

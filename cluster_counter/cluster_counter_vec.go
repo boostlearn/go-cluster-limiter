@@ -15,7 +15,6 @@ type ClusterCounterVec struct {
 	beginTime                time.Time
 	endTime                  time.Time
 	periodInterval           time.Duration
-	loadInterval             time.Duration
 	storeInterval            time.Duration
 	defaultLocalTrafficRatio float64
 	discardPreviousData      bool

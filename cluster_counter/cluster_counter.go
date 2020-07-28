@@ -2,13 +2,13 @@
 package cluster_counter
 
 import (
-	"fmt"
+	//"fmt"
 	"sync"
 	"time"
 )
 
 const SEP = "####"
-const HistoryMax = 10
+const HistoryMax = 30
 
 type ClusterCounter struct {
 	mu sync.RWMutex
@@ -21,7 +21,7 @@ type ClusterCounter struct {
 	beginTime      time.Time
 	endTime        time.Time
 	periodInterval time.Duration
-	storeInterval     time.Duration
+	storeInterval  time.Duration
 
 	localValue        float64
 	storeHistoryPos   int64
@@ -32,10 +32,10 @@ type ClusterCounter struct {
 
 	discardPreviousData bool
 	loadInitValue       float64
-	loadHistoryPos     int64
-	loadTimeHistory    [HistoryMax]time.Time
-	loadLocalHistory   [HistoryMax]float64
-	loadClusterHistory [HistoryMax]float64
+	loadHistoryPos      int64
+	loadTimeHistory     [HistoryMax]time.Time
+	loadLocalHistory    [HistoryMax]float64
+	loadClusterHistory  [HistoryMax]float64
 
 	defaultTrafficRatio float64
 	localTrafficRatio   float64
@@ -55,7 +55,11 @@ func (counter *ClusterCounter) Init() {
 	}
 
 	if counter.defaultTrafficRatio == 0.0 {
-		counter.defaultTrafficRatio = 1.0
+		counter.defaultTrafficRatio = 0.1 
+	}
+
+	if counter.storeInterval == 0 {
+		counter.storeInterval = 2 * time.Second
 	}
 
 	if counter.localTrafficRatio == 0.0 {
@@ -86,7 +90,7 @@ func (counter *ClusterCounter) Expire() bool {
 	timeNow := time.Now()
 	if counter.periodInterval > 0 {
 		if timeNow.After(counter.endTime) {
-			fmt.Println(timeNow.Format("2006-01-02 15:04:05 .9999"), counter.endTime.Format("2006-01-02 15:04:05 .9999"))
+			//fmt.Println(timeNow.Format("2006-01-02 15:04:05 .9999"), counter.endTime.Format("2006-01-02 15:04:05 .9999"))
 			lastBeginTime := counter.beginTime
 			lastEndTime := counter.endTime
 			counter.beginTime = timeNow.Truncate(counter.periodInterval)
@@ -222,12 +226,14 @@ func (counter *ClusterCounter) LoadData() bool {
 			return false
 		}
 
-        fmt.Println("load value:", value)
-
-		counter.loadLocalHistory[counter.loadHistoryPos%HistoryMax] = counter.localValue
+		if counter.loadHistoryPos > 0 {
+			counter.loadLocalHistory[counter.loadHistoryPos%HistoryMax] = counter.storeLocalHistory[(counter.storeHistoryPos+-1+HistoryMax)%HistoryMax]
+		} else {
+			counter.loadLocalHistory[counter.loadHistoryPos%HistoryMax] = 0
+		}
 		counter.loadClusterHistory[counter.loadHistoryPos%HistoryMax] = value
 		counter.loadTimeHistory[counter.loadHistoryPos%HistoryMax] =
-			timeNow.Truncate(counter.storeInterval.Truncate(counter.storeInterval/2)).Add(counter.storeInterval/2)
+			timeNow.Truncate(counter.storeInterval.Truncate(counter.storeInterval / 2)).Add(counter.storeInterval / 2)
 		counter.loadHistoryPos += 1
 		counter.updateLocalTrafficRatio()
 		return true
@@ -253,13 +259,13 @@ func (counter *ClusterCounter) updateLocalTrafficRatio() {
 		localIncrease = localIncrease*0.5 + (localCur-localPrev)*0.5
 	}
 
-    fmt.Println(">>>>>>>>>>>", localIncrease, " ", clusterIncrease, " -> ", localIncrease/clusterIncrease)
+	//fmt.Println(">>>>>>>>>>>", localIncrease, " ", clusterIncrease, " -> ", localIncrease/clusterIncrease)
 
 	if localIncrease != 0.0 && clusterIncrease != 0.0 {
-        ratio := localIncrease/clusterIncrease
-        if ratio > 1.0 {
-            ratio = 1.0
-        }
+		ratio := localIncrease / clusterIncrease
+		if ratio > 1.0 {
+			ratio = 1.0
+		}
 
 		counter.localTrafficRatio = counter.localTrafficRatio*0.5 + ratio*0.5
 	}

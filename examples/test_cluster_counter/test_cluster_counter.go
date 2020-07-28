@@ -37,11 +37,11 @@ func init() {
 	flag.StringVar(&counterName, "a", "test_cluster_counter", "cluster counter's unique name")
 	flag.StringVar(&instanceName, "b", "test1", "test instance name")
 	flag.Int64Var(&periodInterval, "c", 60, "reset data interval")
-	flag.Float64Var(&localTrafficRate, "e", 0.5, "default local traffic ratio of all cluster")
+	flag.Float64Var(&localTrafficRate, "e", 0.1, "default local traffic ratio of all cluster")
 	flag.StringVar(&redisAddr, "f", "127.0.0.1:6379", "store: redis address")
 	flag.StringVar(&redisPass, "g", "", "store: redis pass")
 	flag.Int64Var(&listenPort, "h", 20001, "prometheus listen port")
-	flag.Int64Var(&mockTrafficFactor, "i", 60, "mock traffic factor")
+	flag.Int64Var(&mockTrafficFactor, "i", 1, "mock traffic factor")
 	flag.BoolVar(&discardPreviousData, "j", true, "whether discard previous data")
 	prometheus.MustRegister(metrics)
 }
@@ -103,16 +103,19 @@ func httpServer() {
 func mockTraffic(counter *cluster_counter.ClusterCounter) {
 	rand.Seed(time.Now().Unix())
 
-	var i = 0
-	for {
-		i += 1
-		k := (time.Now().Unix() / mockTrafficFactor) % mockTrafficFactor
-		if k > mockTrafficFactor/2 {
-			k = mockTrafficFactor - k
+	ticker := time.NewTicker(100000 * time.Microsecond)
+	for range ticker.C {
+		k := (time.Now().Unix() / 600) % 6
+		if k >= 3 {
+			k = 6 - k
 		}
-		v := k + mockTrafficFactor/2
+		v := k + 3
+		v = v * mockTrafficFactor
 
-		counter.Add(float64(v))
+		for j := 0; j < int(v); j++ {
+			counter.Add(float64(1))
+		}
+
 		time.Sleep(time.Duration(10) * time.Microsecond)
 	}
 }
