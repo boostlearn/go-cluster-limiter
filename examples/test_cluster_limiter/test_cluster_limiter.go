@@ -40,9 +40,9 @@ var (
 )
 
 func init() {
-	flag.Int64Var(&targetNum, "a", 1000000, "total target num")
+	flag.Int64Var(&targetNum, "a", 10000, "total target num")
 	flag.Int64Var(&resetInterval, "b", 600, "reset data interval")
-	flag.Int64Var(&mockTrafficFactor, "c", 60, "mock traffic factor")
+	flag.Int64Var(&mockTrafficFactor, "c", 1, "mock traffic factor")
 	flag.StringVar(&limiterName, "d", "test_cluster_limiter", "limiter's unique name")
 	flag.StringVar(&instanceName, "e", "test1", "test instance name")
 	flag.StringVar(&redisAddr, "f", "127.0.0.1:6379", "store: redis address")
@@ -133,21 +133,20 @@ func httpServer() {
 func fakeTraffic(counter *cluster_limiter.ClusterLimiter) {
 	rand.Seed(time.Now().Unix())
 
-	var i = 0
-	for {
-		i += 1
-
-		k := (time.Now().Unix() / mockTrafficFactor) % mockTrafficFactor
-		if k > mockTrafficFactor/2 {
-			k = mockTrafficFactor - k
+	ticker := time.NewTicker(100000 * time.Microsecond)
+	for range ticker.C {
+        k := (time.Now().Unix() / 600) % 6
+		if k >= 3 {
+			k = 6 - k
 		}
-		v := k + mockTrafficFactor/2
+		v := k + 3
+		v = v * mockTrafficFactor
+
 
         for j := 0; j < int(v); j++ {
             if counter.Take(float64(1)) == true {
                 counter.Reward(float64(1))
             }
         }
-        time.Sleep(time.Duration(10) * time.Microsecond)
 	}
 }

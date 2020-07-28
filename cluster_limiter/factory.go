@@ -91,7 +91,6 @@ func (factory *ClusterLimiterFactory) NewClusterLimiterVec(opts *ClusterLimiterO
 		Name:                factory.name + opts.Name + ":request",
 		PeriodInterval:      opts.PeriodInterval,
 		DiscardPreviousData: opts.DiscardPreviousData,
-		LoadDataInterval:    opts.BurstInterval / 2,
 		StoreDataInterval:   opts.BurstInterval / 2,
 	}, labelNames)
 	if err != nil {
@@ -102,7 +101,6 @@ func (factory *ClusterLimiterFactory) NewClusterLimiterVec(opts *ClusterLimiterO
 		Name:                factory.name + opts.Name + ":pass",
 		PeriodInterval:      limiterVec.periodInterval,
 		DiscardPreviousData: opts.DiscardPreviousData,
-		LoadDataInterval:    opts.BurstInterval / 2,
 		StoreDataInterval:   opts.BurstInterval / 2,
 	}, labelNames)
 	if err != nil {
@@ -113,7 +111,6 @@ func (factory *ClusterLimiterFactory) NewClusterLimiterVec(opts *ClusterLimiterO
 		Name:                factory.name + opts.Name + ":reward",
 		PeriodInterval:      limiterVec.periodInterval,
 		DiscardPreviousData: opts.DiscardPreviousData,
-		LoadDataInterval:    opts.BurstInterval / 2,
 		StoreDataInterval:   opts.BurstInterval / 2,
 	}, labelNames)
 	if err != nil {
@@ -154,7 +151,6 @@ func (factory *ClusterLimiterFactory) NewClusterLimiter(opts *ClusterLimiterOpts
 		Name:                factory.name + opts.Name + ":request",
 		PeriodInterval:      opts.PeriodInterval,
 		DiscardPreviousData: opts.DiscardPreviousData,
-		LoadDataInterval:    opts.BurstInterval / 2,
 		StoreDataInterval:   opts.BurstInterval / 2,
 	})
 	if err != nil {
@@ -165,7 +161,6 @@ func (factory *ClusterLimiterFactory) NewClusterLimiter(opts *ClusterLimiterOpts
 		Name:                factory.name + opts.Name + ":pass",
 		PeriodInterval:      opts.PeriodInterval,
 		DiscardPreviousData: opts.DiscardPreviousData,
-		LoadDataInterval:    opts.BurstInterval / 2,
 		StoreDataInterval:   opts.BurstInterval / 2,
 	})
 	if err != nil {
@@ -176,7 +171,6 @@ func (factory *ClusterLimiterFactory) NewClusterLimiter(opts *ClusterLimiterOpts
 		Name:                factory.name + opts.Name + ":reward",
 		PeriodInterval:      opts.PeriodInterval,
 		DiscardPreviousData: opts.DiscardPreviousData,
-		LoadDataInterval:    opts.BurstInterval / 2,
 		StoreDataInterval:   opts.BurstInterval / 2,
 	})
 	if err != nil {
