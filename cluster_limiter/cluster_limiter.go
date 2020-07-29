@@ -9,7 +9,8 @@ import (
 )
 
 const DEFAULT_MAX_BOOST_FACTOR = 2.0
-const DEFAULT_BURST_INERVAL_SECONDS = 6
+const DEFAULT_BOOST_BURST_FACTOR = 10.0
+const DEFAULT_BURST_INERVAL_SECONDS = 2 
 const DEFAULT_DECLINE_EXP_RATIO = 0.5
 
 type ClusterLimiter struct {
@@ -102,11 +103,7 @@ func (limiter *ClusterLimiter) Take(v float64) bool {
 	}
 
 	clusterPred, _ := limiter.RewardCounter.ClusterValue(0)
-	if clusterPred > limiter.targetReward {
-		return false
-	}
-
-	if clusterPred > limiter.getPacingReward(time.Now().Add(limiter.burstInterval)) {
+	if clusterPred + v > limiter.getPacingReward(time.Now()) {
 		return false
 	}
 
@@ -251,12 +248,12 @@ func (limiter *ClusterLimiter) updateIdealPassRate() {
 	}
 	limiter.lastIdealPassRateTime = time.Now()
 
-	if timeNow.Before(limiter.initTime.Add(limiter.burstInterval)) ||
-		timeNow.After(limiter.endTime.Add(-limiter.burstInterval)) ||
-		timeNow.Before(limiter.beginTime.Add(limiter.burstInterval)) {
-		limiter.realPassRate = limiter.idealPassRate
-		return
-	}
+	//if timeNow.Before(limiter.initTime.Add(limiter.burstInterval)) ||
+	//	timeNow.After(limiter.endTime.Add(-limiter.burstInterval)) ||
+	//	timeNow.Before(limiter.beginTime.Add(limiter.burstInterval)) {
+	//	limiter.realPassRate = limiter.idealPassRate
+	//	return
+	//}
 
 	var _, lastLoadTime = limiter.RewardCounter.ClusterValue(-1)
 	if timeNow.After(lastLoadTime.Add(limiter.burstInterval * 10)) {
@@ -379,7 +376,7 @@ func (limiter *ClusterLimiter) updateRealPassRate() {
 	lagTime := limiter.getLagTime(curReward, timeNow)
 	if lagTime > 0 {
 		smoothPassRate := limiter.idealPassRate * (1 + lagTime*1e9/
-			float64(4*limiter.burstInterval.Nanoseconds()))
+			(DEFAULT_BOOST_BURST_FACTOR*float64(limiter.burstInterval.Nanoseconds())))
 		if limiter.maxBoostFactor > 1.0 && smoothPassRate > limiter.maxBoostFactor*limiter.idealPassRate {
 			smoothPassRate = limiter.maxBoostFactor * limiter.idealPassRate
 		}
@@ -390,7 +387,7 @@ func (limiter *ClusterLimiter) updateRealPassRate() {
 		}
 	} else {
 		smoothPassRate := limiter.idealPassRate * (1 + lagTime*4*1e9/
-			float64(4*limiter.burstInterval.Nanoseconds()))
+			(DEFAULT_BOOST_BURST_FACTOR*float64(limiter.burstInterval.Nanoseconds())))
 		if smoothPassRate < 0 {
 			limiter.realPassRate = limiter.idealPassRate / 10000
 		} else {
