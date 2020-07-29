@@ -7,6 +7,10 @@ import (
 	"time"
 )
 
+const DEFAULT_MAX_BOOST_FACTOR = 2.0
+const DEFAULT_BURST_INERVAL_SECONDS = 6
+const DEFAULT_DECLINE_EXP_RATIO = 0.8
+
 type ClusterLimiter struct {
 	mu sync.RWMutex
 
@@ -32,8 +36,19 @@ type ClusterLimiter struct {
 	lastIdealPassRateTime time.Time
 	lastRealPassRateTime  time.Time
 
-	realPassRate  float64
-	idealPassRate float64
+	realPassRate    float64
+	idealPassRate   float64
+	declineExpRatio float64
+
+	localRequestIncrease      float64
+	localPassIncrease         float64
+	localRewardIncrease       float64
+	localPacingRewardIncrease float64
+
+	clusterRequestIncrease      float64
+	clusterPassIncrease         float64
+	clusterRewardIncrease       float64
+	clusterPacingRewardIncrease float64
 }
 
 func (limiter *ClusterLimiter) Init() {
@@ -43,11 +58,15 @@ func (limiter *ClusterLimiter) Init() {
 	timeNow := time.Now().Truncate(time.Second)
 	limiter.initTime = timeNow
 	if limiter.burstInterval.Truncate(time.Second) == 0 {
-		limiter.burstInterval = 6 * time.Second
+		limiter.burstInterval = DEFAULT_BURST_INERVAL_SECONDS * time.Second
 	}
 
 	if limiter.maxBoostFactor == 0.0 {
-		limiter.maxBoostFactor = 2.0
+		limiter.maxBoostFactor = DEFAULT_MAX_BOOST_FACTOR
+	}
+
+	if limiter.declineExpRatio == 0.0 {
+		limiter.declineExpRatio = DEFAULT_DECLINE_EXP_RATIO
 	}
 
 	if limiter.reserveInterval > 0 {
@@ -265,14 +284,19 @@ func (limiter *ClusterLimiter) updateIdealPassRate() {
 			return
 		}
 
-		if prevRequest == lastRequest ||
-			prevPass == lastPass || prevReward == lastReward ||
-			prevPacingReward == lastPacingReward {
+		limiter.localRequestIncrease = limiter.localRequestIncrease*limiter.declineExpRatio + (lastRequest-prevRequest)*(1-limiter.declineExpRatio)
+		limiter.localPassIncrease = limiter.localPassIncrease*limiter.declineExpRatio + (lastPass-prevPass)*(1-limiter.declineExpRatio)
+		limiter.localRewardIncrease = limiter.localRewardIncrease*limiter.declineExpRatio + (lastReward-prevReward)*(1-limiter.declineExpRatio)
+		limiter.localPacingRewardIncrease = limiter.localPacingRewardIncrease*limiter.declineExpRatio + (lastPacingReward-prevPacingReward)*(1-limiter.declineExpRatio)
+
+		if limiter.localRequestIncrease == 0.0 ||
+			limiter.localPassIncrease == 0 || limiter.localRewardIncrease == 0.0 ||
+			limiter.localPacingRewardIncrease == 0.0 {
 			return
 		}
 
-		idealPassRate := (lastPacingReward - prevPacingReward) * (lastPass - prevPass) /
-			((lastRequest - prevRequest) * (lastReward - prevReward))
+		idealPassRate := (limiter.localPacingRewardIncrease * limiter.localPassIncrease) /
+			(limiter.localRewardIncrease * limiter.localRewardIncrease)
 
 		if idealPassRate <= 0.0 {
 			idealPassRate = 0.0
@@ -309,14 +333,19 @@ func (limiter *ClusterLimiter) updateIdealPassRate() {
 			return
 		}
 
-		if prevRequest == lastRequest ||
-			prevPass == lastPass || prevReward == lastReward ||
-			prevPacingReward == lastPacingReward {
+		limiter.clusterRequestIncrease = limiter.clusterRequestIncrease*limiter.declineExpRatio + (lastRequest-prevRequest)*(1-limiter.declineExpRatio)
+		limiter.clusterPassIncrease = limiter.clusterPassIncrease*limiter.declineExpRatio + (lastPass-prevPass)*(1-limiter.declineExpRatio)
+		limiter.clusterRewardIncrease = limiter.clusterRewardIncrease*limiter.declineExpRatio + (lastReward-prevReward)*(1-limiter.declineExpRatio)
+		limiter.clusterPacingRewardIncrease = limiter.clusterPacingRewardIncrease*limiter.declineExpRatio + (lastPacingReward-prevPacingReward)*(1-limiter.declineExpRatio)
+
+		if limiter.clusterRequestIncrease == 0.0 ||
+			limiter.clusterPassIncrease == 0 || limiter.clusterRewardIncrease == 0.0 ||
+			limiter.clusterPacingRewardIncrease == 0.0 {
 			return
 		}
 
-		idealPassRate := (lastPacingReward - prevPacingReward) * (lastPass - prevPass) /
-			((lastRequest - prevRequest) * (lastReward - prevReward))
+		idealPassRate := (limiter.clusterPacingRewardIncrease * limiter.clusterPassIncrease) /
+			(limiter.clusterRewardIncrease * limiter.clusterRewardIncrease)
 
 		if idealPassRate <= 0.0 {
 			idealPassRate = 0.0

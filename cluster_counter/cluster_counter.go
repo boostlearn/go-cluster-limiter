@@ -9,6 +9,9 @@ import (
 
 const SEP = "####"
 const HistoryMax = 30
+const DEFAULT_DECLINE_EXP_RATIO = 0.8
+const DEFAULT_STORE_INTERVAL_SECONDS = 2
+const DEFAULT_TRAFFIC_RATIO = 1.0
 
 type ClusterCounter struct {
 	mu sync.RWMutex
@@ -40,8 +43,9 @@ type ClusterCounter struct {
 	defaultTrafficRatio float64
 	localTrafficRatio   float64
 
-	localIncrease float64
+	localIncrease   float64
 	clusterIncrease float64
+	declineExpRatio float64
 }
 
 func (counter *ClusterCounter) Init() {
@@ -58,11 +62,11 @@ func (counter *ClusterCounter) Init() {
 	}
 
 	if counter.defaultTrafficRatio == 0.0 {
-		counter.defaultTrafficRatio = 1.0
+		counter.defaultTrafficRatio = DEFAULT_TRAFFIC_RATIO
 	}
 
 	if counter.storeInterval == 0 {
-		counter.storeInterval = 2 * time.Second
+		counter.storeInterval = DEFAULT_STORE_INTERVAL_SECONDS * time.Second
 	}
 
 	if counter.localTrafficRatio == 0.0 {
@@ -82,6 +86,10 @@ func (counter *ClusterCounter) Init() {
 			counter.loadInitValue = value
 			return
 		}
+	}
+
+	if counter.declineExpRatio <= 0.0 || counter.declineExpRatio > 1.0 {
+		counter.declineExpRatio = DEFAULT_DECLINE_EXP_RATIO
 	}
 
 	counter.storeLocalHistory[counter.storeHistoryPos%HistoryMax] = counter.localValue
@@ -285,13 +293,15 @@ func (counter *ClusterCounter) updateLocalTrafficRatio() {
 	}
 
 	if counter.loadHistoryPos > 2 {
-		clusterPrev := counter.loadClusterHistory[(counter.loadHistoryPos -2 + HistoryMax)%HistoryMax]
-		clusterCur := counter.loadClusterHistory[(counter.loadHistoryPos - 1 +HistoryMax)%HistoryMax]
-		counter.clusterIncrease = counter.clusterIncrease*0.9 + (clusterCur-clusterPrev)*0.1
+		clusterPrev := counter.loadClusterHistory[(counter.loadHistoryPos-2+HistoryMax)%HistoryMax]
+		clusterCur := counter.loadClusterHistory[(counter.loadHistoryPos-1+HistoryMax)%HistoryMax]
+		counter.clusterIncrease = counter.clusterIncrease*counter.declineExpRatio +
+			(clusterCur-clusterPrev)*(1-counter.declineExpRatio)
 
-		localPrev := counter.loadLocalHistory[(counter.loadHistoryPos - 2 + HistoryMax)%HistoryMax]
-		localCur := counter.loadLocalHistory[(counter.loadHistoryPos - 1 + HistoryMax)%HistoryMax]
-		counter.localIncrease = counter.localIncrease*0.9 + (localCur-localPrev)*0.1
+		localPrev := counter.loadLocalHistory[(counter.loadHistoryPos-2+HistoryMax)%HistoryMax]
+		localCur := counter.loadLocalHistory[(counter.loadHistoryPos-1+HistoryMax)%HistoryMax]
+		counter.localIncrease = counter.localIncrease*counter.declineExpRatio +
+			(localCur-localPrev)*(1-counter.declineExpRatio)
 	}
 
 	if counter.localIncrease != 0.0 && counter.clusterIncrease != 0.0 {

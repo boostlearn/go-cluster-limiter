@@ -6,6 +6,9 @@ import (
 	"time"
 )
 
+const DEFAULT_HEARTBEAT_INTERVAL_MILLISECONDS = 100
+const DEFAULT_FACTORY_NAME = "clct"
+
 type ClusterCounterOpts struct {
 	Name           string
 	BeginTime      time.Time
@@ -16,6 +19,7 @@ type ClusterCounterOpts struct {
 	StoreDataInterval   time.Duration
 
 	DefaultLocalTrafficRatio float64
+	DeclineExpRatio          float64
 }
 
 type ClusterCounterFactory struct {
@@ -31,25 +35,25 @@ type ClusterCounterFactory struct {
 }
 
 type ClusterCounterFactoryOpts struct {
-	KeyPrefix                string
+	Name                     string
 	DefaultLocalTrafficRatio float64
 	HeartbeatInterval        time.Duration
 }
 
 func NewFactory(opts *ClusterCounterFactoryOpts, store DataStoreI) *ClusterCounterFactory {
-	if len(opts.KeyPrefix) == 0 {
-		opts.KeyPrefix = "CLCT:"
+	if len(opts.Name) == 0 {
+		opts.Name = DEFAULT_FACTORY_NAME
 	}
 	if opts.DefaultLocalTrafficRatio > 1.0 {
-		opts.DefaultLocalTrafficRatio = 1.0
+		opts.DefaultLocalTrafficRatio = DEFAULT_TRAFFIC_RATIO
 	}
 
 	if opts.HeartbeatInterval == 0 {
-		opts.HeartbeatInterval = time.Duration(100) * time.Millisecond
+		opts.HeartbeatInterval = time.Duration(DEFAULT_HEARTBEAT_INTERVAL_MILLISECONDS) * time.Millisecond
 	}
 
 	factory := &ClusterCounterFactory{
-		name:  opts.KeyPrefix,
+		name:  opts.Name,
 		Store: store,
 
 		defaultLocalTrafficRatio: opts.DefaultLocalTrafficRatio,
@@ -76,7 +80,7 @@ func (factory *ClusterCounterFactory) NewClusterCounterVec(opts *ClusterCounterO
 	}
 
 	if opts.StoreDataInterval.Truncate(time.Second) == 0 {
-		opts.StoreDataInterval = time.Duration(2) * time.Second
+		opts.StoreDataInterval = time.Duration(DEFAULT_STORE_INTERVAL_SECONDS) * time.Second
 	}
 
 	if counter, ok := factory.clusterCounterVectors.Load(opts.Name); ok {
@@ -97,6 +101,7 @@ func (factory *ClusterCounterFactory) NewClusterCounterVec(opts *ClusterCounterO
 		labelNames:               append([]string{}, labelNames...),
 		defaultLocalTrafficRatio: opts.DefaultLocalTrafficRatio,
 		discardPreviousData:      opts.DiscardPreviousData,
+		declineExpRatio:          opts.DeclineExpRatio,
 	}
 
 	factory.clusterCounterVectors.Store(opts.Name, clusterCounterVec)
@@ -115,7 +120,7 @@ func (factory *ClusterCounterFactory) NewClusterCounter(opts *ClusterCounterOpts
 	}
 
 	if opts.StoreDataInterval.Truncate(time.Second) == 0 {
-		opts.StoreDataInterval = time.Duration(2) * time.Second
+		opts.StoreDataInterval = time.Duration(DEFAULT_STORE_INTERVAL_SECONDS) * time.Second
 	}
 
 	if counter, ok := factory.clusterCounters.Load(opts.Name); ok {
@@ -135,6 +140,7 @@ func (factory *ClusterCounterFactory) NewClusterCounter(opts *ClusterCounterOpts
 		name:                opts.Name,
 		defaultTrafficRatio: opts.DefaultLocalTrafficRatio,
 		discardPreviousData: opts.DiscardPreviousData,
+		declineExpRatio:     opts.DeclineExpRatio,
 	}
 	clusterCounter.Init()
 

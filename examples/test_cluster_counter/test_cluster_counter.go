@@ -91,8 +91,8 @@ func main() {
 			"cluster_last":        clusterLast,
 			"cluster_pred":        clusterCur,
 			"local_traffic_ratio": counter.LocalTrafficRatio(),
-			"local_increase": counter.LocalIncrease(),
-			"cluster_increase": counter.LocalIncrease(),
+			"local_increase":      counter.LocalIncrease(),
+			"cluster_increase":    counter.ClusterIncrease(),
 		}
 
 		for k, v := range data {

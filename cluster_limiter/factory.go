@@ -7,7 +7,8 @@ import (
 	"time"
 )
 
-const LimiterPrefix = "lmt:"
+const DEFAULT_LIMITER_NAME = "lmt:"
+const DEFAULT_HEARTBEAT_INTERVAL_MILLISECONDS = 100
 
 type ClusterLimiterOpts struct {
 	Name                string
@@ -43,15 +44,15 @@ func NewFactory(opts *ClusterLimiterFactoryOpts,
 	dataStore cluster_counter.DataStoreI,
 ) *ClusterLimiterFactory {
 	if opts.DefaultHeartbeatInterval == 0 {
-		opts.DefaultHeartbeatInterval = time.Duration(100) * time.Millisecond
+		opts.DefaultHeartbeatInterval = time.Duration(DEFAULT_HEARTBEAT_INTERVAL_MILLISECONDS) * time.Millisecond
 	}
 
 	if len(opts.Name) == 0 {
-		opts.Name = LimiterPrefix
+		opts.Name = DEFAULT_LIMITER_NAME
 	}
 
 	counterFactory := cluster_counter.NewFactory(&cluster_counter.ClusterCounterFactoryOpts{
-		KeyPrefix:                opts.Name + ":cls_ct:",
+		Name:                     opts.Name + ":cls_ct:",
 		DefaultLocalTrafficRatio: opts.DefaultLocalTrafficRate,
 		HeartbeatInterval:        opts.DefaultHeartbeatInterval,
 	}, dataStore)
@@ -84,7 +85,7 @@ func (factory *ClusterLimiterFactory) NewClusterLimiterVec(opts *ClusterLimiterO
 	}
 
 	if opts.BurstInterval == 0 {
-		opts.BurstInterval = 2 * time.Second
+		opts.BurstInterval = DEFAULT_BURST_INERVAL_SECONDS * time.Second
 	}
 
 	if opts.CompletionTime.Unix() == 0 {
