@@ -146,14 +146,14 @@ func (limiter *ClusterLimiter) getPacingReward(t time.Time) float64 {
 	}
 }
 
-func (limiter *ClusterLimiter) LostTime(reward float64, t time.Time) float64 {
+func (limiter *ClusterLimiter) LagTime(reward float64, t time.Time) float64 {
 	limiter.mu.RLock()
 	defer limiter.mu.RUnlock()
 
-	return limiter.getLostTime(reward, t)
+	return limiter.getLagTime(reward, t)
 }
 
-func (limiter *ClusterLimiter) getLostTime(reward float64, t time.Time) float64 {
+func (limiter *ClusterLimiter) getLagTime(reward float64, t time.Time) float64 {
 	if limiter.targetReward == 0 || limiter.endTime.After(limiter.beginTime) == false {
 		return 0
 	}
@@ -237,7 +237,7 @@ func (limiter *ClusterLimiter) updateIdealPassRate() {
 	var _, lastLoadTime = limiter.RewardCounter.ClusterValue(-1)
 	if timeNow.After(lastLoadTime.Add(limiter.burstInterval * 10)) {
 		prev := -limiter.RewardCounter.StoreHistorySize() + 1
-		if prev >= -1 {
+		if prev >= -2 {
 			return
 		}
 		last := -1
@@ -281,7 +281,7 @@ func (limiter *ClusterLimiter) updateIdealPassRate() {
 	} else {
 		prev := -limiter.RewardCounter.LoadHistorySize() + 1
 		last := -1
-		if prev >= -1 {
+		if prev >= -2 {
 			return
 		}
 
@@ -340,9 +340,9 @@ func (limiter *ClusterLimiter) updateRealPassRate() {
 	limiter.lastRealPassRateTime = time.Now()
 
 	curReward, _ := limiter.RewardCounter.ClusterValue(0)
-	lostTime := limiter.getLostTime(curReward, timeNow)
-	if lostTime > 0 {
-		smoothPassRate := limiter.idealPassRate * (1 + lostTime*1e9/
+	lagTime := limiter.getLagTime(curReward, timeNow)
+	if lagTime > 0 {
+		smoothPassRate := limiter.idealPassRate * (1 + lagTime*1e9/
 			float64(4*limiter.burstInterval.Nanoseconds()))
 		if limiter.maxBoostFactor > 1.0 && smoothPassRate > limiter.maxBoostFactor*limiter.idealPassRate {
 			smoothPassRate = limiter.maxBoostFactor * limiter.idealPassRate
@@ -353,7 +353,7 @@ func (limiter *ClusterLimiter) updateRealPassRate() {
 			limiter.realPassRate = smoothPassRate
 		}
 	} else {
-		smoothPassRate := limiter.idealPassRate * (1 + lostTime*4*1e9/
+		smoothPassRate := limiter.idealPassRate * (1 + lagTime*4*1e9/
 			float64(4*limiter.burstInterval.Nanoseconds()))
 		if smoothPassRate < 0 {
 			limiter.realPassRate = limiter.idealPassRate / 10000

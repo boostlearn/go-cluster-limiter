@@ -20,6 +20,7 @@ var (
 	instanceName string
 
 	discardPreviousData bool
+	localTrafficRatio   float64
 
 	targetNum         int64
 	resetInterval     int64
@@ -48,6 +49,7 @@ func init() {
 	flag.StringVar(&redisPass, "g", "", "store: redis pass")
 	flag.Int64Var(&listenPort, "h", 20001, "prometheus: listen port")
 	flag.BoolVar(&discardPreviousData, "i", true, "whether discard previous data")
+	flag.Float64Var(&localTrafficRatio, "j", 0.1, "default local traffic ratio of all cluster")
 
 	prometheus.MustRegister(metrics)
 }
@@ -59,14 +61,24 @@ func main() {
 		redisPass,
 		"blcl:")
 	limiterFactory := cluster_limiter.NewFactory(
-		&cluster_limiter.ClusterLimiterFactoryOpts{},
+		&cluster_limiter.ClusterLimiterFactoryOpts{
+			Name:                     "test",
+			DefaultHeartbeatInterval: 100 * time.Millisecond,
+			DefaultLocalTrafficRate:  localTrafficRatio,
+		},
 		counterStore)
-    limiterFactory.Start()
+	limiterFactory.Start()
 
 	limiterVec, err := limiterFactory.NewClusterLimiterVec(
 		&cluster_limiter.ClusterLimiterOpts{
 			Name:                limiterName,
+			BeginTime:           time.Time{},
+			EndTime:             time.Time{},
+			CompletionTime:      time.Time{},
 			PeriodInterval:      time.Duration(resetInterval) * time.Second,
+			ReserveInterval:     0,
+			BurstInterval:       0,
+			MaxBoostFactor:      0,
 			DiscardPreviousData: true,
 		},
 		[]string{"label1", "label2"})
@@ -78,7 +90,7 @@ func main() {
 	lbs := []string{"c1", "c2"}
 	limiter := limiterVec.WithLabelValues(lbs)
 	limiter.SetTarget(float64(targetNum))
-	
+
 	go httpServer()
 	go fakeTraffic(limiter)
 
@@ -93,7 +105,7 @@ func main() {
 		data["pacing_target"] = float64(limiter.PacingReward())
 
 		rewardCur, rewardTime := limiter.RewardCounter.ClusterValue(0)
-		data["lost_time"] = float64(limiter.LostTime(rewardCur, rewardTime))
+		data["lag_time"] = float64(limiter.LagTime(rewardCur, rewardTime))
 
 		data["request_local"], _ = limiter.RequestCounter.LocalValue(0)
 		data["request_pred"], _ = limiter.RequestCounter.ClusterValue(0)
