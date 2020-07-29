@@ -259,7 +259,7 @@ func (limiter *ClusterLimiter) updateIdealPassRate() {
 
 	var _, lastLoadTime = limiter.RewardCounter.ClusterValue(-1)
 	if timeNow.After(lastLoadTime.Add(limiter.burstInterval * 10)) {
-		if limiter.RewardCounter.StoreHistorySize() < 3 {
+		if limiter.RewardCounter.StoreHistorySize() < 2 {
 			return
 		}
 		prev := -2
@@ -307,7 +307,7 @@ func (limiter *ClusterLimiter) updateIdealPassRate() {
 		limiter.idealPassRate = limiter.idealPassRate*0.5 + idealPassRate*0.5
 		return
 	} else {
-		if limiter.RewardCounter.LoadHistorySize() < 3 {
+		if limiter.RewardCounter.LoadHistorySize() < 2 {
 			return
 		}
 		prev := -2
