@@ -46,6 +46,10 @@ func (limiter *ClusterLimiter) Init() {
 		limiter.burstInterval = 6 * time.Second
 	}
 
+	if limiter.maxBoostFactor == 0.0 {
+		limiter.maxBoostFactor = 2.0
+	}
+
 	if limiter.reserveInterval > 0 {
 		limiter.beginTime = timeNow.Truncate(limiter.periodInterval)
 		limiter.endTime = limiter.beginTime.Add(limiter.periodInterval)
@@ -222,14 +226,14 @@ func (limiter *ClusterLimiter) Heartbeat() {
 
 func (limiter *ClusterLimiter) updateIdealPassRate() {
 	timeNow := time.Now()
-	if timeNow.Before(limiter.lastIdealPassRateTime.Add(limiter.burstInterval / 4)) {
+	if timeNow.Before(limiter.lastIdealPassRateTime.Add(limiter.burstInterval)) {
 		return
 	}
 	limiter.lastIdealPassRateTime = time.Now()
 
-	if timeNow.Before(limiter.initTime.Add(limiter.burstInterval)) ||
-		timeNow.After(limiter.endTime.Add(-limiter.burstInterval/2)) ||
-		timeNow.Before(limiter.beginTime.Add(limiter.burstInterval/2)) {
+	if timeNow.Before(limiter.initTime.Add(limiter.burstInterval*2)) ||
+		timeNow.After(limiter.endTime.Add(-limiter.burstInterval)) ||
+		timeNow.Before(limiter.beginTime.Add(limiter.burstInterval*2)) {
 		limiter.realPassRate = limiter.idealPassRate
 		return
 	}
@@ -237,7 +241,7 @@ func (limiter *ClusterLimiter) updateIdealPassRate() {
 	var _, lastLoadTime = limiter.RewardCounter.ClusterValue(-1)
 	if timeNow.After(lastLoadTime.Add(limiter.burstInterval * 10)) {
 		prev := -limiter.RewardCounter.StoreHistorySize() + 1
-		if prev >= -1 {
+		if prev >= -2 {
 			return
 		}
 		last := -1
@@ -281,7 +285,7 @@ func (limiter *ClusterLimiter) updateIdealPassRate() {
 	} else {
 		prev := -limiter.RewardCounter.LoadHistorySize() + 1
 		last := -1
-		if prev >= -1 {
+		if prev >= -2 {
 			return
 		}
 
@@ -327,14 +331,14 @@ func (limiter *ClusterLimiter) updateIdealPassRate() {
 
 func (limiter *ClusterLimiter) updateRealPassRate() {
 	timeNow := time.Now().Truncate(time.Second)
-	if timeNow.Before(limiter.initTime.Add(limiter.burstInterval)) ||
+	if timeNow.Before(limiter.initTime.Add(limiter.burstInterval*2)) ||
 		timeNow.After(limiter.endTime.Add(-limiter.burstInterval)) ||
-		timeNow.Before(limiter.beginTime.Add(limiter.burstInterval)) {
+		timeNow.Before(limiter.beginTime.Add(limiter.burstInterval*2)) {
 		limiter.realPassRate = limiter.idealPassRate
 		return
 	}
 
-	if timeNow.Before(limiter.lastRealPassRateTime.Add(limiter.burstInterval / 16)) {
+	if timeNow.Before(limiter.lastRealPassRateTime.Add(limiter.burstInterval / 4)) {
 		return
 	}
 	limiter.lastRealPassRateTime = time.Now()
