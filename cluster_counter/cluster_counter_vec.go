@@ -49,6 +49,7 @@ func (counterVec *ClusterCounterVec) WithLabelValues(lbs []string) *ClusterCount
 		factory:             counterVec.factory,
 		storeInterval:       counterVec.storeInterval,
 		localTrafficRatio:   counterVec.defaultLocalTrafficRatio,
+		defaultTrafficRatio:   counterVec.defaultLocalTrafficRatio,
 		discardPreviousData: counterVec.discardPreviousData,
 		declineExpRatio:     counterVec.declineExpRatio,
 	}
