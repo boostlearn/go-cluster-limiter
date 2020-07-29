@@ -40,6 +40,7 @@ type ClusterLimiter struct {
 
 	realPassRate    float64
 	idealPassRate   float64
+	idealRewardRate   float64
 	declineExpRatio float64
 
 	localRequestIncrease      float64
@@ -345,8 +346,12 @@ func (limiter *ClusterLimiter) updateIdealPassRate() {
 		idealPassRate := (limiter.clusterPacingRewardIncrease * limiter.clusterPassIncrease) /
 			(limiter.clusterRequestIncrease * limiter.clusterRewardIncrease)
 
-		fmt.Println(">>>>>>>>>: ", limiter.clusterPacingRewardIncrease, " ", limiter.clusterPassIncrease, " ",
-			limiter.clusterRequestIncrease, " ", limiter.clusterRewardIncrease, " ", idealPassRate)
+		fmt.Println("-----pacing: ", limiter.clusterPacingRewardIncrease, " ",  (lastPacingReward-prevPacingReward))
+        fmt.Println("-----pass: ", limiter.clusterPassIncrease, " ",  (lastPass-prevPass))
+        fmt.Println("-----request:", limiter.clusterRequestIncrease, " ", (lastRequest-prevRequest))
+        fmt.Println("-----reward:", limiter.clusterRewardIncrease, " ", lastReward-prevReward)
+        fmt.Println("-----idea_rate:", idealPassRate)
+
 		if idealPassRate <= 0.0 {
 			idealPassRate = 0.0
 		}

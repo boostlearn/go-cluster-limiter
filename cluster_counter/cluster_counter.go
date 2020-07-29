@@ -82,10 +82,10 @@ func (counter *ClusterCounter) Init() {
 		if err == nil {
 			counter.loadClusterHistory[(counter.loadHistoryPos)%HistoryMax] = value
 			counter.loadLocalHistory[(counter.loadHistoryPos)%HistoryMax] = 0
-			counter.loadTimeHistory[(counter.loadHistoryPos)%HistoryMax] = timeNow
+			counter.loadTimeHistory[(counter.loadHistoryPos)%HistoryMax] = time.Now()
 			counter.loadHistoryPos += 1
 			counter.loadInitValue = value
-            counter.lastLoadTime = timeNow.Truncate(counter.storeInterval.Truncate(counter.storeInterval / 2)).Add(counter.storeInterval / 2)
+            counter.lastLoadTime = timeNow.Truncate(counter.storeInterval.Truncate(counter.storeInterval)).Add(counter.storeInterval / 2)
 			return
 		}
 	}
@@ -281,7 +281,7 @@ func (counter *ClusterCounter) LoadData() bool {
 			counter.loadLocalHistory[counter.loadHistoryPos%HistoryMax] = 0
 		}
 		counter.loadClusterHistory[counter.loadHistoryPos%HistoryMax] = value
-		counter.loadTimeHistory[counter.loadHistoryPos%HistoryMax] = timeNow
+		counter.loadTimeHistory[counter.loadHistoryPos%HistoryMax] = time.Now()
         counter.lastLoadTime = timeNow.Truncate(counter.storeInterval.Truncate(counter.storeInterval)).Add(counter.storeInterval/2)
 		counter.loadHistoryPos += 1
 		counter.updateLocalTrafficRatio()

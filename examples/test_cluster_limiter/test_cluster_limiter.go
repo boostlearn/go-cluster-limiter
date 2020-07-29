@@ -36,7 +36,7 @@ var (
 		Subsystem: "test",
 		Name:      "cluster_limiter",
 		Help:      "数量",
-	}, []string{"counter_instance", "metric_name"})
+	}, []string{"limiter_instance", "metric_name"})
 )
 
 func init() {
@@ -142,7 +142,7 @@ func httpServer() {
 	log.Fatal(err)
 }
 
-func fakeTraffic(counter *cluster_limiter.ClusterLimiter) {
+func fakeTraffic(limiter *cluster_limiter.ClusterLimiter) {
 	rand.Seed(time.Now().Unix())
 
 	ticker := time.NewTicker(100000 * time.Microsecond)
@@ -155,8 +155,8 @@ func fakeTraffic(counter *cluster_limiter.ClusterLimiter) {
 		v = v * mockTrafficFactor
 
 		for j := 0; j < int(v); j++ {
-			if counter.Take(float64(1)) == true {
-				counter.Reward(float64(1))
+			if limiter.Take(float64(1)) == true {
+				limiter.Reward(float64(1))
 			}
 		}
 	}
