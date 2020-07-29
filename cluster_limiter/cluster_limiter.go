@@ -9,7 +9,7 @@ import (
 
 const DEFAULT_MAX_BOOST_FACTOR = 2.0
 const DEFAULT_BURST_INERVAL_SECONDS = 6
-const DEFAULT_DECLINE_EXP_RATIO = 0.8
+const DEFAULT_DECLINE_EXP_RATIO = 0.5
 
 type ClusterLimiter struct {
 	mu sync.RWMutex
@@ -259,10 +259,10 @@ func (limiter *ClusterLimiter) updateIdealPassRate() {
 
 	var _, lastLoadTime = limiter.RewardCounter.ClusterValue(-1)
 	if timeNow.After(lastLoadTime.Add(limiter.burstInterval * 10)) {
-		prev := -limiter.RewardCounter.StoreHistorySize() + 1
-		if prev >= -2 {
+		if limiter.RewardCounter.StoreHistorySize() < 3 {
 			return
 		}
+		prev := -2
 		last := -1
 
 		var prevReward, prevRewardTime = limiter.RewardCounter.LocalStoreValue(prev)
@@ -296,7 +296,7 @@ func (limiter *ClusterLimiter) updateIdealPassRate() {
 		}
 
 		idealPassRate := (limiter.localPacingRewardIncrease * limiter.localPassIncrease) /
-			(limiter.localRewardIncrease * limiter.localRewardIncrease)
+			(limiter.localRequestIncrease * limiter.localRewardIncrease)
 
 		if idealPassRate <= 0.0 {
 			idealPassRate = 0.0
@@ -307,11 +307,11 @@ func (limiter *ClusterLimiter) updateIdealPassRate() {
 		limiter.idealPassRate = limiter.idealPassRate*0.5 + idealPassRate*0.5
 		return
 	} else {
-		prev := -limiter.RewardCounter.LoadHistorySize() + 1
-		last := -1
-		if prev >= -2 {
+		if limiter.RewardCounter.LoadHistorySize() < 3 {
 			return
 		}
+		prev := -2
+		last := -1
 
 		var prevReward, prevRewardTime = limiter.RewardCounter.ClusterValue(prev)
 		var lastReward, lastRewardTime = limiter.RewardCounter.ClusterValue(last)
@@ -345,7 +345,7 @@ func (limiter *ClusterLimiter) updateIdealPassRate() {
 		}
 
 		idealPassRate := (limiter.clusterPacingRewardIncrease * limiter.clusterPassIncrease) /
-			(limiter.clusterRewardIncrease * limiter.clusterRewardIncrease)
+			(limiter.clusterRequestIncrease * limiter.clusterRewardIncrease)
 
 		if idealPassRate <= 0.0 {
 			idealPassRate = 0.0
