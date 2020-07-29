@@ -1,11 +1,11 @@
 package cluster_limiter
 
 import (
+	"fmt"
 	"github.com/boostlearn/go-cluster-limiter/cluster_counter"
 	"math/rand"
 	"sync"
 	"time"
-    "fmt"
 )
 
 const DEFAULT_MAX_BOOST_FACTOR = 2.0
@@ -251,16 +251,16 @@ func (limiter *ClusterLimiter) updateIdealPassRate() {
 	}
 	limiter.lastIdealPassRateTime = time.Now()
 
-	if timeNow.Before(limiter.initTime.Add(limiter.burstInterval*2)) ||
+	if timeNow.Before(limiter.initTime.Add(limiter.burstInterval)) ||
 		timeNow.After(limiter.endTime.Add(-limiter.burstInterval)) ||
-		timeNow.Before(limiter.beginTime.Add(limiter.burstInterval*2)) {
+		timeNow.Before(limiter.beginTime.Add(limiter.burstInterval)) {
 		limiter.realPassRate = limiter.idealPassRate
 		return
 	}
 
 	var _, lastLoadTime = limiter.RewardCounter.ClusterValue(-1)
 	if timeNow.After(lastLoadTime.Add(limiter.burstInterval * 10)) {
-		if limiter.RewardCounter.StoreHistorySize() < 3 {
+		if limiter.RewardCounter.StoreHistorySize() < 2 {
 			return
 		}
 		prev := -2
@@ -280,22 +280,22 @@ func (limiter *ClusterLimiter) updateIdealPassRate() {
 		limiter.localRewardIncrease = limiter.localRewardIncrease*limiter.declineExpRatio + (lastReward-prevReward)*(1-limiter.declineExpRatio)
 		limiter.localPacingRewardIncrease = limiter.localPacingRewardIncrease*limiter.declineExpRatio + (lastPacingReward-prevPacingReward)*(1-limiter.declineExpRatio)
 
-        if limiter.localPassIncrease == 0 ||  limiter.localRewardIncrease == 0 || limiter.idealPassRate == 0.0 {
-            if limiter.localPacingRewardIncrease > 0 &&  limiter.localRequestIncrease > 0 {
-                idealPassRate := limiter.localPacingRewardIncrease / limiter.localRequestIncrease
-                if idealPassRate > 1.0 {
-                    idealPassRate = 1.0
-                }
-                limiter.idealPassRate = idealPassRate
-            }
-            return
-        }
+		if limiter.localPassIncrease == 0 || limiter.localRewardIncrease == 0 || limiter.idealPassRate == 0.0 {
+			if limiter.localPacingRewardIncrease > 0 && limiter.localRequestIncrease > 0 {
+				idealPassRate := limiter.localPacingRewardIncrease / limiter.localRequestIncrease
+				if idealPassRate > 1.0 {
+					idealPassRate = 1.0
+				}
+				limiter.idealPassRate = limiter.idealPassRate * limiter.declineExpRatio + idealPassRate * (1 - limiter.declineExpRatio)
+			}
+			return
+		}
 
-        if limiter.localRequestIncrease == 0.0 ||
-        limiter.localPassIncrease == 0 || limiter.localRewardIncrease == 0.0 ||
-        limiter.localPacingRewardIncrease == 0.0 {
-            return
-        }
+		if limiter.localRequestIncrease == 0.0 ||
+			limiter.localPassIncrease == 0 || limiter.localRewardIncrease == 0.0 ||
+			limiter.localPacingRewardIncrease == 0.0 {
+			return
+		}
 
 		idealPassRate := (limiter.localPacingRewardIncrease * limiter.localPassIncrease) /
 			(limiter.localRequestIncrease * limiter.localRewardIncrease)
@@ -306,10 +306,10 @@ func (limiter *ClusterLimiter) updateIdealPassRate() {
 		if idealPassRate > 1.0 {
 			idealPassRate = 1.0
 		}
-		limiter.idealPassRate = limiter.idealPassRate*0.5 + idealPassRate*0.5
+		limiter.idealPassRate = limiter.idealPassRate * limiter.declineExpRatio + idealPassRate * (1 - limiter.declineExpRatio)
 		return
 	} else {
-		if limiter.RewardCounter.LoadHistorySize() < 3 {
+		if limiter.RewardCounter.LoadHistorySize() < 2 {
 			return
 		}
 		prev := -2
@@ -328,17 +328,16 @@ func (limiter *ClusterLimiter) updateIdealPassRate() {
 		limiter.clusterRewardIncrease = limiter.clusterRewardIncrease*limiter.declineExpRatio + (lastReward-prevReward)*(1-limiter.declineExpRatio)
 		limiter.clusterPacingRewardIncrease = limiter.clusterPacingRewardIncrease*limiter.declineExpRatio + (lastPacingReward-prevPacingReward)*(1-limiter.declineExpRatio)
 
-         if limiter.clusterPassIncrease == 0 ||  limiter.clusterRewardIncrease == 0 || limiter.idealPassRate == 0.0 {
-            if limiter.clusterPacingRewardIncrease > 0 &&  limiter.clusterRequestIncrease > 0 {
-                idealPassRate := limiter.clusterPacingRewardIncrease / limiter.clusterRequestIncrease
-                if idealPassRate > 1.0 {
-                    idealPassRate = 1.0
-                }
-                limiter.idealPassRate = idealPassRate
-            }
-            return
-        }
-
+		if limiter.clusterPassIncrease == 0 || limiter.clusterRewardIncrease == 0 || limiter.idealPassRate == 0.0 {
+			if limiter.clusterPacingRewardIncrease > 0 && limiter.clusterRequestIncrease > 0 {
+				idealPassRate := limiter.clusterPacingRewardIncrease / limiter.clusterRequestIncrease
+				if idealPassRate > 1.0 {
+					idealPassRate = 1.0
+				}
+				limiter.idealPassRate = limiter.idealPassRate * limiter.declineExpRatio + idealPassRate * (1 - limiter.declineExpRatio)
+			}
+			return
+		}
 
 		if limiter.clusterRequestIncrease == 0.0 ||
 			limiter.clusterPassIncrease == 0 || limiter.clusterRewardIncrease == 0.0 ||
@@ -349,15 +348,15 @@ func (limiter *ClusterLimiter) updateIdealPassRate() {
 		idealPassRate := (limiter.clusterPacingRewardIncrease * limiter.clusterPassIncrease) /
 			(limiter.clusterRequestIncrease * limiter.clusterRewardIncrease)
 
-            fmt.Println(">>>>>>>>>: ", limiter.clusterPacingRewardIncrease, " ",  limiter.clusterPassIncrease," ", 
-            limiter.clusterRequestIncrease, " ", limiter.clusterRewardIncrease)
+		fmt.Println(">>>>>>>>>: ", limiter.clusterPacingRewardIncrease, " ", limiter.clusterPassIncrease, " ",
+			limiter.clusterRequestIncrease, " ", limiter.clusterRewardIncrease)
 		if idealPassRate <= 0.0 {
 			idealPassRate = 0.0
 		}
 		if idealPassRate > 1.0 {
 			idealPassRate = 1.0
 		}
-		limiter.idealPassRate = limiter.idealPassRate*0.5 + idealPassRate*0.5
+		limiter.idealPassRate = limiter.idealPassRate * limiter.declineExpRatio + idealPassRate * (1 - limiter.declineExpRatio)
 		return
 	}
 }

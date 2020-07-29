@@ -51,7 +51,7 @@ func main() {
 	flag.Parse()
 	factory := cluster_counter.NewFactory(
 		&cluster_counter.ClusterCounterFactoryOpts{
-			Name:                "",
+			Name:                     "",
 			DefaultLocalTrafficRatio: localTrafficRatio,
 			HeartbeatInterval:        100 * time.Millisecond,
 		},
@@ -117,7 +117,7 @@ func mockTraffic(counter *cluster_counter.ClusterCounter) {
 	rand.Seed(time.Now().Unix())
 
 	ticker := time.NewTicker(100000 * time.Microsecond)
-    var gen float64
+	var gen float64
 	for range ticker.C {
 		k := (time.Now().Unix() / 600) % 6
 		if k >= 3 {
@@ -126,10 +126,10 @@ func mockTraffic(counter *cluster_counter.ClusterCounter) {
 		v := float64(k + 3)
 		gen += v * mockTrafficFactor
 
-        for gen > 1.0 {
-		    counter.Add(float64(1))
-            gen -= 1
-        }
+		for gen > 1.0 {
+			counter.Add(float64(1))
+			gen -= 1
+		}
 
 		time.Sleep(time.Duration(10) * time.Microsecond)
 	}

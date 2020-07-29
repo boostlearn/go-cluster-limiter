@@ -115,6 +115,7 @@ func (counter *ClusterCounter) Expire() bool {
 			counter.lastStoreValue = 0
 			counter.loadHistoryPos = 0
 			counter.loadInitValue = 0
+			counter.storeHistoryPos = 0
 			if pushValue > 0 {
 				counter.mu.Unlock()
 				_ = counter.factory.Store.Store(counter.name, lastBeginTime, lastEndTime, counter.lbs,
