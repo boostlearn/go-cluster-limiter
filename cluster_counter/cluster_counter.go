@@ -55,7 +55,7 @@ func (counter *ClusterCounter) Init() {
 	}
 
 	if counter.defaultTrafficRatio == 0.0 {
-		counter.defaultTrafficRatio = 0.1
+		counter.defaultTrafficRatio = 1.0
 	}
 
 	if counter.storeInterval == 0 {
@@ -73,7 +73,7 @@ func (counter *ClusterCounter) Init() {
 
 		if err == nil {
 			counter.loadClusterHistory[(counter.loadHistoryPos)%HistoryMax] = value
-			counter.loadLocalHistory[(counter.loadHistoryPos)%HistoryMax] = counter.localValue
+			counter.loadLocalHistory[(counter.loadHistoryPos)%HistoryMax] = 0
 			counter.loadTimeHistory[(counter.loadHistoryPos)%HistoryMax] = timeNow
 			counter.loadHistoryPos += 1
 			counter.loadInitValue = value

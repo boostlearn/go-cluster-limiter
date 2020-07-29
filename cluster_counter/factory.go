@@ -40,7 +40,7 @@ func NewFactory(opts *ClusterCounterFactoryOpts, store DataStoreI) *ClusterCount
 	if len(opts.KeyPrefix) == 0 {
 		opts.KeyPrefix = "CLCT:"
 	}
-	if opts.DefaultLocalTrafficRatio < 1.0 {
+	if opts.DefaultLocalTrafficRatio > 1.0 {
 		opts.DefaultLocalTrafficRatio = 1.0
 	}
 
