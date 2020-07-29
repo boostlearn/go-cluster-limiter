@@ -28,14 +28,15 @@ type ClusterCounter struct {
 
 	localValue        float64
 	storeHistoryPos   int64
+	lastStoreTime  time.Time
 	storeLocalHistory [HistoryMax]float64
 	storeTimeHistory  [HistoryMax]time.Time
 	lastStoreValue    float64
-	lastStoreTime     time.Time
 
 	discardPreviousData bool
 	loadInitValue       float64
 	loadHistoryPos      int64
+	lastLoadTime  time.Time
 	loadTimeHistory     [HistoryMax]time.Time
 	loadLocalHistory    [HistoryMax]float64
 	loadClusterHistory  [HistoryMax]float64
@@ -84,6 +85,7 @@ func (counter *ClusterCounter) Init() {
 			counter.loadTimeHistory[(counter.loadHistoryPos)%HistoryMax] = timeNow
 			counter.loadHistoryPos += 1
 			counter.loadInitValue = value
+            counter.lastLoadTime = timeNow.Truncate(counter.storeInterval.Truncate(counter.storeInterval / 2)).Add(counter.storeInterval / 2)
 			return
 		}
 	}
@@ -93,8 +95,9 @@ func (counter *ClusterCounter) Init() {
 	}
 
 	counter.storeLocalHistory[counter.storeHistoryPos%HistoryMax] = counter.localValue
-	counter.storeTimeHistory[counter.storeHistoryPos%HistoryMax] = timeNow.Truncate(counter.storeInterval)
+	counter.storeTimeHistory[counter.storeHistoryPos%HistoryMax] = timeNow
 	counter.storeHistoryPos += 1
+    counter.lastStoreTime = timeNow.Truncate(counter.storeInterval)
 
 }
 
@@ -262,7 +265,7 @@ func (counter *ClusterCounter) LoadData() bool {
 
 	timeNow := time.Now()
 	if counter.storeInterval > 0 && (counter.loadHistoryPos == 0 ||
-		timeNow.After(counter.loadTimeHistory[(counter.loadHistoryPos-1)%HistoryMax].Add(counter.storeInterval))) {
+		timeNow.After(counter.lastLoadTime.Add(counter.storeInterval))) {
 		counter.mu.Unlock()
 		value, err := counter.factory.Store.Load(counter.name, counter.beginTime, counter.endTime,
 			counter.lbs)
@@ -278,8 +281,8 @@ func (counter *ClusterCounter) LoadData() bool {
 			counter.loadLocalHistory[counter.loadHistoryPos%HistoryMax] = 0
 		}
 		counter.loadClusterHistory[counter.loadHistoryPos%HistoryMax] = value
-		counter.loadTimeHistory[counter.loadHistoryPos%HistoryMax] =
-			timeNow.Truncate(counter.storeInterval.Truncate(counter.storeInterval / 2)).Add(counter.storeInterval / 2)
+		counter.loadTimeHistory[counter.loadHistoryPos%HistoryMax] = timeNow
+        counter.lastLoadTime = timeNow.Truncate(counter.storeInterval.Truncate(counter.storeInterval)).Add(counter.storeInterval/2)
 		counter.loadHistoryPos += 1
 		counter.updateLocalTrafficRatio()
 		return true
@@ -324,11 +327,12 @@ func (counter *ClusterCounter) StoreData() bool {
 
 	timeNow := time.Now()
 	if counter.storeInterval > 0 && (counter.storeHistoryPos == 0 ||
-		timeNow.After(counter.storeTimeHistory[(counter.storeHistoryPos-1)%HistoryMax].Add(counter.storeInterval))) {
+		timeNow.After(counter.lastStoreTime.Add(counter.storeInterval))) {
 
 		counter.storeLocalHistory[counter.storeHistoryPos%HistoryMax] = counter.localValue
-		counter.storeTimeHistory[counter.storeHistoryPos%HistoryMax] = timeNow.Truncate(counter.storeInterval)
+		counter.storeTimeHistory[counter.storeHistoryPos%HistoryMax] =  timeNow
 		counter.storeHistoryPos += 1
+        counter.lastStoreTime = timeNow.Truncate(counter.storeInterval)
 
 		pushValue := counter.localValue - counter.lastStoreValue
 		if pushValue > 0 {
@@ -338,7 +342,6 @@ func (counter *ClusterCounter) StoreData() bool {
 			counter.mu.Lock()
 			if err == nil {
 				counter.lastStoreValue += pushValue
-				counter.lastStoreTime = timeNow
 				return true
 			}
 

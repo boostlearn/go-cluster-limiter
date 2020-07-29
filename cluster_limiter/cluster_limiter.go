@@ -1,7 +1,7 @@
 package cluster_limiter
 
 import (
-	//"fmt"
+	"fmt"
 	"github.com/boostlearn/go-cluster-limiter/cluster_counter"
 	"math/rand"
 	"sync"
@@ -57,7 +57,7 @@ func (limiter *ClusterLimiter) Init() {
 	limiter.mu.Lock()
 	defer limiter.mu.Unlock()
 
-	timeNow := time.Now().Truncate(time.Second)
+	timeNow := time.Now()
 	limiter.initTime = timeNow
 	if limiter.burstInterval.Truncate(time.Second) == 0 {
 		limiter.burstInterval = DEFAULT_BURST_INERVAL_SECONDS * time.Second
@@ -226,7 +226,7 @@ func (limiter *ClusterLimiter) Heartbeat() {
 	limiter.mu.Lock()
 	defer limiter.mu.Unlock()
 
-	timeNow := time.Now().Truncate(time.Second)
+	timeNow := time.Now()
 	if timeNow.After(limiter.endTime) || timeNow.Before(limiter.beginTime) {
 		return
 	}
@@ -345,8 +345,8 @@ func (limiter *ClusterLimiter) updateIdealPassRate() {
 		idealPassRate := (limiter.clusterPacingRewardIncrease * limiter.clusterPassIncrease) /
 			(limiter.clusterRequestIncrease * limiter.clusterRewardIncrease)
 
-		//fmt.Println(">>>>>>>>>: ", limiter.clusterPacingRewardIncrease, " ", limiter.clusterPassIncrease, " ",
-		//	limiter.clusterRequestIncrease, " ", limiter.clusterRewardIncrease, " ", idealPassRate)
+		fmt.Println(">>>>>>>>>: ", limiter.clusterPacingRewardIncrease, " ", limiter.clusterPassIncrease, " ",
+			limiter.clusterRequestIncrease, " ", limiter.clusterRewardIncrease, " ", idealPassRate)
 		if idealPassRate <= 0.0 {
 			idealPassRate = 0.0
 		}
@@ -359,7 +359,7 @@ func (limiter *ClusterLimiter) updateIdealPassRate() {
 }
 
 func (limiter *ClusterLimiter) updateRealPassRate() {
-	timeNow := time.Now().Truncate(time.Second)
+	timeNow := time.Now()
 	if timeNow.Before(limiter.initTime.Add(limiter.burstInterval*2)) ||
 		timeNow.After(limiter.endTime.Add(-limiter.burstInterval)) ||
 		timeNow.Before(limiter.beginTime.Add(limiter.burstInterval*2)) {
