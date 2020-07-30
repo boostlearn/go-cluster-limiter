@@ -10,7 +10,7 @@ import (
 
 const DEFAULT_MAX_BOOST_FACTOR = 2.0
 const DEFAULT_BOOST_BURST_FACTOR = 10.0
-const DEFAULT_BURST_INERVAL_SECONDS = 2
+const DEFAULT_BURST_INERVAL_SECONDS = 5
 const DEFAULT_DECLINE_EXP_RATIO = 0.5
 
 type ClusterLimiter struct {
@@ -53,6 +53,11 @@ type ClusterLimiter struct {
 	clusterPassIncrease         float64
 	clusterRewardIncrease       float64
 	clusterPacingRewardIncrease float64
+
+	lastLocalPass         float64
+	lastLocalReward       float64
+	lastLocalRequest      float64
+	lastLocalPacingReward float64
 }
 
 func (limiter *ClusterLimiter) Init() {
@@ -263,27 +268,22 @@ func (limiter *ClusterLimiter) updateIdealPassRate() {
 	}
 	limiter.lastIdealPassRateTime = time.Now()
 
-	//if timeNow.Before(limiter.initTime.Add(limiter.burstInterval)) ||
-	//	timeNow.After(limiter.endTime.Add(-limiter.burstInterval)) ||
-	//	timeNow.Before(limiter.beginTime.Add(limiter.burstInterval)) {
-	//	limiter.realPassRate = limiter.idealPassRate
-	//	return
-	//}
+	if timeNow.Before(limiter.initTime.Add(limiter.burstInterval)) ||
+		timeNow.After(limiter.endTime.Add(-limiter.burstInterval)) ||
+		timeNow.Before(limiter.beginTime.Add(limiter.burstInterval)) {
+		limiter.realPassRate = limiter.idealPassRate
+		return
+	}
 
 	var _, lastLoadTime = limiter.RequestCounter.ClusterValue(-1)
 	if timeNow.After(lastLoadTime.Add(limiter.burstInterval * 10)) {
-		prev := -limiter.RequestCounter.StoreHistorySize() + 1
-		last := -1
-		if last <= prev {
-			return
-		}
-		var prevRequest, prevTime = limiter.RequestCounter.LocalStoreValue(prev)
-		var lastRequest, lastTime = limiter.RequestCounter.LocalStoreValue(last)
-		var prevPacingReward = limiter.getPacingReward(prevTime) * limiter.RequestCounter.LocalTrafficRatio()
-		var lastPacingReward = limiter.getPacingReward(lastTime) * limiter.RequestCounter.LocalTrafficRatio()
+		var curRequest, _ = limiter.RequestCounter.LocalStoreValue(0)
+		var curPacingReward = limiter.getPacingReward(timeNow) * limiter.RequestCounter.LocalTrafficRatio()
 
-		limiter.localRequestIncrease = limiter.localRequestIncrease*limiter.declineExpRatio + (lastRequest-prevRequest)*(1-limiter.declineExpRatio)
-		limiter.localPacingRewardIncrease = limiter.localPacingRewardIncrease*limiter.declineExpRatio + (lastPacingReward-prevPacingReward)*(1-limiter.declineExpRatio)
+		limiter.localRequestIncrease = limiter.localRequestIncrease*limiter.declineExpRatio + (curRequest-limiter.lastLocalRequest)*(1-limiter.declineExpRatio)
+		limiter.localPacingRewardIncrease = limiter.localPacingRewardIncrease*limiter.declineExpRatio + (curPacingReward-limiter.lastLocalPacingReward)*(1-limiter.declineExpRatio)
+		limiter.lastLocalRequest = curRequest
+		limiter.lastLocalPacingReward = curPacingReward
 
 		if limiter.localPacingRewardIncrease == 0 && limiter.localRequestIncrease == 0 {
 			return
@@ -340,24 +340,17 @@ func (limiter *ClusterLimiter) updateIdealRewardRate() {
 	}
 	limiter.lastRewardPassRateTime = time.Now()
 
-	prev := -limiter.PassCounter.StoreHistorySize() + 1
-	last := 0
-	if last <= prev {
-		return
-	}
-
-	var prevReward, _ = limiter.RewardCounter.LocalStoreValue(prev)
-	var lastReward, _ = limiter.RewardCounter.LocalStoreValue(last)
-	var prevPass, _ = limiter.PassCounter.LocalStoreValue(prev)
-	var lastPass, _ = limiter.PassCounter.LocalStoreValue(last)
-
-	limiter.localPassIncrease = limiter.localPassIncrease*limiter.declineExpRatio + (lastPass-prevPass)*(1-limiter.declineExpRatio)
-	limiter.localRewardIncrease = limiter.localRewardIncrease*limiter.declineExpRatio + (lastReward-prevReward)*(1-limiter.declineExpRatio)
-
+	var curReward, _ = limiter.RewardCounter.LocalStoreValue(0)
+	var curPass, _ = limiter.PassCounter.LocalStoreValue(0)
+	limiter.localPassIncrease = limiter.localPassIncrease*limiter.declineExpRatio + (curPass-limiter.lastLocalPass)*(1-limiter.declineExpRatio)
+	limiter.localRewardIncrease = limiter.localRewardIncrease*limiter.declineExpRatio + (curReward-limiter.lastLocalReward)*(1-limiter.declineExpRatio)
 	if limiter.localRewardIncrease != 0 && limiter.localPassIncrease != 0 {
 		idealRewardRate := limiter.localRewardIncrease / limiter.localPassIncrease
 		limiter.idealRewardRate = limiter.idealRewardRate*limiter.declineExpRatio + idealRewardRate*(1-limiter.declineExpRatio)
 	}
+	limiter.lastLocalReward = curReward
+	limiter.lastLocalPass = curPass
+
 	return
 
 }

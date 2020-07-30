@@ -22,8 +22,8 @@ func NewStore(address string, pass string, prefix string) *RedisStore {
 		Password:     pass,
 		DB:           0,
 		DialTimeout:  1 * time.Second,
-		ReadTimeout:  100 * time.Millisecond,
-		WriteTimeout: 100 * time.Millisecond,
+		ReadTimeout:  500 * time.Millisecond,
+		WriteTimeout: 500 * time.Millisecond,
 	}
 	cli := redis.NewClient(options)
 
