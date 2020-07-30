@@ -28,7 +28,7 @@ type ClusterCounter struct {
 
 	localValue        float64
 	storeHistoryPos   int64
-	lastStoreTime  time.Time
+	lastStoreTime     time.Time
 	storeLocalHistory [HistoryMax]float64
 	storeTimeHistory  [HistoryMax]time.Time
 	lastStoreValue    float64
@@ -36,7 +36,7 @@ type ClusterCounter struct {
 	discardPreviousData bool
 	loadInitValue       float64
 	loadHistoryPos      int64
-	lastLoadTime  time.Time
+	lastLoadTime        time.Time
 	loadTimeHistory     [HistoryMax]time.Time
 	loadLocalHistory    [HistoryMax]float64
 	loadClusterHistory  [HistoryMax]float64
@@ -85,7 +85,7 @@ func (counter *ClusterCounter) Init() {
 			counter.loadTimeHistory[(counter.loadHistoryPos)%HistoryMax] = time.Now()
 			counter.loadHistoryPos += 1
 			counter.loadInitValue = value
-            counter.lastLoadTime = timeNow.Truncate(counter.storeInterval.Truncate(counter.storeInterval)).Add(counter.storeInterval / 2)
+			counter.lastLoadTime = timeNow.Truncate(counter.storeInterval.Truncate(counter.storeInterval)).Add(counter.storeInterval / 2)
 			return
 		}
 	}
@@ -97,7 +97,7 @@ func (counter *ClusterCounter) Init() {
 	counter.storeLocalHistory[counter.storeHistoryPos%HistoryMax] = counter.localValue
 	counter.storeTimeHistory[counter.storeHistoryPos%HistoryMax] = timeNow
 	counter.storeHistoryPos += 1
-    counter.lastStoreTime = timeNow.Truncate(counter.storeInterval)
+	counter.lastStoreTime = timeNow.Truncate(counter.storeInterval)
 
 }
 
@@ -282,7 +282,7 @@ func (counter *ClusterCounter) LoadData() bool {
 		}
 		counter.loadClusterHistory[counter.loadHistoryPos%HistoryMax] = value
 		counter.loadTimeHistory[counter.loadHistoryPos%HistoryMax] = time.Now()
-        counter.lastLoadTime = timeNow.Truncate(counter.storeInterval.Truncate(counter.storeInterval)).Add(counter.storeInterval/2)
+		counter.lastLoadTime = timeNow.Truncate(counter.storeInterval.Truncate(counter.storeInterval)).Add(counter.storeInterval / 2)
 		counter.loadHistoryPos += 1
 		counter.updateLocalTrafficRatio()
 		return true
@@ -330,9 +330,9 @@ func (counter *ClusterCounter) StoreData() bool {
 		timeNow.After(counter.lastStoreTime.Add(counter.storeInterval))) {
 
 		counter.storeLocalHistory[counter.storeHistoryPos%HistoryMax] = counter.localValue
-		counter.storeTimeHistory[counter.storeHistoryPos%HistoryMax] =  timeNow
+		counter.storeTimeHistory[counter.storeHistoryPos%HistoryMax] = timeNow
 		counter.storeHistoryPos += 1
-        counter.lastStoreTime = timeNow.Truncate(counter.storeInterval)
+		counter.lastStoreTime = timeNow.Truncate(counter.storeInterval)
 
 		pushValue := counter.localValue - counter.lastStoreValue
 		if pushValue > 0 {

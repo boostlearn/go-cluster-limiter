@@ -42,7 +42,7 @@ var (
 func init() {
 	flag.Int64Var(&targetNum, "a", 10000, "total target num")
 	flag.Int64Var(&resetInterval, "b", 600, "reset data interval")
-	flag.Int64Var(&mockTrafficFactor, "c", 1, "mock traffic factor")
+	flag.Int64Var(&mockTrafficFactor, "c", 10, "mock traffic factor")
 	flag.StringVar(&limiterName, "d", "test_cluster_limiter", "limiter's unique name")
 	flag.StringVar(&instanceName, "e", "test1", "test instance name")
 	flag.StringVar(&redisAddr, "f", "127.0.0.1:6379", "store: redis address")
@@ -101,6 +101,7 @@ func main() {
 
 		data["pass_rate"] = float64(limiter.PassRate())
 		data["ideal_rate"] = float64(limiter.IdealPassRate())
+		data["reward_rate"] = float64(limiter.IdealRewardRate())
 		data["total_target"] = float64(limiter.GetTarget())
 		data["pacing_target"] = float64(limiter.PacingReward())
 
