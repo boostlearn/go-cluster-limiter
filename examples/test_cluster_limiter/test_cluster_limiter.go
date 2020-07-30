@@ -42,7 +42,7 @@ var (
 func init() {
 	flag.Int64Var(&targetNum, "a", 1000000, "total target num")
 	flag.Int64Var(&resetInterval, "b", 3600, "reset data interval")
-	flag.Int64Var(&mockTrafficFactor, "c", 10, "mock traffic factor")
+	flag.Int64Var(&mockTrafficFactor, "c", 100, "mock traffic factor")
 	flag.StringVar(&limiterName, "d", "test_cluster_limiter", "limiter's unique name")
 	flag.StringVar(&instanceName, "e", "test1", "test instance name")
 	flag.StringVar(&redisAddr, "f", "127.0.0.1:6379", "store: redis address")

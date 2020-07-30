@@ -477,10 +477,13 @@ func (limiter *ClusterLimiter) updateRealPassRate() {
 		}
 	}
 
-	if len(limiter.scoreSamplesSorted) > 0 {
-		limiter.scoreCutValue = limiter.scoreSamplesSorted[int(float64(len(limiter.scoreSamplesSorted))*limiter.realPassRate)]
+	if len(limiter.scoreSamplesSorted) > 0 && limiter.realPassRate > 0 && limiter.realPassRate < 1.0{
+		limiter.scoreCutValue = limiter.scoreSamplesSorted[
+        int(float64((len(limiter.scoreSamplesSorted) - 1))*( 1 - limiter.realPassRate))]
 		limiter.scoreCutReady = true
-	}
+	} else {
+		limiter.scoreCutReady = false
+    }
 }
 
 func (limiter *ClusterLimiter) sortScoreSamples() {
