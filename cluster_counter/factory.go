@@ -19,7 +19,7 @@ type ClusterCounterOpts struct {
 	StoreDataInterval   time.Duration
 
 	InitLocalTrafficRatio float64
-	DeclineExpRatio          float64
+	DeclineExpRatio       float64
 }
 
 type ClusterCounterFactory struct {
@@ -92,16 +92,16 @@ func (factory *ClusterCounterFactory) NewClusterCounterVec(opts *ClusterCounterO
 	}
 
 	clusterCounterVec := &ClusterCounterVec{
-		factory:                  factory,
-		beginTime:                opts.BeginTime,
-		endTime:                  opts.EndTime,
-		periodInterval:           opts.PeriodInterval,
-		storeInterval:            opts.StoreDataInterval.Truncate(time.Second),
-		name:                     opts.Name,
-		labelNames:               append([]string{}, labelNames...),
+		factory:               factory,
+		beginTime:             opts.BeginTime,
+		endTime:               opts.EndTime,
+		periodInterval:        opts.PeriodInterval,
+		storeInterval:         opts.StoreDataInterval.Truncate(time.Second),
+		name:                  opts.Name,
+		labelNames:            append([]string{}, labelNames...),
 		initLocalTrafficRatio: opts.InitLocalTrafficRatio,
-		discardPreviousData:      opts.DiscardPreviousData,
-		declineExpRatio:          opts.DeclineExpRatio,
+		discardPreviousData:   opts.DiscardPreviousData,
+		declineExpRatio:       opts.DeclineExpRatio,
 	}
 
 	factory.clusterCounterVectors.Store(opts.Name, clusterCounterVec)
@@ -132,15 +132,15 @@ func (factory *ClusterCounterFactory) NewClusterCounter(opts *ClusterCounterOpts
 	}
 
 	clusterCounter := &ClusterCounter{
-		factory:             factory,
-		beginTime:           opts.BeginTime,
-		endTime:             opts.EndTime,
-		periodInterval:      opts.PeriodInterval,
-		storeInterval:       opts.StoreDataInterval.Truncate(time.Second),
-		name:                opts.Name,
+		factory:               factory,
+		beginTime:             opts.BeginTime,
+		endTime:               opts.EndTime,
+		periodInterval:        opts.PeriodInterval,
+		storeInterval:         opts.StoreDataInterval.Truncate(time.Second),
+		name:                  opts.Name,
 		initLocalTrafficRatio: opts.InitLocalTrafficRatio,
-		discardPreviousData: opts.DiscardPreviousData,
-		declineExpRatio:     opts.DeclineExpRatio,
+		discardPreviousData:   opts.DiscardPreviousData,
+		declineExpRatio:       opts.DeclineExpRatio,
 	}
 	clusterCounter.Init()
 
