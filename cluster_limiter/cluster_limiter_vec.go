@@ -33,6 +33,9 @@ type ClusterLimiterVec struct {
 
 	burstInterval time.Duration
 
+	initIdealPassRate float64
+	initRewardRate float64
+
 	mu       sync.RWMutex
 	limiters sync.Map
 }
@@ -59,6 +62,8 @@ func (limiterVec *ClusterLimiterVec) WithLabelValues(lbs []string) *ClusterLimit
 		burstInterval:       limiterVec.burstInterval,
 		mu:                  sync.RWMutex{},
 		discardPreviousData: limiterVec.discardPreviousData,
+		idealPassRate: limiterVec.initIdealPassRate,
+		idealRewardRate: limiterVec.initRewardRate,
 	}
 	newLimiter.Init()
 	newLimiter.Heartbeat()

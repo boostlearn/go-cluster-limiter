@@ -21,6 +21,8 @@ type ClusterLimiterOpts struct {
 	MaxBoostFactor      float64
 	DiscardPreviousData bool
 	InitLocalTrafficRatio float64
+	InitIdealPassRate float64
+	InitRewardRate float64
 }
 
 type ClusterLimiterFactory struct {
@@ -101,6 +103,8 @@ func (factory *ClusterLimiterFactory) NewClusterLimiterVec(opts *ClusterLimiterO
 		maxBoostFactor:      opts.MaxBoostFactor,
 		burstInterval:       opts.BurstInterval,
 		discardPreviousData: opts.DiscardPreviousData,
+		initIdealPassRate: opts.InitIdealPassRate,
+		initRewardRate: opts.InitRewardRate,
 	}
 
 	var err error
@@ -170,6 +174,8 @@ func (factory *ClusterLimiterFactory) NewClusterLimiter(opts *ClusterLimiterOpts
 		reserveInterval:     opts.ReserveInterval,
 		maxBoostFactor:      opts.MaxBoostFactor,
 		discardPreviousData: opts.DiscardPreviousData,
+		idealPassRate: opts.InitIdealPassRate,
+		idealRewardRate: opts.InitRewardRate,
 	}
 
 	var err error
