@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"github.com/boostlearn/go-cluster-limiter/cluster_counter"
 	"math/rand"
+	"sort"
 	"sync"
 	"time"
 )
@@ -12,6 +13,7 @@ const DEFAULT_MAX_BOOST_FACTOR = 2.0
 const DEFAULT_BOOST_BURST_FACTOR = 10.0
 const DEFAULT_BURST_INERVAL_SECONDS = 5
 const DEFAULT_DECLINE_EXP_RATIO = 0.5
+const DEFAULT_SCORE_SAMPLES_SORT_INTERVAL_SECONDS = 60
 
 type ClusterLimiter struct {
 	mu sync.RWMutex
@@ -58,6 +60,16 @@ type ClusterLimiter struct {
 	lastLocalReward       float64
 	lastLocalRequest      float64
 	lastLocalPacingReward float64
+
+	scoreSamplesSortInterval          time.Duration
+	lastScoreSortTime time.Time
+
+	scoreSamples []float64
+	scoreSamplesSorted []float64
+	scoreSamplesMax int64
+	scoreSamplesPos int64
+	scoreCutReady bool
+	scoreCutValue float64
 }
 
 func (limiter *ClusterLimiter) Init() {
@@ -76,6 +88,16 @@ func (limiter *ClusterLimiter) Init() {
 
 	if limiter.declineExpRatio == 0.0 {
 		limiter.declineExpRatio = DEFAULT_DECLINE_EXP_RATIO
+	}
+
+	if limiter.scoreSamplesSortInterval == 0 {
+		limiter.scoreSamplesSortInterval = DEFAULT_SCORE_SAMPLES_SORT_INTERVAL_SECONDS * time.Second
+	}
+
+	if limiter.scoreSamplesMax > 0 {
+		limiter.scoreSamples = make([]float64, int(limiter.scoreSamplesMax))
+		limiter.scoreSamplesPos = 0
+		limiter.scoreCutReady = false
 	}
 
 	limiter.idealRewardRate = 1.0
@@ -119,6 +141,59 @@ func (limiter *ClusterLimiter) Take(v float64) bool {
 
 	limiter.PassCounter.Add(v)
 	return true
+}
+
+func (limiter *ClusterLimiter) ScoreTake(v float64, score float64) bool {
+	limiter.mu.RLock()
+	defer limiter.mu.RUnlock()
+
+	if limiter.targetReward == 0 {
+		return false
+	}
+
+	if limiter.scoreSamplesMax > 0 {
+		limiter.scoreSamples[limiter.scoreSamplesPos%limiter.scoreSamplesMax] = score
+		limiter.scoreSamplesPos++
+	}
+
+	limiter.RequestCounter.Add(v)
+
+	if limiter.scoreCutReady == false || limiter.scoreSamplesMax == 0 {
+		if rand.Float64() > limiter.realPassRate {
+			return false
+		}
+	} else {
+		if score < limiter.scoreCutValue {
+			return false
+		}
+	}
+
+	clusterPred, _ := limiter.RewardCounter.ClusterValue(0)
+	if clusterPred+v > limiter.getPacingReward(time.Now()) {
+		return false
+	}
+
+	limiter.PassCounter.Add(v)
+	return true
+}
+
+
+func (limiter *ClusterLimiter) Acquire(v float64) bool {
+	if limiter.Take(v) {
+		limiter.Reward(v)
+		return true
+	} else {
+		return false
+	}
+}
+
+func (limiter *ClusterLimiter) ScoreAcquire(v float64, score float64) bool {
+	if limiter.ScoreTake(v, score) {
+		limiter.Reward(v)
+		return true
+	} else {
+		return false
+	}
 }
 
 func (limiter *ClusterLimiter) SetTarget(target float64) {
@@ -202,6 +277,13 @@ func (limiter *ClusterLimiter) PassRate() float64 {
 	return limiter.realPassRate
 }
 
+func (limiter *ClusterLimiter) ScoreCut() (bool, float64) {
+	limiter.mu.RLock()
+	defer limiter.mu.RUnlock()
+
+	return limiter.scoreCutReady, limiter.scoreCutValue
+}
+
 //
 func (limiter *ClusterLimiter) IdealPassRate() float64 {
 	limiter.mu.RLock()
@@ -259,6 +341,7 @@ func (limiter *ClusterLimiter) Heartbeat() {
 	limiter.updateIdealRewardRate()
 	limiter.updateIdealPassRate()
 	limiter.updateRealPassRate()
+	limiter.sortScoreSamples()
 }
 
 func (limiter *ClusterLimiter) updateIdealPassRate() {
@@ -393,4 +476,31 @@ func (limiter *ClusterLimiter) updateRealPassRate() {
 			limiter.realPassRate = smoothPassRate
 		}
 	}
+
+	if len(limiter.scoreSamplesSorted) > 0 {
+		limiter.scoreCutValue = limiter.scoreSamplesSorted[int(float64(len(limiter.scoreSamplesSorted))*limiter.realPassRate)]
+		limiter.scoreCutReady = true
+	}
+}
+
+func (limiter *ClusterLimiter) sortScoreSamples() {
+	if limiter.scoreSamplesMax <= 100 || limiter.scoreSamplesPos <= 100 {
+		return
+	}
+
+	timeNow := time.Now()
+	if timeNow.Before(limiter.lastScoreSortTime.Add(limiter.scoreSamplesSortInterval)) {
+		return
+	}
+	sampleNum := limiter.scoreSamplesPos
+	if sampleNum > limiter.scoreSamplesMax {
+		sampleNum = limiter.scoreSamplesMax
+	}
+	samples := append([]float64{}, limiter.scoreSamples[:sampleNum]...)
+	limiter.mu.Unlock()
+	sort.Stable(sort.Float64Slice(samples))
+	limiter.mu.Lock()
+
+	limiter.lastScoreSortTime = time.Now()
+	limiter.scoreSamplesSorted = samples
 }

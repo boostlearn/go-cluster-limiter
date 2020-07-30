@@ -36,6 +36,9 @@ type ClusterLimiterVec struct {
 	initIdealPassRate float64
 	initRewardRate float64
 
+	scoreSamplesSortInterval          time.Duration
+	scoreSamplesMax int64
+
 	mu       sync.RWMutex
 	limiters sync.Map
 }
@@ -64,6 +67,8 @@ func (limiterVec *ClusterLimiterVec) WithLabelValues(lbs []string) *ClusterLimit
 		discardPreviousData: limiterVec.discardPreviousData,
 		idealPassRate: limiterVec.initIdealPassRate,
 		idealRewardRate: limiterVec.initRewardRate,
+		scoreSamplesMax: limiterVec.scoreSamplesMax,
+		scoreSamplesSortInterval: limiterVec.scoreSamplesSortInterval,
 	}
 	newLimiter.Init()
 	newLimiter.Heartbeat()
