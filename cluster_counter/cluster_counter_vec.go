@@ -16,7 +16,7 @@ type ClusterCounterVec struct {
 	endTime                  time.Time
 	periodInterval           time.Duration
 	storeInterval            time.Duration
-	defaultLocalTrafficRatio float64
+	initLocalTrafficRatio float64
 	discardPreviousData      bool
 	declineExpRatio          float64
 	counters                 sync.Map
@@ -48,8 +48,8 @@ func (counterVec *ClusterCounterVec) WithLabelValues(lbs []string) *ClusterCount
 		mu:                  sync.RWMutex{},
 		factory:             counterVec.factory,
 		storeInterval:       counterVec.storeInterval,
-		localTrafficRatio:   counterVec.defaultLocalTrafficRatio,
-		defaultTrafficRatio: counterVec.defaultLocalTrafficRatio,
+		localTrafficRatio:   counterVec.initLocalTrafficRatio,
+		initLocalTrafficRatio: counterVec.initLocalTrafficRatio,
 		discardPreviousData: counterVec.discardPreviousData,
 		declineExpRatio:     counterVec.declineExpRatio,
 	}

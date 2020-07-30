@@ -63,8 +63,8 @@ func main() {
 	limiterFactory := cluster_limiter.NewFactory(
 		&cluster_limiter.ClusterLimiterFactoryOpts{
 			Name:                     "test",
-			DefaultHeartbeatInterval: 100 * time.Millisecond,
-			DefaultLocalTrafficRate:  localTrafficRatio,
+			HeartbeatInterval: 100 * time.Millisecond,
+			InitLocalTrafficRatio:  localTrafficRatio,
 		},
 		counterStore)
 	limiterFactory.Start()

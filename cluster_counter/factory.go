@@ -18,7 +18,7 @@ type ClusterCounterOpts struct {
 	DiscardPreviousData bool
 	StoreDataInterval   time.Duration
 
-	DefaultLocalTrafficRatio float64
+	InitLocalTrafficRatio float64
 	DeclineExpRatio          float64
 }
 
@@ -75,8 +75,8 @@ func (factory *ClusterCounterFactory) NewClusterCounterVec(opts *ClusterCounterO
 		return nil, errors.New("need label names")
 	}
 
-	if opts.DefaultLocalTrafficRatio == 0.0 {
-		opts.DefaultLocalTrafficRatio = factory.defaultLocalTrafficRatio
+	if opts.InitLocalTrafficRatio == 0.0 {
+		opts.InitLocalTrafficRatio = factory.defaultLocalTrafficRatio
 	}
 
 	if opts.StoreDataInterval.Truncate(time.Second) == 0 {
@@ -87,8 +87,8 @@ func (factory *ClusterCounterFactory) NewClusterCounterVec(opts *ClusterCounterO
 		return counter.(*ClusterCounterVec), nil
 	}
 
-	if opts.DefaultLocalTrafficRatio == 0 {
-		opts.DefaultLocalTrafficRatio = factory.defaultLocalTrafficRatio
+	if opts.InitLocalTrafficRatio == 0 {
+		opts.InitLocalTrafficRatio = factory.defaultLocalTrafficRatio
 	}
 
 	clusterCounterVec := &ClusterCounterVec{
@@ -99,7 +99,7 @@ func (factory *ClusterCounterFactory) NewClusterCounterVec(opts *ClusterCounterO
 		storeInterval:            opts.StoreDataInterval.Truncate(time.Second),
 		name:                     opts.Name,
 		labelNames:               append([]string{}, labelNames...),
-		defaultLocalTrafficRatio: opts.DefaultLocalTrafficRatio,
+		initLocalTrafficRatio: opts.InitLocalTrafficRatio,
 		discardPreviousData:      opts.DiscardPreviousData,
 		declineExpRatio:          opts.DeclineExpRatio,
 	}
@@ -115,8 +115,8 @@ func (factory *ClusterCounterFactory) NewClusterCounter(opts *ClusterCounterOpts
 		return nil, errors.New("name error")
 	}
 
-	if opts.DefaultLocalTrafficRatio == 0.0 {
-		opts.DefaultLocalTrafficRatio = factory.defaultLocalTrafficRatio
+	if opts.InitLocalTrafficRatio == 0.0 {
+		opts.InitLocalTrafficRatio = factory.defaultLocalTrafficRatio
 	}
 
 	if opts.StoreDataInterval.Truncate(time.Second) == 0 {
@@ -127,8 +127,8 @@ func (factory *ClusterCounterFactory) NewClusterCounter(opts *ClusterCounterOpts
 		return counter.(*ClusterCounter), nil
 	}
 
-	if opts.DefaultLocalTrafficRatio == 0 {
-		opts.DefaultLocalTrafficRatio = factory.defaultLocalTrafficRatio
+	if opts.InitLocalTrafficRatio == 0 {
+		opts.InitLocalTrafficRatio = factory.defaultLocalTrafficRatio
 	}
 
 	clusterCounter := &ClusterCounter{
@@ -138,7 +138,7 @@ func (factory *ClusterCounterFactory) NewClusterCounter(opts *ClusterCounterOpts
 		periodInterval:      opts.PeriodInterval,
 		storeInterval:       opts.StoreDataInterval.Truncate(time.Second),
 		name:                opts.Name,
-		defaultTrafficRatio: opts.DefaultLocalTrafficRatio,
+		initLocalTrafficRatio: opts.InitLocalTrafficRatio,
 		discardPreviousData: opts.DiscardPreviousData,
 		declineExpRatio:     opts.DeclineExpRatio,
 	}

@@ -41,7 +41,7 @@ type ClusterCounter struct {
 	loadLocalHistory    [HistoryMax]float64
 	loadClusterHistory  [HistoryMax]float64
 
-	defaultTrafficRatio float64
+	initLocalTrafficRatio float64
 	localTrafficRatio   float64
 
 	localIncrease   float64
@@ -62,8 +62,8 @@ func (counter *ClusterCounter) Init() {
 		counter.endTime = counter.beginTime.Add(counter.periodInterval)
 	}
 
-	if counter.defaultTrafficRatio == 0.0 {
-		counter.defaultTrafficRatio = DEFAULT_TRAFFIC_RATIO
+	if counter.initLocalTrafficRatio == 0.0 {
+		counter.initLocalTrafficRatio = DEFAULT_TRAFFIC_RATIO
 	}
 
 	if counter.storeInterval == 0 {
@@ -71,7 +71,7 @@ func (counter *ClusterCounter) Init() {
 	}
 
 	if counter.localTrafficRatio == 0.0 {
-		counter.localTrafficRatio = counter.defaultTrafficRatio
+		counter.localTrafficRatio = counter.initLocalTrafficRatio
 	}
 
 	if counter.factory != nil && counter.factory.Store != nil {
@@ -177,7 +177,7 @@ func (counter *ClusterCounter) ClusterValue(last int) (float64, time.Time) {
 
 	if last == 0 {
 		if counter.localTrafficRatio == 0.0 {
-			counter.localTrafficRatio = counter.defaultTrafficRatio
+			counter.localTrafficRatio = counter.initLocalTrafficRatio
 		}
 
 		var clusterLast float64 = 0
@@ -227,7 +227,7 @@ func (counter *ClusterCounter) LocalTrafficRatio() float64 {
 	defer counter.mu.RUnlock()
 
 	if counter.localTrafficRatio == 0.0 {
-		return counter.defaultTrafficRatio
+		return counter.initLocalTrafficRatio
 	}
 
 	return counter.localTrafficRatio
@@ -292,7 +292,7 @@ func (counter *ClusterCounter) LoadData() bool {
 
 func (counter *ClusterCounter) updateLocalTrafficRatio() {
 	if counter.localTrafficRatio == 0.0 || (counter.loadHistoryPos < 4 && counter.initTime.After(counter.beginTime)) {
-		counter.localTrafficRatio = counter.defaultTrafficRatio
+		counter.localTrafficRatio = counter.initLocalTrafficRatio
 		return
 	}
 

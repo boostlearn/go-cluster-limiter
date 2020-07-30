@@ -66,7 +66,7 @@ func main() {
 			PeriodInterval:           time.Duration(periodInterval) * time.Second,
 			DiscardPreviousData:      discardPreviousData,
 			StoreDataInterval:        0,
-			DefaultLocalTrafficRatio: localTrafficRatio,
+			InitLocalTrafficRatio: localTrafficRatio,
 		},
 		[]string{"label1", "label2"})
 	if err != nil {
