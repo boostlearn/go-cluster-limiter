@@ -40,8 +40,8 @@ var (
 )
 
 func init() {
-	flag.Int64Var(&targetNum, "a", 10000, "total target num")
-	flag.Int64Var(&resetInterval, "b", 600, "reset data interval")
+	flag.Int64Var(&targetNum, "a", 1000000, "total target num")
+	flag.Int64Var(&resetInterval, "b", 3600, "reset data interval")
 	flag.Int64Var(&mockTrafficFactor, "c", 10, "mock traffic factor")
 	flag.StringVar(&limiterName, "d", "test_cluster_limiter", "limiter's unique name")
 	flag.StringVar(&instanceName, "e", "test1", "test instance name")
@@ -156,8 +156,11 @@ func fakeTraffic(limiter *cluster_limiter.ClusterLimiter) {
 		v = v * mockTrafficFactor
 
 		for j := 0; j < int(v); j++ {
+			metrics.WithLabelValues(instanceName, "request").Add(1)
 			if limiter.Take(float64(1)) == true {
+			    metrics.WithLabelValues(instanceName, "pass").Add(1)
                 if rand.Float64() > 0.5 {
+			        metrics.WithLabelValues(instanceName, "reward").Add(1)
                     limiter.Reward(float64(1))
                 }
             }
