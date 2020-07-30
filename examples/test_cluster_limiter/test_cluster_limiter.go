@@ -157,8 +157,10 @@ func fakeTraffic(limiter *cluster_limiter.ClusterLimiter) {
 
 		for j := 0; j < int(v); j++ {
 			if limiter.Take(float64(1)) == true {
-				limiter.Reward(float64(1))
-			}
+                if rand.Float64() > 0.5 {
+                    limiter.Reward(float64(1))
+                }
+            }
 		}
 	}
 }
