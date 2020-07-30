@@ -8,18 +8,18 @@ import (
 
 //
 type ClusterCounterVec struct {
-	mu                       sync.RWMutex
-	name                     string
-	labelNames               []string
-	factory                  *ClusterCounterFactory
-	beginTime                time.Time
-	endTime                  time.Time
-	periodInterval           time.Duration
-	storeInterval            time.Duration
+	mu                    sync.RWMutex
+	name                  string
+	labelNames            []string
+	factory               *ClusterCounterFactory
+	beginTime             time.Time
+	endTime               time.Time
+	periodInterval        time.Duration
+	storeInterval         time.Duration
 	initLocalTrafficRatio float64
-	discardPreviousData      bool
-	declineExpRatio          float64
-	counters                 sync.Map
+	discardPreviousData   bool
+	declineExpRatio       float64
+	counters              sync.Map
 }
 
 func (counterVec *ClusterCounterVec) WithLabelValues(lbs []string) *ClusterCounter {
@@ -40,18 +40,18 @@ func (counterVec *ClusterCounterVec) WithLabelValues(lbs []string) *ClusterCount
 	}
 
 	newCounter := &ClusterCounter{
-		name:                counterVec.name,
-		lbs:                 counterLabels,
-		beginTime:           counterVec.beginTime,
-		endTime:             counterVec.endTime,
-		periodInterval:      counterVec.periodInterval,
-		mu:                  sync.RWMutex{},
-		factory:             counterVec.factory,
-		storeInterval:       counterVec.storeInterval,
-		localTrafficRatio:   counterVec.initLocalTrafficRatio,
+		name:                  counterVec.name,
+		lbs:                   counterLabels,
+		beginTime:             counterVec.beginTime,
+		endTime:               counterVec.endTime,
+		periodInterval:        counterVec.periodInterval,
+		mu:                    sync.RWMutex{},
+		factory:               counterVec.factory,
+		storeInterval:         counterVec.storeInterval,
+		localTrafficRatio:     counterVec.initLocalTrafficRatio,
 		initLocalTrafficRatio: counterVec.initLocalTrafficRatio,
-		discardPreviousData: counterVec.discardPreviousData,
-		declineExpRatio:     counterVec.declineExpRatio,
+		discardPreviousData:   counterVec.discardPreviousData,
+		declineExpRatio:       counterVec.declineExpRatio,
 	}
 	newCounter.Init()
 

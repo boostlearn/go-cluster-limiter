@@ -285,11 +285,11 @@ func (limiter *ClusterLimiter) updateIdealPassRate() {
 		limiter.lastLocalRequest = curRequest
 		limiter.lastLocalPacingReward = curPacingReward
 
-		if limiter.localPacingRewardIncrease == 0 && limiter.localRequestIncrease == 0 {
+		if limiter.localPacingRewardIncrease == 0 && limiter.localRequestIncrease == 0 || limiter.idealRewardRate == 0 {
 			return
 		}
 
-		idealPassRate := limiter.localPacingRewardIncrease * limiter.idealRewardRate / limiter.localRequestIncrease
+		idealPassRate := (limiter.localPacingRewardIncrease / limiter.localRequestIncrease) / limiter.idealRewardRate
 		if idealPassRate <= 0.0 {
 			idealPassRate = 0.0
 		}
@@ -318,7 +318,7 @@ func (limiter *ClusterLimiter) updateIdealPassRate() {
 			return
 		}
 
-		idealPassRate := limiter.clusterPacingRewardIncrease * limiter.idealRewardRate / limiter.clusterRequestIncrease
+		idealPassRate := (limiter.clusterPacingRewardIncrease / limiter.clusterRequestIncrease) / limiter.idealRewardRate
 
 		fmt.Println("-----pacing: ", limiter.clusterPacingRewardIncrease, " ", lastPacingReward-prevPacingReward)
 		fmt.Println("-----request:", limiter.clusterRequestIncrease, " ", lastRequest-prevRequest)
@@ -346,7 +346,9 @@ func (limiter *ClusterLimiter) updateIdealRewardRate() {
 	limiter.localRewardIncrease = limiter.localRewardIncrease*limiter.declineExpRatio + (curReward-limiter.lastLocalReward)*(1-limiter.declineExpRatio)
 	if limiter.localRewardIncrease != 0 && limiter.localPassIncrease != 0 {
 		idealRewardRate := limiter.localRewardIncrease / limiter.localPassIncrease
-		limiter.idealRewardRate = limiter.idealRewardRate*limiter.declineExpRatio + idealRewardRate*(1-limiter.declineExpRatio)
+		if idealRewardRate > 0 {
+			limiter.idealRewardRate = limiter.idealRewardRate*limiter.declineExpRatio + idealRewardRate*(1-limiter.declineExpRatio)
+		}
 	}
 	limiter.lastLocalReward = curReward
 	limiter.lastLocalPass = curPass

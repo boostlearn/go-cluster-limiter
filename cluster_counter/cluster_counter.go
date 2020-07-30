@@ -42,7 +42,7 @@ type ClusterCounter struct {
 	loadClusterHistory  [HistoryMax]float64
 
 	initLocalTrafficRatio float64
-	localTrafficRatio   float64
+	localTrafficRatio     float64
 
 	localIncrease   float64
 	clusterIncrease float64
