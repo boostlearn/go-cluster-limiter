@@ -21,7 +21,7 @@ func init() {
 		&cluster_counter.ClusterCounterFactoryOpts{
 			Name:                     "",
 			DefaultLocalTrafficRatio: 1.0,
-			HeartbeatInterval:        100 * time.Millisecond,
+			HeartbeatInterval:        1000 * time.Millisecond,
 		},
 		counterStore)
 	counterFactory.Start()
@@ -40,7 +40,7 @@ func init() {
 	limiterFactory := cluster_limiter.NewFactory(
 		&cluster_limiter.ClusterLimiterFactoryOpts{
 			Name:                  "test",
-			HeartbeatInterval:     100 * time.Millisecond,
+			HeartbeatInterval:     1000 * time.Millisecond,
 			InitLocalTrafficRatio: 1.0,
 		},
 		counterStore)

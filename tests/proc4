@@ -1,8 +1,16 @@
 goos: linux
 goarch: amd64
 pkg: github.com/boostlearn/go-cluster-limiter/tests
-Benchmark_Only_Counter_Concurrency-4         	2000000000	        71.0 ns/op	       0 B/op	       0 allocs/op
-Benchmark_Only_Limiter_Concurrency-4         	300000000	       338 ns/op	       0 B/op	       0 allocs/op
-Benchmark_Only_Score_Limiter_Concurrency-4   	200000000	       544 ns/op	       0 B/op	       0 allocs/op
+Benchmark_Only_Counter_Concurrency-4         	2000000000	        91.9 ns/op	       0 B/op	       0 allocs/op
+Benchmark_Only_Limiter_Concurrency-4         	-----pacing:  332353.73099999997   332353.73099999997
+-----request: 9.273043e+06   9.273043e+06
+-----reward rate:  4
+-----idea_rate: 0.008960212170913043
+300000000	       279 ns/op	       0 B/op	       0 allocs/op
+Benchmark_Only_Score_Limiter_Concurrency-4   	-----pacing:  1.8332630644999999e+06   1.8332630644999999e+06
+-----request: 1.7783958e+07   1.7783958e+07
+-----reward rate:  1.9976019184652278
+-----idea_rate: 0.05160448142353345
+200000000	       542 ns/op	       0 B/op	       0 allocs/op
 PASS
-ok  	github.com/boostlearn/go-cluster-limiter/tests	443.158s
+ok  	github.com/boostlearn/go-cluster-limiter/tests	541.149s
