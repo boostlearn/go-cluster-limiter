@@ -152,8 +152,8 @@ func (factory *ClusterCounterFactory) NewClusterCounter(opts *ClusterCounterOpts
 func (factory *ClusterCounterFactory) Start() {
 	if factory.ticker == nil {
 		factory.ticker = time.NewTicker(factory.heartbeatInterval)
+		go factory.WatchAndSync()
 	}
-	go factory.WatchAndSync()
 }
 
 func (factory *ClusterCounterFactory) Stop() {
