@@ -32,7 +32,7 @@ func init() {
 			Name:                     "test",
 			BeginTime:                time.Time{},
 			EndTime:                  time.Time{},
-			PeriodInterval:           time.Duration(3600) * time.Second,
+			PeriodInterval:           time.Duration(60) * time.Second,
 			DiscardPreviousData:      true,
 			StoreDataInterval:        0,
 			InitLocalTrafficRatio: 1.0,
@@ -51,7 +51,7 @@ func init() {
 	limiter, err = limiterFactory.NewClusterLimiter(
 		&cluster_limiter.ClusterLimiterOpts{
 			Name:                "test",
-			PeriodInterval:      time.Duration(3600) * time.Second,
+			PeriodInterval:      time.Duration(60) * time.Second,
 			ReserveInterval:     0,
 			BurstInterval:       0,
 			MaxBoostFactor:      0,
@@ -62,7 +62,7 @@ func init() {
 		log.Fatal(err)
 	}
 
-	limiter.SetTarget(100000)
+	limiter.SetTarget(10000000)
 }
 
 func initNumber(cnt int) {
@@ -89,8 +89,8 @@ func doSomethingWithLimiter() {
 	doSomething()
 }
 
-func Benchmark_Single_Directly_10(b *testing.B) {
-	initNumber(10)
+func Benchmark_Single_Directly_50(b *testing.B) {
+	initNumber(50)
 
 	b.ReportAllocs()
 	b.ResetTimer()
@@ -99,8 +99,8 @@ func Benchmark_Single_Directly_10(b *testing.B) {
 	}
 }
 
-func Benchmark_Single_Counter_10(b *testing.B) {
-	initNumber(10)
+func Benchmark_Single_Counter_50(b *testing.B) {
+	initNumber(50)
 
 	b.ReportAllocs()
 	b.ResetTimer()
@@ -110,8 +110,8 @@ func Benchmark_Single_Counter_10(b *testing.B) {
 }
 
 
-func Benchmark_Single_Limiter_10(b *testing.B) {
-	initNumber(10)
+func Benchmark_Single_Limiter_50(b *testing.B) {
+	initNumber(50)
 
 	b.ReportAllocs()
 	b.ResetTimer()
@@ -151,6 +151,73 @@ func Benchmark_Single_Limiter_100(b *testing.B) {
 	}
 }
 
+
+func Benchmark_Single_Directly_200(b *testing.B) {
+	initNumber(200)
+
+	b.ReportAllocs()
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		doSomething()
+	}
+}
+
+func Benchmark_Single_Counter_200(b *testing.B) {
+	initNumber(200)
+
+	b.ReportAllocs()
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		doSomethingWithCounter()
+	}
+}
+
+
+func Benchmark_Single_Limiter_200(b *testing.B) {
+	initNumber(200)
+
+	b.ReportAllocs()
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		doSomethingWithLimiter()
+	}
+}
+
+
+
+func Benchmark_Single_Directly_500(b *testing.B) {
+	initNumber(500)
+
+	b.ReportAllocs()
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		doSomething()
+	}
+}
+
+func Benchmark_Single_Counter_500(b *testing.B) {
+	initNumber(500)
+
+	b.ReportAllocs()
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		doSomethingWithCounter()
+	}
+}
+
+
+func Benchmark_Single_Limiter_500(b *testing.B) {
+	initNumber(500)
+
+	b.ReportAllocs()
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		doSomethingWithLimiter()
+	}
+}
+
+
+
 func Benchmark_Single_Directly_1000(b *testing.B) {
 	initNumber(1000)
 
@@ -181,3 +248,68 @@ func Benchmark_Single_Limiter_1000(b *testing.B) {
 		doSomethingWithLimiter()
 	}
 }
+
+
+func Benchmark_Single_Directly_2000(b *testing.B) {
+	initNumber(2000)
+
+	b.ReportAllocs()
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		doSomething()
+	}
+}
+
+func Benchmark_Single_Counter_2000(b *testing.B) {
+	initNumber(2000)
+
+	b.ReportAllocs()
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		doSomethingWithCounter()
+	}
+}
+
+
+func Benchmark_Single_Limiter_2000(b *testing.B) {
+	initNumber(2000)
+
+	b.ReportAllocs()
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		doSomethingWithLimiter()
+	}
+}
+
+
+func Benchmark_Single_Directly_4000(b *testing.B) {
+	initNumber(4000)
+
+	b.ReportAllocs()
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		doSomething()
+	}
+}
+
+func Benchmark_Single_Counter_4000(b *testing.B) {
+	initNumber(4000)
+
+	b.ReportAllocs()
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		doSomethingWithCounter()
+	}
+}
+
+
+func Benchmark_Single_Limiter_4000(b *testing.B) {
+	initNumber(4000)
+
+	b.ReportAllocs()
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		doSomethingWithLimiter()
+	}
+}
+
