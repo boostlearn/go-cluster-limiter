@@ -11,7 +11,6 @@ import (
 	"time"
 )
 
-var numbers = make([]int, 0)
 var counter *cluster_counter.ClusterCounter
 var limiter *cluster_limiter.ClusterLimiter
 
@@ -29,20 +28,20 @@ func init() {
 
 	counter, _ = counterFactory.NewClusterCounter(
 		&cluster_counter.ClusterCounterOpts{
-			Name:                     "test",
-			BeginTime:                time.Time{},
-			EndTime:                  time.Time{},
-			PeriodInterval:           time.Duration(60) * time.Second,
-			DiscardPreviousData:      true,
-			StoreDataInterval:        0,
+			Name:                  "test",
+			BeginTime:             time.Time{},
+			EndTime:               time.Time{},
+			PeriodInterval:        time.Duration(60) * time.Second,
+			DiscardPreviousData:   true,
+			StoreDataInterval:     0,
 			InitLocalTrafficRatio: 1.0,
 		})
 
 	limiterFactory := cluster_limiter.NewFactory(
 		&cluster_limiter.ClusterLimiterFactoryOpts{
-			Name:                     "test",
-			HeartbeatInterval: 100 * time.Millisecond,
-			InitLocalTrafficRatio:  1.0,
+			Name:                  "test",
+			HeartbeatInterval:     100 * time.Millisecond,
+			InitLocalTrafficRatio: 1.0,
 		},
 		counterStore)
 	limiterFactory.Start()
@@ -65,251 +64,237 @@ func init() {
 	limiter.SetTarget(10000000)
 }
 
-func initNumber(cnt int) {
-	numbers = make([]int, 0, cnt)
+func initNumber(cnt int) []int {
+	numbers := make([]int, 0, cnt)
 	for i := 0; i < cnt; i++ {
 		numbers = append(numbers, rand.Int())
 	}
+	return numbers
 }
 
-func doSomething() {
+func doSomething(numbers []int) {
 	sort.Ints(numbers)
 	//rand.Shuffle(len(numbers), func(i, j int) { numbers[i], numbers[j] = numbers[j], numbers[i] })
 }
 
-func doSomethingWithCounter() {
+func doSomethingWithCounter(numbers []int) {
 	counter.Add(1)
-	doSomething()
+	doSomething(numbers)
 }
 
-func doSomethingWithLimiter() {
+func doSomethingWithLimiter(numbers []int) {
 	if limiter.Acquire(1) {
 		limiter.Reward(1)
 	}
-	doSomething()
+	doSomething(numbers)
 }
 
 func Benchmark_Single_Directly_50(b *testing.B) {
-	initNumber(50)
+	numbers := initNumber(50)
 
 	b.ReportAllocs()
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		doSomething()
+		doSomething(numbers)
 	}
 }
 
 func Benchmark_Single_Counter_50(b *testing.B) {
-	initNumber(50)
+	numbers := initNumber(50)
 
 	b.ReportAllocs()
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		doSomethingWithCounter()
+		doSomethingWithCounter(numbers)
 	}
 }
 
-
 func Benchmark_Single_Limiter_50(b *testing.B) {
-	initNumber(50)
+	numbers := initNumber(50)
 
 	b.ReportAllocs()
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		doSomethingWithLimiter()
+		doSomethingWithLimiter(numbers)
 	}
 }
 
 func Benchmark_Single_Directly_100(b *testing.B) {
-	initNumber(100)
+	numbers := initNumber(100)
 
 	b.ReportAllocs()
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		doSomething()
+		doSomething(numbers)
 	}
 }
 
 func Benchmark_Single_Counter_100(b *testing.B) {
-	initNumber(100)
+	numbers := initNumber(100)
 
 	b.ReportAllocs()
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		doSomethingWithCounter()
+		doSomethingWithCounter(numbers)
 	}
 }
-
 
 func Benchmark_Single_Limiter_100(b *testing.B) {
-	initNumber(100)
+	numbers := initNumber(100)
 
 	b.ReportAllocs()
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		doSomethingWithLimiter()
+		doSomethingWithLimiter(numbers)
 	}
 }
 
-
 func Benchmark_Single_Directly_200(b *testing.B) {
-	initNumber(200)
+	numbers := initNumber(200)
 
 	b.ReportAllocs()
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		doSomething()
+		doSomething(numbers)
 	}
 }
 
 func Benchmark_Single_Counter_200(b *testing.B) {
-	initNumber(200)
+	numbers := initNumber(200)
 
 	b.ReportAllocs()
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		doSomethingWithCounter()
+		doSomethingWithCounter(numbers)
 	}
 }
-
 
 func Benchmark_Single_Limiter_200(b *testing.B) {
-	initNumber(200)
+	numbers := initNumber(200)
 
 	b.ReportAllocs()
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		doSomethingWithLimiter()
+		doSomethingWithLimiter(numbers)
 	}
 }
 
-
-
 func Benchmark_Single_Directly_500(b *testing.B) {
-	initNumber(500)
+	numbers := initNumber(500)
 
 	b.ReportAllocs()
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		doSomething()
+		doSomething(numbers)
 	}
 }
 
 func Benchmark_Single_Counter_500(b *testing.B) {
-	initNumber(500)
+	numbers := initNumber(500)
 
 	b.ReportAllocs()
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		doSomethingWithCounter()
+		doSomethingWithCounter(numbers)
 	}
 }
-
 
 func Benchmark_Single_Limiter_500(b *testing.B) {
-	initNumber(500)
+	numbers := initNumber(500)
 
 	b.ReportAllocs()
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		doSomethingWithLimiter()
+		doSomethingWithLimiter(numbers)
 	}
 }
 
-
-
 func Benchmark_Single_Directly_1000(b *testing.B) {
-	initNumber(1000)
+	numbers := initNumber(1000)
 
 	b.ReportAllocs()
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		doSomething()
+		doSomething(numbers)
 	}
 }
 
 func Benchmark_Single_Counter_1000(b *testing.B) {
-	initNumber(1000)
+	numbers := initNumber(1000)
 
 	b.ReportAllocs()
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		doSomethingWithCounter()
+		doSomethingWithCounter(numbers)
 	}
 }
-
 
 func Benchmark_Single_Limiter_1000(b *testing.B) {
-	initNumber(1000)
+	numbers := initNumber(1000)
 
 	b.ReportAllocs()
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		doSomethingWithLimiter()
+		doSomethingWithLimiter(numbers)
 	}
 }
 
-
 func Benchmark_Single_Directly_2000(b *testing.B) {
-	initNumber(2000)
+	numbers := initNumber(2000)
 
 	b.ReportAllocs()
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		doSomething()
+		doSomething(numbers)
 	}
 }
 
 func Benchmark_Single_Counter_2000(b *testing.B) {
-	initNumber(2000)
+	numbers := initNumber(2000)
 
 	b.ReportAllocs()
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		doSomethingWithCounter()
+		doSomethingWithCounter(numbers)
 	}
 }
-
 
 func Benchmark_Single_Limiter_2000(b *testing.B) {
-	initNumber(2000)
+	numbers := initNumber(2000)
 
 	b.ReportAllocs()
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		doSomethingWithLimiter()
+		doSomethingWithLimiter(numbers)
 	}
 }
 
-
 func Benchmark_Single_Directly_4000(b *testing.B) {
-	initNumber(4000)
+	numbers := initNumber(4000)
 
 	b.ReportAllocs()
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		doSomething()
+		doSomething(numbers)
 	}
 }
 
 func Benchmark_Single_Counter_4000(b *testing.B) {
-	initNumber(4000)
+	numbers := initNumber(4000)
 
 	b.ReportAllocs()
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		doSomethingWithCounter()
+		doSomethingWithCounter(numbers)
 	}
 }
-
 
 func Benchmark_Single_Limiter_4000(b *testing.B) {
-	initNumber(4000)
+	numbers := initNumber(4000)
 
 	b.ReportAllocs()
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		doSomethingWithLimiter()
+		doSomethingWithLimiter(numbers)
 	}
 }
-
