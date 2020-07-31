@@ -60,10 +60,11 @@ func init() {
 
 	scorelimiter, err = limiterFactory.NewClusterLimiter(
 		&cluster_limiter.ClusterLimiterOpts{
-			Name:                "test",
-			PeriodInterval:      time.Duration(60) * time.Second,
-			ScoreSamplesMax: 10000,
-			DiscardPreviousData: true,
+			Name:                     "test",
+			PeriodInterval:           time.Duration(60) * time.Second,
+			ScoreSamplesMax:          10000,
+			ScoreSamplesSortInterval: 10 * time.Second,
+			DiscardPreviousData:      true,
 		})
 
 	if err != nil {
