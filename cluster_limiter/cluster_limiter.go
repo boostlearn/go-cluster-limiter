@@ -1,7 +1,7 @@
 package cluster_limiter
 
 import (
-	"fmt"
+	//"fmt"
 	"github.com/boostlearn/go-cluster-limiter/cluster_counter"
 	"math/rand"
 	"sort"
@@ -403,10 +403,10 @@ func (limiter *ClusterLimiter) updateIdealPassRate() {
 
 		idealPassRate := (limiter.clusterPacingRewardIncrease / limiter.clusterRequestIncrease) / limiter.idealRewardRate
 
-		fmt.Println("-----pacing: ", limiter.clusterPacingRewardIncrease, " ", lastPacingReward-prevPacingReward)
-		fmt.Println("-----request:", limiter.clusterRequestIncrease, " ", lastRequest-prevRequest)
-		fmt.Println("-----reward rate: ", limiter.idealRewardRate)
-		fmt.Println("-----idea_rate:", idealPassRate)
+		//fmt.Println("-----pacing: ", limiter.clusterPacingRewardIncrease, " ", lastPacingReward-prevPacingReward)
+		//fmt.Println("-----request:", limiter.clusterRequestIncrease, " ", lastRequest-prevRequest)
+		//fmt.Println("-----reward rate: ", limiter.idealRewardRate)
+		//fmt.Println("-----idea_rate:", idealPassRate)
 		if idealPassRate > 0 {
 			if idealPassRate > 1.0 {
 				idealPassRate = 1.0
