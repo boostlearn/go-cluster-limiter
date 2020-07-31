@@ -36,3 +36,25 @@ func Benchmark_Limiter_Concurrency(b *testing.B) {
 		}
 	})
 }
+
+
+func Benchmark_Only_Counter_Concurrency(b *testing.B) {
+	b.ReportAllocs()
+	b.ResetTimer()
+	b.RunParallel(func(pb *testing.PB) {
+		for pb.Next() {
+			doOnlyCounter()
+		}
+	})
+}
+
+
+func Benchmark_Only_Limiter_Concurrency(b *testing.B) {
+	b.ReportAllocs()
+	b.ResetTimer()
+	b.RunParallel(func(pb *testing.PB) {
+		for pb.Next() {
+			doOnlyLimiter()
+		}
+	})
+}
