@@ -7,12 +7,12 @@ import (
 	"log"
 	"math/rand"
 	"sort"
-	"testing"
 	"time"
 )
 
 var counter *cluster_counter.ClusterCounter
 var limiter *cluster_limiter.ClusterLimiter
+var scorelimiter *cluster_limiter.ClusterLimiter
 
 func init() {
 	counterStore := redis_store.NewStore("127.0.0.1:6379", "", "blcl:")
@@ -51,9 +51,18 @@ func init() {
 		&cluster_limiter.ClusterLimiterOpts{
 			Name:                "test",
 			PeriodInterval:      time.Duration(60) * time.Second,
-			ReserveInterval:     0,
-			BurstInterval:       0,
-			MaxBoostFactor:      0,
+			DiscardPreviousData: true,
+		})
+
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	scorelimiter, err = limiterFactory.NewClusterLimiter(
+		&cluster_limiter.ClusterLimiterOpts{
+			Name:                "test",
+			PeriodInterval:      time.Duration(60) * time.Second,
+			ScoreSamplesMax: 10000,
 			DiscardPreviousData: true,
 		})
 
@@ -95,6 +104,12 @@ func doOnlyCounter() {
 
 func doOnlyLimiter() {
 	if limiter.Acquire(1) {
+		limiter.Reward(1)
+	}
+}
+
+func doOnlyScoreLimiter() {
+	if limiter.ScoreAcquire(1, rand.Float64()) {
 		limiter.Reward(1)
 	}
 }
