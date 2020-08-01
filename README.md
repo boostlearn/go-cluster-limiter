@@ -145,7 +145,7 @@
     localCurrentValue := counter.LocalValue(0) // 本地值
     cluterCurrentValue := counter.ClusterValue(0) // 集群值
     
-#### 集群流量器
+#### 流控器
 限流器构建：
     
     import "github.com/boostlearn/go-cluster-limiter/cluster_limiter"
