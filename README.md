@@ -21,7 +21,7 @@
 本项目的算法对流量在超过一定间隔(>10s)的流量变化敏感，可以动态计算和适应流量变化。
 
 &nbsp;&nbsp;&nbsp;&nbsp;
-在请求经常是非持续的或有大量瞬间爆发请求的场景下，本项目的流控算法可能无法工作。
+在请求流量经常是非持续的或有大量瞬间爆发请求的场景下，本项目的流控算法可能无法工作。
 
 ## 支持的流量控制方式
 &nbsp;&nbsp;&nbsp;&nbsp;
@@ -101,14 +101,109 @@
 &nbsp;&nbsp;&nbsp;&nbsp;
 结论： 
 * 单核心QPS服务在200万左右, 对于单机业务能力在10万QPS以内的应用影响很小，可以满足大部分使用场景。
-* 多核加速效果不好，可以通过自示例内创建多个相同的限制器来提供服务能力。
+* 多核加速效果不好，可以通过创建多个限制器副本来调高单机服务能力。
 
 ## 使用说明
 &nbsp;&nbsp;&nbsp;&nbsp;
-本项目模块依赖于一个统一的中心存储器来汇集集群的数据。
 
+#### 中心存储器
 &nbsp;&nbsp;&nbsp;&nbsp;
 对存储的要求是：
 * 可以与短暂的不可用，但已经存储的数据不应丢失
 * 正常情况下的数据查询的响应时间在100ms以内
-常用的redis，influxdb，mysql都是可以使用的(目前仅支持redis)。
+
+&nbsp;&nbsp;&nbsp;&nbsp;
+常用的redis，influxdb，mysql都是可以满足这些条件的。
+目前仅支持redis。
+
+构建存储器：
+
+    import "github.com/boostlearn/go-cluster-limiter/cluster_limiter"
+    
+    counterStore := redis_store.NewStore(
+        "127.0.0.1:6379", // redis地址 
+        "",  // redis密码
+        "")
+
+#### 集群计数器
+构建计数器：
+
+     import "github.com/boostlearn/go-cluster-limiter/cluster_counter"
+     import "github.com/boostlearn/go-cluster-limiter/cluster_counter/redis_store"
+     	
+     counterFactory := cluster_counter.NewFactory(
+    	&cluster_counter.ClusterCounterFactoryOpts{
+    		Name:                     "test",
+    	}, counterStore)
+     counterFactory.Start()
+    
+     counter, _ = counterFactory.NewClusterCounter(
+    	&cluster_counter.ClusterCounterOpts{
+    		Name:                  "test",
+    		PeriodInterval:        time.Duration(60) * time.Second,
+    		DiscardPreviousData:   true,
+    	})
+    
+计数器使用: 
+
+    counter.Add(1) // 增加计数器
+    localCurrentValue := counter.LocalValue(0) // 本地值
+    cluterCurrentValue := counter.ClusterValue(0) // 集群值
+    
+#### 集群流量器
+限流器构建：
+    
+    import "github.com/boostlearn/go-cluster-limiter/cluster_limiter"
+    
+    limiterFactory := cluster_limiter.NewFactory(
+    	&cluster_limiter.ClusterLimiterFactoryOpts{
+    		Name:                  "test",
+    		HeartbeatInterval:     1000 * time.Millisecond,
+    		InitLocalTrafficRatio: 1.0,
+    	}, counterStore)
+    limiterFactory.Start()
+    
+    limiter, err := limiterFactory.NewClusterLimiter(
+    		&cluster_limiter.ClusterLimiterOpts{
+    			Name:                "test",
+    			PeriodInterval:      time.Duration(60) * time.Second,
+    			DiscardPreviousData: true,
+    		})
+
+限流器使用：
+    
+    if limiter.Acquire(1) { // 获取
+    	doSomething()
+    }
+    ...
+    
+    limiter.Reward(1) // 反馈
+
+
+#### 分级流控器
+分级限流器构建：
+
+    import "github.com/boostlearn/go-cluster-limiter/cluster_limiter"
+    
+    limiterFactory := cluster_limiter.NewFactory(
+    	&cluster_limiter.ClusterLimiterFactoryOpts{
+    		Name:                  "test",
+    	}, counterStore)
+    limiterFactory.Start()
+    
+    scorelimiter, err = limiterFactory.NewClusterLimiter(
+    	&cluster_limiter.ClusterLimiterOpts{
+    		Name:                     "test",
+    		PeriodInterval:           time.Duration(60) * time.Second,
+    		ScoreSamplesMax:          10000,
+    		ScoreSamplesSortInterval: 10 * time.Second,
+    		DiscardPreviousData:      true,
+    	})
+    		
+分级限流器使用：
+    
+    if limiter.ScoreAcquire(1, score) { // score代表评分
+    	doSomethind()
+    }
+    ...
+    limiter.Reward(1) // 反馈
