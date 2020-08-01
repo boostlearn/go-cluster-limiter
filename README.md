@@ -200,7 +200,7 @@
 分级限流器使用：
     
     if limiter.ScoreAcquire(1, score) { // score代表评分
-    	doSomethind()
+    	doSomething()
     }
     ...
     limiter.Reward(1) // 反馈
