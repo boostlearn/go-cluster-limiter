@@ -120,10 +120,7 @@
 
     import "github.com/boostlearn/go-cluster-limiter/cluster_limiter"
     
-    counterStore := redis_store.NewStore(
-        "127.0.0.1:6379", // redis地址 
-        "",  // redis密码
-        "")
+    counterStore := redis_store.NewStore("127.0.0.1:6379","","")
 
 #### 集群计数器
 构建计数器：
