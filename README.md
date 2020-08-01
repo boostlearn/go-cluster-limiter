@@ -1,4 +1,3 @@
->&nbsp;&nbsp;&nbsp;&nbsp;
 >本项目可用做集群环境下实现流量控制的服务模块，可以在服务限流、消耗控制、实验分流等需要做流量控制的场景下使用。
 本项目使用非中心化流量控制算法，有效降低了对网络资源的消耗和依赖。
 
@@ -95,9 +94,9 @@
 
 |模块|1CPU|2CPU|3CPU|4CPU|
 |----|----|----|----|---|
-|集群计数器(cluster_counter)|51.9 ns/op|71.8 ns/op|72.1 ns/op|73.5 ns/op|
-|集群限流器(cluster_limiter)|465 ns/op|411 ns/op|265 ns/op|271 ns/op|
-|集群分级限流器(cluster_score_limiter)|492 ns/op|493 ns/op|528 ns/op|545 ns/op|
+|集群计数器|51.9 ns/op|71.8 ns/op|72.1 ns/op|73.5 ns/op|
+|限流器|465 ns/op|411 ns/op|265 ns/op|271 ns/op|
+|分级限流器|492 ns/op|493 ns/op|528 ns/op|545 ns/op|
 
 &nbsp;&nbsp;&nbsp;&nbsp;
 结论： 
