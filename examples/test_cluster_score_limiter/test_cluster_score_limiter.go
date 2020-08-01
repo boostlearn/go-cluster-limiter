@@ -42,7 +42,7 @@ var (
 func init() {
 	flag.Int64Var(&targetNum, "a", 1000000, "total target num")
 	flag.Int64Var(&resetInterval, "b", 3600, "reset data interval")
-	flag.Int64Var(&mockTrafficFactor, "c", 10, "mock traffic factor")
+	flag.Int64Var(&mockTrafficFactor, "c", 5, "mock traffic factor")
 	flag.StringVar(&limiterName, "d", "test_cluster_limiter", "limiter's unique name")
 	flag.StringVar(&instanceName, "e", "test1", "test instance name")
 	flag.StringVar(&redisAddr, "f", "127.0.0.1:6379", "store: redis address")
@@ -151,22 +151,22 @@ func httpServer() {
 	log.Fatal(err)
 }
 
+
 func fakeTraffic(limiter *cluster_limiter.ClusterLimiter) {
 	rand.Seed(time.Now().Unix())
 
 	ticker := time.NewTicker(100000 * time.Microsecond)
 	for range ticker.C {
-		k := (time.Now().Unix() / 600) % 6
-		if k >= 3 {
-			k = 6 - k
+		k := (time.Now().Unix() / 60) % 60
+		if k >= 30 {
+			k = 60 - k
 		}
-		v := k + 3
+		v := k + 30
 		v = v * mockTrafficFactor
 
 		for j := 0; j < int(v); j++ {
-			score := rand.Float64()
 			metrics.WithLabelValues(instanceName, "request").Add(1)
-			if limiter.ScoreTake(float64(1), score) == true {
+			if limiter.ScoreTake(float64(1), rand.Float64()) == true {
 			    metrics.WithLabelValues(instanceName, "pass").Add(1)
                 if rand.Float64() > 0.5 {
 			        metrics.WithLabelValues(instanceName, "reward").Add(1)
