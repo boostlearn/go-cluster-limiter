@@ -204,3 +204,5 @@
     limiter.Reward(1) // 反馈
     
  ## 6. 流控效果示例
+ 流控器： https://github.com/boostlearn/go-cluster-limiter/blob/master/examples/test_cluster_limiter/results/test_cluster_limiter.pdf
+ 
