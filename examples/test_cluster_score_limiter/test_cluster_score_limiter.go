@@ -57,9 +57,10 @@ func init() {
 func main() {
 	flag.Parse()
 
-	counterStore := redis_store.NewStore(redisAddr,
-		redisPass,
-		"blcl:")
+	counterStore, err := redis_store.NewStore(redisAddr, redisPass, "blcl:")
+	if err != nil {
+		log.Println("new store error:", err)
+	}
 	limiterFactory := cluster_limiter.NewFactory(
 		&cluster_limiter.ClusterLimiterFactoryOpts{
 			Name:                     "test",

@@ -15,7 +15,10 @@ var limiter *cluster_limiter.ClusterLimiter
 var scorelimiter *cluster_limiter.ClusterLimiter
 
 func init() {
-	counterStore := redis_store.NewStore("127.0.0.1:6379", "", "blcl:")
+	counterStore, err := redis_store.NewStore("127.0.0.1:6379", "", "blcl:")
+	if err != nil {
+		log.Println("new store error:", err)
+	}
 
 	counterFactory := cluster_counter.NewFactory(
 		&cluster_counter.ClusterCounterFactoryOpts{
@@ -46,7 +49,6 @@ func init() {
 		counterStore)
 	limiterFactory.Start()
 
-	var err error
 	limiter, err = limiterFactory.NewClusterLimiter(
 		&cluster_limiter.ClusterLimiterOpts{
 			Name:                "test",
@@ -110,7 +112,7 @@ func doOnlyLimiter() {
 }
 
 func doOnlyScoreLimiter() {
-	if limiter.ScoreAcquire(1, rand.Float64()) {
-		limiter.Reward(1)
+	if scorelimiter.ScoreAcquire(1, rand.Float64()) {
+		scorelimiter.Reward(1)
 	}
 }

@@ -16,7 +16,7 @@ type RedisStore struct {
 
 const SEP = "####"
 
-func NewStore(address string, pass string, prefix string) *RedisStore {
+func NewStore(address string, pass string, prefix string) (*RedisStore, error) {
 	options := &redis.Options{
 		Addr:         address,
 		Password:     pass,
@@ -30,8 +30,12 @@ func NewStore(address string, pass string, prefix string) *RedisStore {
 	return NewRedisStore(cli, prefix)
 }
 
-func NewRedisStore(cli *redis.Client, prefix string) *RedisStore {
-	return &RedisStore{cli: cli, prefix: prefix}
+func NewRedisStore(cli *redis.Client, prefix string) (*RedisStore, error) {
+	_, err := cli.Ping().Result()
+	if err != nil {
+		return nil, err
+	}
+	return &RedisStore{cli: cli, prefix: prefix}, nil
 }
 
 func generateRedisKey(name string, beginTime time.Time, endTime time.Time, lbs map[string]string) string {

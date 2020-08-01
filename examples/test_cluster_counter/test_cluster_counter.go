@@ -49,13 +49,17 @@ func init() {
 
 func main() {
 	flag.Parse()
+
+	store, err := redis_store.NewStore(redisAddr, redisPass, "blcl:")
+	if err != nil {
+		log.Println("newStore Error:", err)
+	}
 	factory := cluster_counter.NewFactory(
 		&cluster_counter.ClusterCounterFactoryOpts{
 			Name:                     "",
 			DefaultLocalTrafficRatio: localTrafficRatio,
 			HeartbeatInterval:        100 * time.Millisecond,
-		},
-		redis_store.NewStore(redisAddr, redisPass, "blcl:"))
+		}, store)
 	factory.Start()
 
 	counterVec, err := factory.NewClusterCounterVec(
