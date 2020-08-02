@@ -9,11 +9,11 @@ import (
 	"time"
 )
 
-const DEFAULT_MAX_BOOST_FACTOR = 2.0
-const DEFAULT_BOOST_BURST_FACTOR = 10.0
-const DEFAULT_BURST_INERVAL_SECONDS = 5
-const DEFAULT_DECLINE_EXP_RATIO = 0.5
-const DEFAULT_SCORE_SAMPLES_SORT_INTERVAL_SECONDS = 60
+const DefaultMaxBoostFactor = 2.0
+const DefaultBoostBurstFactor = 10.0
+const DefaultBurstIntervalSeconds = 5
+const DefaultDeclineExpRatio = 0.5
+const DefaultScoreSamplesSortIntervalSeconds = 60
 
 type ClusterLimiter struct {
 	mu sync.RWMutex
@@ -79,19 +79,19 @@ func (limiter *ClusterLimiter) Init() {
 	timeNow := time.Now()
 	limiter.initTime = timeNow
 	if limiter.burstInterval.Truncate(time.Second) == 0 {
-		limiter.burstInterval = DEFAULT_BURST_INERVAL_SECONDS * time.Second
+		limiter.burstInterval = DefaultBurstIntervalSeconds * time.Second
 	}
 
 	if limiter.maxBoostFactor == 0.0 {
-		limiter.maxBoostFactor = DEFAULT_MAX_BOOST_FACTOR
+		limiter.maxBoostFactor = DefaultMaxBoostFactor
 	}
 
 	if limiter.declineExpRatio == 0.0 {
-		limiter.declineExpRatio = DEFAULT_DECLINE_EXP_RATIO
+		limiter.declineExpRatio = DefaultDeclineExpRatio
 	}
 
 	if limiter.scoreSamplesSortInterval == 0 {
-		limiter.scoreSamplesSortInterval = DEFAULT_SCORE_SAMPLES_SORT_INTERVAL_SECONDS * time.Second
+		limiter.scoreSamplesSortInterval = DefaultScoreSamplesSortIntervalSeconds * time.Second
 	}
 
 	if limiter.scoreSamplesMax > 0 {
@@ -458,7 +458,7 @@ func (limiter *ClusterLimiter) updateRealPassRate() {
 	lagTime := limiter.getLagTime(curReward, timeNow)
 	if lagTime > 0 {
 		smoothPassRate := limiter.idealPassRate * (1 + lagTime*1e9/
-			(DEFAULT_BOOST_BURST_FACTOR*float64(limiter.burstInterval.Nanoseconds())))
+			(DefaultBoostBurstFactor*float64(limiter.burstInterval.Nanoseconds())))
 		if limiter.maxBoostFactor > 1.0 && smoothPassRate > limiter.maxBoostFactor*limiter.idealPassRate {
 			smoothPassRate = limiter.maxBoostFactor * limiter.idealPassRate
 		}
@@ -469,7 +469,7 @@ func (limiter *ClusterLimiter) updateRealPassRate() {
 		}
 	} else {
 		smoothPassRate := limiter.idealPassRate * (1 + lagTime*4*1e9/
-			(DEFAULT_BOOST_BURST_FACTOR*float64(limiter.burstInterval.Nanoseconds())))
+			(DefaultBoostBurstFactor*float64(limiter.burstInterval.Nanoseconds())))
 		if smoothPassRate < 0 {
 			limiter.realPassRate = limiter.idealPassRate / 10000
 		} else {

@@ -9,9 +9,9 @@ import (
 
 const SEP = "####"
 const HistoryMax = 30
-const DEFAULT_DECLINE_EXP_RATIO = 0.8
-const DEFAULT_STORE_INTERVAL_SECONDS = 2
-const DEFAULT_TRAFFIC_RATIO = 1.0
+const DefaultDeclineExpRatio = 0.8
+const DefaultStoreIntervalSeconds = 2
+const DefaultTrafficRatio = 1.0
 
 type ClusterCounter struct {
 	mu sync.RWMutex
@@ -63,11 +63,11 @@ func (counter *ClusterCounter) Init() {
 	}
 
 	if counter.initLocalTrafficRatio == 0.0 {
-		counter.initLocalTrafficRatio = DEFAULT_TRAFFIC_RATIO
+		counter.initLocalTrafficRatio = DefaultTrafficRatio
 	}
 
 	if counter.storeInterval == 0 {
-		counter.storeInterval = DEFAULT_STORE_INTERVAL_SECONDS * time.Second
+		counter.storeInterval = DefaultStoreIntervalSeconds * time.Second
 	}
 
 	if counter.localTrafficRatio == 0.0 {
@@ -91,7 +91,7 @@ func (counter *ClusterCounter) Init() {
 	}
 
 	if counter.declineExpRatio <= 0.0 || counter.declineExpRatio > 1.0 {
-		counter.declineExpRatio = DEFAULT_DECLINE_EXP_RATIO
+		counter.declineExpRatio = DefaultDeclineExpRatio
 	}
 
 	counter.storeLocalHistory[counter.storeHistoryPos%HistoryMax] = counter.localValue

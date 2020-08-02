@@ -6,8 +6,8 @@ import (
 	"time"
 )
 
-const DEFAULT_HEARTBEAT_INTERVAL_MILLISECONDS = 100
-const DEFAULT_FACTORY_NAME = "clct"
+const DefaultHeartbeatIntervalMilliseconds = 100
+const DefaultFactoryName = "clct"
 
 type ClusterCounterOpts struct {
 	Name           string
@@ -42,14 +42,14 @@ type ClusterCounterFactoryOpts struct {
 
 func NewFactory(opts *ClusterCounterFactoryOpts, store DataStoreI) *ClusterCounterFactory {
 	if len(opts.Name) == 0 {
-		opts.Name = DEFAULT_FACTORY_NAME
+		opts.Name = DefaultFactoryName
 	}
 	if opts.DefaultLocalTrafficRatio > 1.0 {
-		opts.DefaultLocalTrafficRatio = DEFAULT_TRAFFIC_RATIO
+		opts.DefaultLocalTrafficRatio = DefaultTrafficRatio
 	}
 
 	if opts.HeartbeatInterval == 0 {
-		opts.HeartbeatInterval = time.Duration(DEFAULT_HEARTBEAT_INTERVAL_MILLISECONDS) * time.Millisecond
+		opts.HeartbeatInterval = time.Duration(DefaultHeartbeatIntervalMilliseconds) * time.Millisecond
 	}
 
 	factory := &ClusterCounterFactory{
@@ -80,7 +80,7 @@ func (factory *ClusterCounterFactory) NewClusterCounterVec(opts *ClusterCounterO
 	}
 
 	if opts.StoreDataInterval.Truncate(time.Second) == 0 {
-		opts.StoreDataInterval = time.Duration(DEFAULT_STORE_INTERVAL_SECONDS) * time.Second
+		opts.StoreDataInterval = time.Duration(DefaultStoreIntervalSeconds) * time.Second
 	}
 
 	if counter, ok := factory.clusterCounterVectors.Load(opts.Name); ok {
@@ -120,7 +120,7 @@ func (factory *ClusterCounterFactory) NewClusterCounter(opts *ClusterCounterOpts
 	}
 
 	if opts.StoreDataInterval.Truncate(time.Second) == 0 {
-		opts.StoreDataInterval = time.Duration(DEFAULT_STORE_INTERVAL_SECONDS) * time.Second
+		opts.StoreDataInterval = time.Duration(DefaultStoreIntervalSeconds) * time.Second
 	}
 
 	if counter, ok := factory.clusterCounters.Load(opts.Name); ok {
