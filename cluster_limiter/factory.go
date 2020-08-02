@@ -88,7 +88,7 @@ func (factory *ClusterLimiterFactory) NewClusterLimiterVec(opts *ClusterLimiterO
 	}
 
 	if opts.BurstInterval == 0 {
-		opts.BurstInterval = DefaultBurstInervalSeconds * time.Second
+		opts.BurstInterval = DefaultBurstIntervalSeconds * time.Second
 	}
 
 	if opts.CompletionTime.Unix() == 0 {
