@@ -15,6 +15,7 @@ const DefaultBurstIntervalSeconds = 5
 const DefaultDeclineExpRatio = 0.5
 const DefaultScoreSamplesSortIntervalSeconds = 60
 
+
 type ClusterLimiter struct {
 	mu sync.RWMutex
 
