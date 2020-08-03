@@ -39,13 +39,16 @@ The storage requirements are:
 
 The commonly used database like redis, influxdb, and mysql can all meet these conditions.
 Currently only redis is supported.
-Build:
+**build cluster's storage**:
 
-    import "github.com/boostlearn/go-cluster-limiter/cluster_limiter"
+    import	"github.com/boostlearn/go-cluster-limiter/cluster_counter/redis_store"
+        	
     counterStore, err := redis_store.NewStore("127.0.0.1:6379","","")
 
 #### Limiter
 **build limiter's factory**：
+
+    import	"github.com/boostlearn/go-cluster-limiter/cluster_limiter"
     
     limiterFactory := cluster_limiter.NewFactory(
     	&cluster_limiter.ClusterLimiterFactoryOpts{
@@ -57,8 +60,8 @@ Build:
  
 **build limiter with start-end time**:
     
-    beginTime,_ := time.Parse("2006-01-02 15:04:05", "2020-01-01 09:00:00"),
-    endTime,_ := time.Parse("2006-01-02 15:04:05", "2020-01-01 18:00:00"),
+    beginTime,_ := time.Parse("2006-01-02 15:04:05", "2020-01-01 09:00:00")
+    endTime,_ := time.Parse("2006-01-02 15:04:05", "2020-01-01 18:00:00")
     limiter, err := limiterFactory.NewClusterLimiter(
     		&cluster_limiter.ClusterLimiterOpts{
     			Name:                "test",
@@ -77,6 +80,7 @@ Build:
     			PeriodInterval:      time.Duration(60) * time.Second,
     			DiscardPreviousData: true,
     		})   		
+
 
 **limiter's take and reward**:
     
