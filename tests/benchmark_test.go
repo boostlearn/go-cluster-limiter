@@ -32,8 +32,6 @@ func init() {
 	counter, _ = counterFactory.NewClusterCounter(
 		&cluster_counter.ClusterCounterOpts{
 			Name:                       "test",
-			BeginTime:                  time.Time{},
-			EndTime:                    time.Time{},
 			PeriodInterval:             time.Duration(60) * time.Second,
 			DiscardPreviousData:        true,
 			StoreDataInterval:          0,

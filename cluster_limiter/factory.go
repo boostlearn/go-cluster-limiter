@@ -102,7 +102,6 @@ func (factory *ClusterLimiterFactory) NewClusterLimiterVec(opts *ClusterLimiterO
 
 	var limiterVec = &ClusterLimiterVec{
 		name:                     opts.Name,
-		rewardTarget:             opts.RewardTarget,
 		beginTime:                opts.BeginTime,
 		endTime:                  opts.EndTime,
 		completionTime:           opts.CompletionTime,

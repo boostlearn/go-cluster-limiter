@@ -68,7 +68,6 @@ func main() {
 	limiterVec, err := limiterFactory.NewClusterLimiterVec(
 		&cluster_limiter.ClusterLimiterOpts{
 			Name:                limiterName,
-			RewardTarget:        float64(targetNum),
 			PeriodInterval:      time.Duration(resetInterval) * time.Second,
 			DiscardPreviousData: true,
 		},
@@ -79,9 +78,9 @@ func main() {
 	}
 
 	lbs := []string{"c1", "c2"}
-	limiter := limiterVec.WithLabelValues(lbs)
+	limiter := limiterVec.WithLabelValues(lbs, float64(targetNum))
 
-	//go httpServer()
+	go httpServer()
 	go fakeTraffic(limiter)
 
 	ticker := time.NewTicker(100000 * time.Microsecond)

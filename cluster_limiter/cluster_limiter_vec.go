@@ -19,7 +19,6 @@ type ClusterLimiterVec struct {
 	PassCounter    *cluster_counter.ClusterCounterVec
 	RewardCounter  *cluster_counter.ClusterCounterVec
 
-	rewardTarget    float64
 	beginTime       time.Time
 	endTime         time.Time
 	completionTime  time.Time
@@ -46,7 +45,7 @@ type ClusterLimiterVec struct {
 }
 
 // create new limiter with labels
-func (limiterVec *ClusterLimiterVec) WithLabelValues(lbs []string) *ClusterLimiter {
+func (limiterVec *ClusterLimiterVec) WithLabelValues(lbs []string, rewardTarget float64) *ClusterLimiter {
 	key := strings.Join(lbs, SEP)
 	if v, ok := limiterVec.limiters.Load(key); ok {
 		if limiter, ok2 := v.(*ClusterLimiter); ok2 {
@@ -56,6 +55,7 @@ func (limiterVec *ClusterLimiterVec) WithLabelValues(lbs []string) *ClusterLimit
 
 	newLimiter := &ClusterLimiter{
 		name:                     limiterVec.name,
+		rewardTarget: rewardTarget,
 		lbs:                      append([]string{}, lbs...),
 		RequestCounter:           limiterVec.RequestCounter.WithLabelValues(lbs),
 		PassCounter:              limiterVec.PassCounter.WithLabelValues(lbs),
@@ -77,7 +77,7 @@ func (limiterVec *ClusterLimiterVec) WithLabelValues(lbs []string) *ClusterLimit
 	newLimiter.Heartbeat()
 
 	limiterVec.limiters.Store(key, newLimiter)
-	return limiterVec.WithLabelValues(lbs)
+	return limiterVec.WithLabelValues(lbs, rewardTarget)
 }
 
 // update
