@@ -72,20 +72,10 @@ func main() {
 
 	limiterVec, err := limiterFactory.NewClusterLimiterVec(
 		&cluster_limiter.ClusterLimiterOpts{
-			Name:                       limiterName,
-			BeginTime:                  time.Parse("2006-01-02 15:04:05", "2020-01-01 09:00:00"),
-			EndTime:                    time.Parse("2006-01-02 15:04:05", "2020-01-01 18:00:00"),
-			CompletionTime:             time.Time{},
-			PeriodInterval:             time.Duration(resetInterval) * time.Second,
-			ReserveInterval:            0,
-			BurstInterval:              0,
-			MaxBoostFactor:             0,
-			DiscardPreviousData:        true,
-			InitLocalTrafficProportion: 0,
-			InitIdealPassRate:          0,
-			InitRewardRate:             0,
-			ScoreSamplesSortInterval:   0,
-			ScoreSamplesMax:            0,
+			Name:                limiterName,
+			RewardTarget: float64(targetNum),
+			PeriodInterval:      time.Duration(resetInterval) * time.Second,
+			DiscardPreviousData: true,
 		},
 		[]string{"label1", "label2"})
 
@@ -95,7 +85,6 @@ func main() {
 
 	lbs := []string{"c1", "c2"}
 	limiter := limiterVec.WithLabelValues(lbs)
-	limiter.SetRewardTarget(float64(targetNum))
 
 	go httpServer()
 	go fakeTraffic(limiter)

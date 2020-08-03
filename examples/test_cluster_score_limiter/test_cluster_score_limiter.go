@@ -72,6 +72,7 @@ func main() {
 	limiterVec, err := limiterFactory.NewClusterLimiterVec(
 		&cluster_limiter.ClusterLimiterOpts{
 			Name:                limiterName,
+			RewardTarget: float64(targetNum),
 			PeriodInterval:      time.Duration(resetInterval) * time.Second,
 			DiscardPreviousData: true,
 			ScoreSamplesMax:     10000,
@@ -84,7 +85,6 @@ func main() {
 
 	lbs := []string{"c1", "c2"}
 	limiter := limiterVec.WithLabelValues(lbs)
-	limiter.SetRewardTarget(float64(targetNum))
 
 	go httpServer()
 	go fakeTraffic(limiter)

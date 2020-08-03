@@ -70,6 +70,7 @@ Build:
     limiter, err := limiterFactory.NewClusterLimiter(
     		&cluster_limiter.ClusterLimiterOpts{
     			Name:                "test",
+    			RewardTarget: 10000,
     			BeginTime: beginTime,
     			EndTime: endTime,
     			DiscardPreviousData: true,
@@ -80,6 +81,7 @@ Build:
     limiter, err := limiterFactory.NewClusterLimiter(
     		&cluster_limiter.ClusterLimiterOpts{
     			Name:                "test",
+    			RewardTarget: 10000,
     			PeriodInterval:      time.Duration(60) * time.Second,
     			DiscardPreviousData: true,
     		})   		
@@ -99,6 +101,7 @@ Build:
     scorelimiter, err = limiterFactory.NewClusterLimiter(
     	&cluster_limiter.ClusterLimiterOpts{
     		Name:                     "test",
+    		RewardTarget: 10000,
     		PeriodInterval:           time.Duration(60) * time.Second,
     		ScoreSamplesMax:          10000,
     		ScoreSamplesSortInterval: 10 * time.Second,
