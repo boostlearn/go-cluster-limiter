@@ -5,12 +5,12 @@
 ## The difference with other limiters
      
 the local host limiter mainly controls the use of local traffic, 
-which can be implemented using algorithms such as counters, leaky buckets, and token buckets,
-that does not depend on the external environment and needs low resource consumption, has a wide range of application scenarios.
+which can be implemented using algorithms such as counters, leaky buckets, or token buckets,
+does not depend on the external environment and needs low resource consumption.
 
-However, the algorithm that implements local host limiter cannot run in the service partition mode. 
-The common method is to control the flow within one cluster by calling the external flow control (RPC) service interface. 
-however, cluster limiter carried out through the network, requires high network stability, consume certain time delay, 
+However, the algorithm which used in local host limiter cannot run in the cluster's service partition mode. 
+The common method is to control the cluster's flow by calling the external flow control (RPC) service. 
+however, cluster limiter carried out through the network, requires high network stability, consume certain request time delay, 
 easily forms a single hot spot, and consumes a lot of resources, limits its scope of usage.
 
 This project uses a decentralized flow control algorithm to move the control strategy to  decentralized clients, 
@@ -38,10 +38,10 @@ The flow limiter of this project provides hierarchical flow limiter. If the requ
 the hierarchical flow limiter of this project can automatically pass traffic with a higher score to achieve the goal of traffic hierarchical selection. 
 Traffic classification selection to prioritize high-value traffic is a weapon to maximize system value.
 
-## Principles of the cluster limiter's algorithm
+## Principles of the limiter's algorithm
 The flow control calculation algorithm of this project re-evaluates the flow situation in a fixed period (about 2s~10s), and adapt to changes in traffic through parameter adjustment.
 
-#### Estimate current cluster traffic by local traffic volume
+#### Estimate current cluster's traffic volume by local traffic volume
 The flow control algorithm of this project believes that the cluster traffic and local traffic are stable for a short time, 
 so the proportion of local traffic in the cluster traffic is also stable for a short time.
 
@@ -56,21 +56,21 @@ Formula for estimating current cluster traffic:
     CurrentClusterTraffic: = LastSynchronizedClusterTraffic + LocalRequestSinceSynchronized/LocalTrafficProportion
     
     
-#### Calculate the current conversion ratio from passing to rewarding
+#### Calculate the current conversion ratio from pass volume to reward volume
 Since the flow limiter does not directly control the reward volume, 
 the conversion ratio needs to be calculated to calculate the pass volume to achieve the target reward volume. 
 
 Update ConversionRate formula:
     ConversionRatio: = ConversionRatio * P + (RewardRecently / PassRecently) * (1 – P)
 
-#### Calculate the ideal limiter pass rate
+#### Calculate the limiter's ideal pass rate
 The flow controller of this project is controlled by the proportional parameter (passRate). 
 
 The formula for calculating the IdealPassingRate is as follows:
 
     IdealPassRate : = IdealPassRate * P + ((RewardRecently/RequestRecently)/RewardRate) * (1-P)
     
-#### Adjust the working pass rate of the flow limiter
+#### Adjust the working pass rate of the limiter
 The IdealPassRate has a certain lag, and the working pass rate needs to be adjusted according to the actual conversion situation.
 
 If the current actual reward volume is less than the smoothed ideal reward volume, 
