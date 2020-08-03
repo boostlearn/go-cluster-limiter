@@ -83,5 +83,5 @@ If the current actual reward volume is greater than the smoothed ideal reward vo
 
 The calculation formula of the WorkingPassRate is as follows:
 
-    WorkingPassRate: = IdealPassRate * (1-ExcessTime / AccelerationPeriod)
+    WorkingPassRate: = IdealPassRate * (1 - ExcessTime/AccelerationPeriod)
     
