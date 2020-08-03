@@ -4,11 +4,11 @@
 
 ## The difference with other limiters
      
-the local host limiter mainly controls the use of local traffic, 
+the stand-alone limiter mainly controls the use of local traffic, 
 which can be implemented using algorithms such as counters, leaky buckets, or token buckets.
-the local host limiter does not depend on the external environment and needs low resource consumption.
+the stand-alone limiter does not depend on the external environment and needs low resource consumption.
 
-However, the algorithm which used in local host limiter cannot run in the cluster's service partition mode. 
+However, the algorithm which used in stand-alone limiter cannot run in the cluster's service partition mode. 
 The common method is to control the cluster's flow by calling the external flow control (RPC) service. 
 however, cluster limiter carried out through the network, requires high network stability, consume certain request time delay, 
 easily forms a single hot spot, and consumes a lot of resources, limits its scope of usage.
@@ -84,4 +84,91 @@ If the current actual reward volume is greater than the smoothed ideal reward qu
 The calculation formula of the WorkingPassRate is as follows:
 
     WorkingPassRate: = IdealPassRate * (1 - ExcessTime/AccelerationPeriod)
+    
+
+## 4. Benchmark
+benchmark test results:
+
+|module|1CPU|2CPU|3CPU|4CPU|
+|----|----|----|----|---|
+|counter|51.9 ns/op|71.8 ns/op|72.1 ns/op|73.5 ns/op|
+|limiter|465 ns/op|411 ns/op|265 ns/op|271 ns/op|
+|score limiter|492 ns/op|493 ns/op|528 ns/op|545 ns/op|
+
+in conclusion: 
+* The single-core serving is about 2 million qps, which has little impact on applications with a single-machine business capacity within 100,000 QPS, and can meet most usage scenarios.
+* The multi-core acceleration effect is not good. You can increase the stand-alone service capability by creating multiple copies of the limiter.
+
+## Examples
+#### Storage
+The storage requirements are:
+* Can be unavailable for a short time, but the stored data should not be lost
+* The response time of data query under normal conditions is within 100ms
+
+The commonly used database like redis, influxdb, and mysql can all meet these conditions.
+Currently only redis is supported.
+
+Build:
+
+    import "github.com/boostlearn/go-cluster-limiter/cluster_limiter"
+    counterStore, err := redis_store.NewStore("127.0.0.1:6379","","")
+
+#### Limiter With Reset Period
+Build：
+    
+    import "github.com/boostlearn/go-cluster-limiter/cluster_limiter"
+    
+    limiterFactory := cluster_limiter.NewFactory(
+    	&cluster_limiter.ClusterLimiterFactoryOpts{
+    		Name:                  "test",
+    		HeartbeatInterval:     1000 * time.Millisecond,
+    		InitLocalTrafficProportion: 1.0,
+    	}, counterStore)
+    limiterFactory.Start()
+    
+    limiter, err := limiterFactory.NewClusterLimiter(
+    		&cluster_limiter.ClusterLimiterOpts{
+    			Name:                "test",
+    			PeriodInterval:      time.Duration(60) * time.Second,
+    			DiscardPreviousData: true,
+    		})
+
+Use：
+    
+    if limiter.Acquire(1) { // 获取
+    	doSomething()
+    }
+    ...
+    
+    limiter.Reward(1) // 反馈
+
+
+#### Limiter With Score
+Build：
+
+    import "github.com/boostlearn/go-cluster-limiter/cluster_limiter"
+    
+    limiterFactory := cluster_limiter.NewFactory(
+    	&cluster_limiter.ClusterLimiterFactoryOpts{
+    		Name:                  "test",
+    	}, counterStore)
+    limiterFactory.Start()
+    
+    scorelimiter, err = limiterFactory.NewClusterLimiter(
+    	&cluster_limiter.ClusterLimiterOpts{
+    		Name:                     "test",
+    		PeriodInterval:           time.Duration(60) * time.Second,
+    		ScoreSamplesMax:          10000,
+    		ScoreSamplesSortInterval: 10 * time.Second,
+    		DiscardPreviousData:      true,
+    	})
+    		
+Use：
+    
+    if limiter.TakeWithScore(1, score) { // score代表评分
+    	doSomething()
+    }
+    ...
+    limiter.Reward(1) // 反馈
+    
     
