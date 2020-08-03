@@ -6,11 +6,6 @@ import (
 	"github.com/boostlearn/go-cluster-limiter/cluster_counter/redis_store"
 	"github.com/boostlearn/go-cluster-limiter/cluster_limiter"
 	"log"
-	"net/http"
-
-	"github.com/prometheus/client_golang/prometheus"
-	"github.com/prometheus/client_golang/prometheus/promhttp"
-
 	"math/rand"
 	"time"
 )
@@ -31,11 +26,11 @@ var (
 
 	listenPort int64
 
-	metrics = prometheus.NewGaugeVec(prometheus.GaugeOpts{
-		Namespace: "boostlearn",
-		Subsystem: "test",
-		Name:      "cluster_limiter",
-	}, []string{"limiter_instance", "metric_name"})
+	//metrics = prometheus.NewGaugeVec(prometheus.GaugeOpts{
+	//	Namespace: "boostlearn",
+	//	Subsystem: "test",
+	//	Name:      "cluster_limiter",
+	//}, []string{"limiter_instance", "metric_name"})
 )
 
 func init() {
@@ -50,7 +45,7 @@ func init() {
 	flag.BoolVar(&discardPreviousData, "i", true, "whether discard previous data")
 	flag.Float64Var(&localTrafficProportion, "j", 1, "proportion of local traffic in cluster")
 
-	prometheus.MustRegister(metrics)
+	//prometheus.MustRegister(metrics)
 }
 
 func main() {
@@ -86,7 +81,7 @@ func main() {
 	lbs := []string{"c1", "c2"}
 	limiter := limiterVec.WithLabelValues(lbs)
 
-	go httpServer()
+	//go httpServer()
 	go fakeTraffic(limiter)
 
 	ticker := time.NewTicker(100000 * time.Microsecond)
@@ -120,9 +115,9 @@ func main() {
 		data["request_local_traffic_proportion"] = limiter.RequestCounter.LocalTrafficProportion()
 		data["reward_local_traffic_proportion"] = limiter.RewardCounter.LocalTrafficProportion()
 
-		for k, v := range data {
-			metrics.WithLabelValues(instanceName, k).Set(v)
-		}
+		//for k, v := range data {
+		//	metrics.WithLabelValues(instanceName, k).Set(v)
+		//}
 
 		if i%10 == 0 {
 			fmt.Println(data)
@@ -133,9 +128,9 @@ func main() {
 }
 
 func httpServer() {
-	http.Handle("/metrics", promhttp.Handler())
-	err := http.ListenAndServe(fmt.Sprintf("0.0.0.0:%v", listenPort), nil)
-	log.Fatal(err)
+	//http.Handle("/metrics", promhttp.Handler())
+	//err := http.ListenAndServe(fmt.Sprintf("0.0.0.0:%v", listenPort), nil)
+	//log.Fatal(err)
 }
 
 func fakeTraffic(limiter *cluster_limiter.ClusterLimiter) {
@@ -151,11 +146,11 @@ func fakeTraffic(limiter *cluster_limiter.ClusterLimiter) {
 		v = v * mockTrafficFactor
 
 		for j := 0; j < int(v); j++ {
-			metrics.WithLabelValues(instanceName, "request").Add(1)
+			//metrics.WithLabelValues(instanceName, "request").Add(1)
 			if limiter.Take(float64(1)) == true {
-				metrics.WithLabelValues(instanceName, "pass").Add(1)
+				//metrics.WithLabelValues(instanceName, "pass").Add(1)
 				if rand.Float64() > 0.5 {
-					metrics.WithLabelValues(instanceName, "reward").Add(1)
+					//metrics.WithLabelValues(instanceName, "reward").Add(1)
 					limiter.Reward(float64(1))
 				}
 			}

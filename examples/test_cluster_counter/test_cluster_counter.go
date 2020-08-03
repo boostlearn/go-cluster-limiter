@@ -6,10 +6,6 @@ import (
 	"github.com/boostlearn/go-cluster-limiter/cluster_counter"
 	"github.com/boostlearn/go-cluster-limiter/cluster_counter/redis_store"
 	"log"
-	"net/http"
-
-	"github.com/prometheus/client_golang/prometheus"
-	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"math/rand"
 	"time"
 )
@@ -25,11 +21,11 @@ var (
 	redisAddr              string
 	redisPass              string
 
-	metrics = prometheus.NewGaugeVec(prometheus.GaugeOpts{
-		Namespace: "boostlearn",
-		Subsystem: "test",
-		Name:      "cluster_counter",
-	}, []string{"counter_instance", "metric_name"})
+	//metrics = prometheus.NewGaugeVec(prometheus.GaugeOpts{
+	//	Namespace: "boostlearn",
+	//	Subsystem: "test",
+	//	Name:      "cluster_counter",
+	//}, []string{"counter_instance", "metric_name"})
 )
 
 func init() {
@@ -42,7 +38,7 @@ func init() {
 	flag.Int64Var(&listenPort, "h", 20001, "prometheus listen port")
 	flag.Float64Var(&mockTrafficFactor, "i", 1.0, "mock traffic factor")
 	flag.BoolVar(&discardPreviousData, "j", true, "whether discard previous data")
-	prometheus.MustRegister(metrics)
+	//prometheus.MustRegister(metrics)
 }
 
 func main() {
@@ -93,9 +89,9 @@ func main() {
 			"cluster_recently":         counter.ClusterRecently(),
 		}
 
-		for k, v := range data {
-			metrics.WithLabelValues(testerName, k).Set(v)
-		}
+		//for k, v := range data {
+		//	metrics.WithLabelValues(testerName, k).Set(v)
+		//}
 
 		if i%10 == 0 {
 			fmt.Println(data)
@@ -106,9 +102,9 @@ func main() {
 }
 
 func httpServer() {
-	http.Handle("/metrics", promhttp.Handler())
-	err := http.ListenAndServe(fmt.Sprintf("0.0.0.0:%v", listenPort), nil)
-	log.Fatal(err)
+	//http.Handle("/metrics", promhttp.Handler())
+	//err := http.ListenAndServe(fmt.Sprintf("0.0.0.0:%v", listenPort), nil)
+	//log.Fatal(err)
 }
 
 func mockTraffic(counter *cluster_counter.ClusterCounter) {
