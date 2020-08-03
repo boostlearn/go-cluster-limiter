@@ -39,7 +39,7 @@ the hierarchical flow limiter of this project can automatically pass traffic wit
 Traffic classification selection to prioritize high-value traffic is a weapon to maximize system value.
 
 ## Examples
-#### Storage
+#### Storage Support
 The storage requirements are:
 * Can be unavailable for a short time, but the stored data should not be lost
 * The response time of data query under normal conditions is within 100ms
@@ -52,10 +52,8 @@ Build:
     import "github.com/boostlearn/go-cluster-limiter/cluster_limiter"
     counterStore, err := redis_store.NewStore("127.0.0.1:6379","","")
 
-#### Limiter With Reset Period
-Build：
-    
-    import "github.com/boostlearn/go-cluster-limiter/cluster_limiter"
+#### Limiter
+Build Factory：
     
     limiterFactory := cluster_limiter.NewFactory(
     	&cluster_limiter.ClusterLimiterFactoryOpts{
@@ -64,34 +62,39 @@ Build：
     		InitLocalTrafficProportion: 1.0,
     	}, counterStore)
     limiterFactory.Start()
+ 
+build limiter with start-end time:
     
+    beginTime,_ := time.Parse("2006-01-02 15:04:05", "2020-01-01 09:00:00"),
+    endTime,_ := time.Parse("2006-01-02 15:04:05", "2020-01-01 18:00:00"),
+    limiter, err := limiterFactory.NewClusterLimiter(
+    		&cluster_limiter.ClusterLimiterOpts{
+    			Name:                "test",
+    			BeginTime: beginTime,
+                EndTime: endTime,
+    			DiscardPreviousData: true,
+    		})
+    		
+build limiter with  reset period:
+     
     limiter, err := limiterFactory.NewClusterLimiter(
     		&cluster_limiter.ClusterLimiterOpts{
     			Name:                "test",
     			PeriodInterval:      time.Duration(60) * time.Second,
     			DiscardPreviousData: true,
-    		})
+    		})   		
 
-Use：
+limiter's take and reward:
     
     if limiter.Acquire(1) { 
     	doSomething()
     }
     ...
-    
     limiter.Reward(1) 
 
 
 #### Limiter With Score
-Build：
-
-    import "github.com/boostlearn/go-cluster-limiter/cluster_limiter"
-    
-    limiterFactory := cluster_limiter.NewFactory(
-    	&cluster_limiter.ClusterLimiterFactoryOpts{
-    		Name:                  "test",
-    	}, counterStore)
-    limiterFactory.Start()
+build limiter with score samples：
     
     scorelimiter, err = limiterFactory.NewClusterLimiter(
     	&cluster_limiter.ClusterLimiterOpts{
@@ -102,7 +105,7 @@ Build：
     		DiscardPreviousData:      true,
     	})
     		
-Use：
+score limiter's take and reward：
     
     if limiter.TakeWithScore(1, score) { 
     	doSomething()
@@ -110,6 +113,19 @@ Use：
     ...
     limiter.Reward(1) // 反馈
     
+
+## Benchmark
+benchmark test results:
+
+|module|1CPU|2CPU|3CPU|4CPU|
+|----|----|----|----|---|
+|counter|51.9 ns/op|71.8 ns/op|72.1 ns/op|73.5 ns/op|
+|limiter|465 ns/op|411 ns/op|265 ns/op|271 ns/op|
+|score limiter|492 ns/op|493 ns/op|528 ns/op|545 ns/op|
+
+in conclusion: 
+* The single-core serving is about 2 million qps, which has little impact on applications with a single-machine business capacity within 100,000 QPS, and can meet most usage scenarios.
+* The multi-core acceleration effect is not good. You can increase the stand-alone service capability by creating multiple copies of the limiter.
     
 ## Principles of the limiter's algorithm
 The flow control calculation algorithm of this project re-evaluates the flow situation in a fixed period (about 2s~10s), and adapt to changes in traffic through parameter adjustment.
@@ -158,16 +174,3 @@ The calculation formula of the WorkingPassRate is as follows:
 
     WorkingPassRate: = IdealPassRate * (1 - ExcessTime/AccelerationPeriod)
     
-
-## Benchmark
-benchmark test results:
-
-|module|1CPU|2CPU|3CPU|4CPU|
-|----|----|----|----|---|
-|counter|51.9 ns/op|71.8 ns/op|72.1 ns/op|73.5 ns/op|
-|limiter|465 ns/op|411 ns/op|265 ns/op|271 ns/op|
-|score limiter|492 ns/op|493 ns/op|528 ns/op|545 ns/op|
-
-in conclusion: 
-* The single-core serving is about 2 million qps, which has little impact on applications with a single-machine business capacity within 100,000 QPS, and can meet most usage scenarios.
-* The multi-core acceleration effect is not good. You can increase the stand-alone service capability by creating multiple copies of the limiter.
