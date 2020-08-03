@@ -53,7 +53,7 @@ Build:
     counterStore, err := redis_store.NewStore("127.0.0.1:6379","","")
 
 #### Limiter
-Build Factory：
+*build limiter's factory*：
     
     limiterFactory := cluster_limiter.NewFactory(
     	&cluster_limiter.ClusterLimiterFactoryOpts{
@@ -63,7 +63,7 @@ Build Factory：
     	}, counterStore)
     limiterFactory.Start()
  
-build limiter with start-end time:
+*build limiter with start-end time*:
     
     beginTime,_ := time.Parse("2006-01-02 15:04:05", "2020-01-01 09:00:00"),
     endTime,_ := time.Parse("2006-01-02 15:04:05", "2020-01-01 18:00:00"),
@@ -71,11 +71,11 @@ build limiter with start-end time:
     		&cluster_limiter.ClusterLimiterOpts{
     			Name:                "test",
     			BeginTime: beginTime,
-                EndTime: endTime,
+    			EndTime: endTime,
     			DiscardPreviousData: true,
     		})
     		
-build limiter with  reset period:
+*build limiter with  reset period*:
      
     limiter, err := limiterFactory.NewClusterLimiter(
     		&cluster_limiter.ClusterLimiterOpts{
@@ -84,7 +84,7 @@ build limiter with  reset period:
     			DiscardPreviousData: true,
     		})   		
 
-limiter's take and reward:
+*limiter's take and reward*:
     
     if limiter.Acquire(1) { 
     	doSomething()
@@ -94,7 +94,7 @@ limiter's take and reward:
 
 
 #### Limiter With Score
-build limiter with score samples：
+*build limiter with score samples*：
     
     scorelimiter, err = limiterFactory.NewClusterLimiter(
     	&cluster_limiter.ClusterLimiterOpts{
@@ -105,7 +105,7 @@ build limiter with score samples：
     		DiscardPreviousData:      true,
     	})
     		
-score limiter's take and reward：
+*score limiter's take and reward*：
     
     if limiter.TakeWithScore(1, score) { 
     	doSomething()
