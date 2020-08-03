@@ -61,6 +61,7 @@ Since the flow limiter does not directly control the reward volume,
 the conversion ratio needs to be calculated to calculate the pass volume to achieve the target reward volume. 
 
 Update ConversionRate formula:
+    
     ConversionRatio: = ConversionRatio * P + (RewardRecently / PassRecently) * (1 – P)
 
 #### Calculate the limiter's ideal pass rate
