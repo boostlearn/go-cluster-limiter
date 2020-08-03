@@ -48,7 +48,7 @@
 本项目流控算法认为集群流量和本地流量的短时稳定，所以本地流量在集群流量里的占比也短时稳定。
  
 &nbsp;&nbsp;&nbsp;&nbsp;
-本地流量占比参会(LocalTrafficRatio)的动态更新算法如下：
+本地流量占比参会(LocalTrafficProportion)的动态更新算法如下：
 
      本周期流量占比 :=  上周期流量占比 * P + （本周期本地请求/本周期集群请求）* （1 - P）
      
@@ -154,7 +154,7 @@
     	&cluster_limiter.ClusterLimiterFactoryOpts{
     		Name:                  "test",
     		HeartbeatInterval:     1000 * time.Millisecond,
-    		InitLocalTrafficRatio: 1.0,
+    		InitLocalTrafficProportion: 1.0,
     	}, counterStore)
     limiterFactory.Start()
     

@@ -19,8 +19,8 @@ var (
 	limiterName  string
 	instanceName string
 
-	discardPreviousData bool
-	localTrafficRatio   float64
+	discardPreviousData    bool
+	localTrafficProportion float64
 
 	targetNum         int64
 	resetInterval     int64
@@ -35,7 +35,6 @@ var (
 		Namespace: "boostlearn",
 		Subsystem: "test",
 		Name:      "cluster_limiter",
-		Help:      "数量",
 	}, []string{"limiter_instance", "metric_name"})
 )
 
@@ -49,7 +48,7 @@ func init() {
 	flag.StringVar(&redisPass, "g", "", "store: redis pass")
 	flag.Int64Var(&listenPort, "h", 20002, "prometheus: listen port")
 	flag.BoolVar(&discardPreviousData, "i", true, "whether discard previous data")
-	flag.Float64Var(&localTrafficRatio, "j", 1, "default local traffic ratio of all cluster")
+	flag.Float64Var(&localTrafficProportion, "j", 1, "proportion of local traffic in cluster")
 
 	prometheus.MustRegister(metrics)
 }
@@ -64,9 +63,9 @@ func main() {
 
 	limiterFactory := cluster_limiter.NewFactory(
 		&cluster_limiter.ClusterLimiterFactoryOpts{
-			Name:                     "test",
-			HeartbeatInterval: 100 * time.Millisecond,
-			InitLocalTrafficRatio:  localTrafficRatio,
+			Name:                       "test",
+			HeartbeatInterval:          100 * time.Millisecond,
+			InitLocalTrafficProportion: localTrafficProportion,
 		},
 		counterStore)
 	limiterFactory.Start()
@@ -74,13 +73,7 @@ func main() {
 	limiterVec, err := limiterFactory.NewClusterLimiterVec(
 		&cluster_limiter.ClusterLimiterOpts{
 			Name:                limiterName,
-			BeginTime:           time.Time{},
-			EndTime:             time.Time{},
-			CompletionTime:      time.Time{},
 			PeriodInterval:      time.Duration(resetInterval) * time.Second,
-			ReserveInterval:     0,
-			BurstInterval:       0,
-			MaxBoostFactor:      0,
 			DiscardPreviousData: true,
 		},
 		[]string{"label1", "label2"})
@@ -91,7 +84,7 @@ func main() {
 
 	lbs := []string{"c1", "c2"}
 	limiter := limiterVec.WithLabelValues(lbs)
-	limiter.SetTarget(float64(targetNum))
+	limiter.SetRewardTarget(float64(targetNum))
 
 	go httpServer()
 	go fakeTraffic(limiter)
@@ -104,8 +97,8 @@ func main() {
 		data["pass_rate"] = float64(limiter.PassRate())
 		data["ideal_rate"] = float64(limiter.IdealPassRate())
 		data["reward_rate"] = float64(limiter.IdealRewardRate())
-		data["total_target"] = float64(limiter.GetTarget())
-		data["pacing_target"] = float64(limiter.PacingReward())
+		data["total_target"] = float64(limiter.GetRewardTarget())
+		data["ideal_reward"] = float64(limiter.IdealReward())
 
 		rewardCur, rewardTime := limiter.RewardCounter.ClusterValue(0)
 		data["lag_time"] = float64(limiter.LagTime(rewardCur, rewardTime))
@@ -124,8 +117,8 @@ func main() {
 		data["reward_pred"], _ = limiter.RewardCounter.ClusterValue(0)
 		rewardLast, _ := limiter.RewardCounter.ClusterValue(-1)
 		data["reward_last"] = float64(rewardLast)
-		data["request_local_traffic_ratio"] = limiter.RequestCounter.LocalTrafficRatio()
-		data["reward_local_traffic_ratio"] = limiter.RewardCounter.LocalTrafficRatio()
+		data["request_local_traffic_proportion"] = limiter.RequestCounter.LocalTrafficProportion()
+		data["reward_local_traffic_proportion"] = limiter.RewardCounter.LocalTrafficProportion()
 
 		for k, v := range data {
 			metrics.WithLabelValues(instanceName, k).Set(v)
@@ -160,12 +153,12 @@ func fakeTraffic(limiter *cluster_limiter.ClusterLimiter) {
 		for j := 0; j < int(v); j++ {
 			metrics.WithLabelValues(instanceName, "request").Add(1)
 			if limiter.Take(float64(1)) == true {
-			    metrics.WithLabelValues(instanceName, "pass").Add(1)
-                if rand.Float64() > 0.5 {
-			        metrics.WithLabelValues(instanceName, "reward").Add(1)
-                    limiter.Reward(float64(1))
-                }
-            }
+				metrics.WithLabelValues(instanceName, "pass").Add(1)
+				if rand.Float64() > 0.5 {
+					metrics.WithLabelValues(instanceName, "reward").Add(1)
+					limiter.Reward(float64(1))
+				}
+			}
 		}
 	}
 }

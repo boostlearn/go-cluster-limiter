@@ -6,28 +6,29 @@ import (
 	"time"
 )
 
-//
+// counter vector with same configuration
 type ClusterCounterVec struct {
-	mu                    sync.RWMutex
-	name                  string
-	labelNames            []string
-	factory               *ClusterCounterFactory
-	beginTime             time.Time
-	endTime               time.Time
-	periodInterval        time.Duration
-	storeInterval         time.Duration
-	initLocalTrafficRatio float64
-	discardPreviousData   bool
-	declineExpRatio       float64
-	counters              sync.Map
+	mu                         sync.RWMutex
+	name                       string
+	labelNames                 []string
+	factory                    *ClusterCounterFactory
+	beginTime                  time.Time
+	endTime                    time.Time
+	periodInterval             time.Duration
+	storeInterval              time.Duration
+	initLocalTrafficProportion float64
+	discardPreviousData        bool
+	declineExpRatio            float64
+	counters                   sync.Map
 }
 
+// build new counter with labels
 func (counterVec *ClusterCounterVec) WithLabelValues(lbs []string) *ClusterCounter {
 	if len(counterVec.labelNames) != len(lbs) {
 		return nil
 	}
 
-	key := strings.Join(lbs, SEP)
+	key := strings.Join(lbs, "####")
 	if v, ok := counterVec.counters.Load(key); ok {
 		if limiter, ok2 := v.(*ClusterCounter); ok2 {
 			return limiter
@@ -40,18 +41,18 @@ func (counterVec *ClusterCounterVec) WithLabelValues(lbs []string) *ClusterCount
 	}
 
 	newCounter := &ClusterCounter{
-		name:                  counterVec.name,
-		lbs:                   counterLabels,
-		beginTime:             counterVec.beginTime,
-		endTime:               counterVec.endTime,
-		periodInterval:        counterVec.periodInterval,
-		mu:                    sync.RWMutex{},
-		factory:               counterVec.factory,
-		storeInterval:         counterVec.storeInterval,
-		localTrafficRatio:     counterVec.initLocalTrafficRatio,
-		initLocalTrafficRatio: counterVec.initLocalTrafficRatio,
-		discardPreviousData:   counterVec.discardPreviousData,
-		declineExpRatio:       counterVec.declineExpRatio,
+		name:                       counterVec.name,
+		lbs:                        counterLabels,
+		beginTime:                  counterVec.beginTime,
+		endTime:                    counterVec.endTime,
+		periodInterval:             counterVec.periodInterval,
+		mu:                         sync.RWMutex{},
+		factory:                    counterVec.factory,
+		storeInterval:              counterVec.storeInterval,
+		localTrafficProportion:     counterVec.initLocalTrafficProportion,
+		initLocalTrafficProportion: counterVec.initLocalTrafficProportion,
+		discardPreviousData:        counterVec.discardPreviousData,
+		declineExpRatio:            counterVec.declineExpRatio,
 	}
 	newCounter.Init()
 
@@ -59,6 +60,7 @@ func (counterVec *ClusterCounterVec) WithLabelValues(lbs []string) *ClusterCount
 	return counterVec.WithLabelValues(lbs)
 }
 
+// update data heartbeat
 func (counterVec *ClusterCounterVec) Heartbeat() {
 	counterVec.counters.Range(func(k interface{}, v interface{}) bool {
 		if counter, ok := v.(*ClusterCounter); ok {
@@ -68,6 +70,7 @@ func (counterVec *ClusterCounterVec) Heartbeat() {
 	})
 }
 
+// check whether expired
 func (counterVec *ClusterCounterVec) Expire() bool {
 	counterVec.mu.RLock()
 	defer counterVec.mu.RUnlock()

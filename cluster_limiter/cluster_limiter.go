@@ -13,9 +13,9 @@ const DefaultMaxBoostFactor = 2.0
 const DefaultBoostBurstFactor = 10.0
 const DefaultBurstIntervalSeconds = 5
 const DefaultDeclineExpRatio = 0.5
-const DefaultScoreSamplesSortIntervalSeconds = 60
+const DefaultScoreSamplesSortIntervalSeconds = 10
 
-
+// limiter: limit traffic within cluster
 type ClusterLimiter struct {
 	mu sync.RWMutex
 
@@ -29,7 +29,7 @@ type ClusterLimiter struct {
 	periodInterval  time.Duration
 	reserveInterval time.Duration
 
-	targetReward        float64
+	rewardTarget        float64
 	discardPreviousData bool
 
 	RequestCounter *cluster_counter.ClusterCounter
@@ -47,32 +47,33 @@ type ClusterLimiter struct {
 	idealRewardRate float64
 	declineExpRatio float64
 
-	localRequestIncrease      float64
-	localPassIncrease         float64
-	localRewardIncrease       float64
-	localPacingRewardIncrease float64
+	localRequestIncrease     float64
+	localPassIncrease        float64
+	localRewardIncrease      float64
+	localIdealRewardIncrease float64
 
-	clusterRequestIncrease      float64
-	clusterPassIncrease         float64
-	clusterRewardIncrease       float64
-	clusterPacingRewardIncrease float64
+	clusterRequestIncrease     float64
+	clusterPassIncrease        float64
+	clusterRewardIncrease      float64
+	clusterIdealRewardIncrease float64
 
-	lastLocalPass         float64
-	lastLocalReward       float64
-	lastLocalRequest      float64
-	lastLocalPacingReward float64
+	lastLocalPass        float64
+	lastLocalReward      float64
+	lastLocalRequest     float64
+	lastLocalIdealReward float64
 
-	scoreSamplesSortInterval          time.Duration
-	lastScoreSortTime time.Time
+	scoreSamplesSortInterval time.Duration
+	lastScoreSortTime        time.Time
 
-	scoreSamples []float64
+	scoreSamples       []float64
 	scoreSamplesSorted []float64
-	scoreSamplesMax int64
-	scoreSamplesPos int64
-	scoreCutReady bool
-	scoreCutValue float64
+	scoreSamplesMax    int64
+	scoreSamplesPos    int64
+	scoreCutReady      bool
+	scoreCutValue      float64
 }
 
+// init limiter
 func (limiter *ClusterLimiter) Init() {
 	limiter.mu.Lock()
 	defer limiter.mu.Unlock()
@@ -115,18 +116,12 @@ func (limiter *ClusterLimiter) Init() {
 	}
 }
 
-func (limiter *ClusterLimiter) Reward(v float64) {
-	limiter.mu.RLock()
-	defer limiter.mu.RUnlock()
-
-	limiter.RewardCounter.Add(v)
-}
-
+// request passed
 func (limiter *ClusterLimiter) Take(v float64) bool {
 	limiter.mu.RLock()
 	defer limiter.mu.RUnlock()
 
-	if limiter.targetReward == 0 {
+	if limiter.rewardTarget == 0 {
 		return false
 	}
 
@@ -136,7 +131,7 @@ func (limiter *ClusterLimiter) Take(v float64) bool {
 	}
 
 	clusterPred, _ := limiter.RewardCounter.ClusterValue(0)
-	if clusterPred+v > limiter.getPacingReward(time.Now()) {
+	if clusterPred+v > limiter.getIdealReward(time.Now()) {
 		return false
 	}
 
@@ -144,11 +139,20 @@ func (limiter *ClusterLimiter) Take(v float64) bool {
 	return true
 }
 
+// reward feedback
+func (limiter *ClusterLimiter) Reward(v float64) {
+	limiter.mu.RLock()
+	defer limiter.mu.RUnlock()
+
+	limiter.RewardCounter.Add(v)
+}
+
+// request passed with score
 func (limiter *ClusterLimiter) ScoreTake(v float64, score float64) bool {
 	limiter.mu.RLock()
 	defer limiter.mu.RUnlock()
 
-	if limiter.targetReward == 0 {
+	if limiter.rewardTarget == 0 {
 		return false
 	}
 
@@ -170,7 +174,7 @@ func (limiter *ClusterLimiter) ScoreTake(v float64, score float64) bool {
 	}
 
 	clusterPred, _ := limiter.RewardCounter.ClusterValue(0)
-	if clusterPred+v > limiter.getPacingReward(time.Now()) {
+	if clusterPred+v > limiter.getIdealReward(time.Now()) {
 		return false
 	}
 
@@ -178,7 +182,7 @@ func (limiter *ClusterLimiter) ScoreTake(v float64, score float64) bool {
 	return true
 }
 
-
+// request passed and reward for short
 func (limiter *ClusterLimiter) Acquire(v float64) bool {
 	if limiter.Take(v) {
 		limiter.Reward(v)
@@ -188,6 +192,7 @@ func (limiter *ClusterLimiter) Acquire(v float64) bool {
 	}
 }
 
+// request passed with score and reward for short
 func (limiter *ClusterLimiter) ScoreAcquire(v float64, score float64) bool {
 	if limiter.ScoreTake(v, score) {
 		limiter.Reward(v)
@@ -197,28 +202,29 @@ func (limiter *ClusterLimiter) ScoreAcquire(v float64, score float64) bool {
 	}
 }
 
-func (limiter *ClusterLimiter) SetTarget(target float64) {
+func (limiter *ClusterLimiter) SetRewardTarget(target float64) {
 	limiter.mu.Lock()
 	defer limiter.mu.Unlock()
 
-	limiter.targetReward = target
+	limiter.rewardTarget = target
 }
 
-func (limiter *ClusterLimiter) GetTarget() float64 {
+func (limiter *ClusterLimiter) GetRewardTarget() float64 {
 	limiter.mu.RLock()
 	defer limiter.mu.RUnlock()
 
-	return limiter.targetReward
+	return limiter.rewardTarget
 }
 
-func (limiter *ClusterLimiter) PacingReward() float64 {
+//
+func (limiter *ClusterLimiter) IdealReward() float64 {
 	limiter.mu.RLock()
 	defer limiter.mu.RUnlock()
 
-	return limiter.getPacingReward(time.Now())
+	return limiter.getIdealReward(time.Now())
 }
 
-func (limiter *ClusterLimiter) getPacingReward(t time.Time) float64 {
+func (limiter *ClusterLimiter) getIdealReward(t time.Time) float64 {
 	timeNow := time.Now()
 	if timeNow.Before(limiter.beginTime) || timeNow.After(limiter.endTime) ||
 		!limiter.beginTime.Before(limiter.endTime) {
@@ -227,32 +233,33 @@ func (limiter *ClusterLimiter) getPacingReward(t time.Time) float64 {
 
 	if limiter.discardPreviousData && limiter.initTime.Before(limiter.endTime) &&
 		limiter.initTime.After(limiter.beginTime) {
-		targetTotalReward := limiter.targetReward
-		pacingReward := (targetTotalReward) *
+		targetTotalReward := limiter.rewardTarget
+		idealReward := (targetTotalReward) *
 			float64(t.UnixNano()-limiter.initTime.UnixNano()) /
 			float64(limiter.completionTime.UnixNano()-limiter.beginTime.UnixNano())
-		if pacingReward > limiter.targetReward {
-			pacingReward = limiter.targetReward
+		if idealReward > limiter.rewardTarget {
+			idealReward = limiter.rewardTarget
 		}
-		if pacingReward < 0 {
-			pacingReward = 0
+		if idealReward < 0 {
+			idealReward = 0
 		}
-		return pacingReward
+		return idealReward
 	} else {
-		targetTotalReward := limiter.targetReward
-		pacingReward := targetTotalReward *
+		targetTotalReward := limiter.rewardTarget
+		idealReward := targetTotalReward *
 			float64(t.UnixNano()-limiter.beginTime.UnixNano()) /
 			float64(limiter.completionTime.UnixNano()-limiter.beginTime.UnixNano())
-		if pacingReward > limiter.targetReward {
-			pacingReward = limiter.targetReward
+		if idealReward > limiter.rewardTarget {
+			idealReward = limiter.rewardTarget
 		}
-		if pacingReward < 0 {
-			pacingReward = 0
+		if idealReward < 0 {
+			idealReward = 0
 		}
-		return pacingReward
+		return idealReward
 	}
 }
 
+// Lag time from ideal reward
 func (limiter *ClusterLimiter) LagTime(reward float64, t time.Time) float64 {
 	limiter.mu.RLock()
 	defer limiter.mu.RUnlock()
@@ -261,16 +268,16 @@ func (limiter *ClusterLimiter) LagTime(reward float64, t time.Time) float64 {
 }
 
 func (limiter *ClusterLimiter) getLagTime(reward float64, t time.Time) float64 {
-	if limiter.targetReward == 0 || limiter.endTime.After(limiter.beginTime) == false {
+	if limiter.rewardTarget == 0 || limiter.endTime.After(limiter.beginTime) == false {
 		return 0
 	}
 
-	pacingReward := limiter.getPacingReward(t)
+	idealReward := limiter.getIdealReward(t)
 	interval := float64(limiter.completionTime.UnixNano()-limiter.beginTime.UnixNano()) / 1e9
-	return (pacingReward - reward) * interval / limiter.targetReward
+	return (idealReward - reward) * interval / limiter.rewardTarget
 }
 
-//
+// limiters's current pass rate
 func (limiter *ClusterLimiter) PassRate() float64 {
 	limiter.mu.RLock()
 	defer limiter.mu.RUnlock()
@@ -278,6 +285,7 @@ func (limiter *ClusterLimiter) PassRate() float64 {
 	return limiter.realPassRate
 }
 
+// score discrimination threshold for ScoreTake
 func (limiter *ClusterLimiter) ScoreCut() (bool, float64) {
 	limiter.mu.RLock()
 	defer limiter.mu.RUnlock()
@@ -285,7 +293,7 @@ func (limiter *ClusterLimiter) ScoreCut() (bool, float64) {
 	return limiter.scoreCutReady, limiter.scoreCutValue
 }
 
-//
+// ideal pass rate
 func (limiter *ClusterLimiter) IdealPassRate() float64 {
 	limiter.mu.RLock()
 	defer limiter.mu.RUnlock()
@@ -293,7 +301,7 @@ func (limiter *ClusterLimiter) IdealPassRate() float64 {
 	return limiter.idealPassRate
 }
 
-//
+// ideal reward rate
 func (limiter *ClusterLimiter) IdealRewardRate() float64 {
 	limiter.mu.RLock()
 	defer limiter.mu.RUnlock()
@@ -301,6 +309,7 @@ func (limiter *ClusterLimiter) IdealRewardRate() float64 {
 	return limiter.idealRewardRate
 }
 
+// check whether expired
 func (limiter *ClusterLimiter) Expire() bool {
 	limiter.mu.Lock()
 	defer limiter.mu.Unlock()
@@ -323,6 +332,7 @@ func (limiter *ClusterLimiter) Expire() bool {
 	}
 }
 
+// update data heartbeat
 func (limiter *ClusterLimiter) Heartbeat() {
 	limiter.mu.Lock()
 	defer limiter.mu.Unlock()
@@ -332,7 +342,7 @@ func (limiter *ClusterLimiter) Heartbeat() {
 		return
 	}
 
-	if limiter.targetReward == 0 {
+	if limiter.rewardTarget == 0 {
 		limiter.realPassRate = 0.0
 		limiter.idealPassRate = 0.0
 		limiter.idealRewardRate = 1.0
@@ -362,18 +372,18 @@ func (limiter *ClusterLimiter) updateIdealPassRate() {
 	var _, lastLoadTime = limiter.RequestCounter.ClusterValue(-1)
 	if timeNow.After(lastLoadTime.Add(limiter.burstInterval * 10)) {
 		var curRequest, _ = limiter.RequestCounter.LocalStoreValue(0)
-		var curPacingReward = limiter.getPacingReward(timeNow) * limiter.RequestCounter.LocalTrafficRatio()
+		var curIdealReward = limiter.getIdealReward(timeNow) * limiter.RequestCounter.LocalTrafficProportion()
 
 		limiter.localRequestIncrease = limiter.localRequestIncrease*limiter.declineExpRatio + (curRequest-limiter.lastLocalRequest)*(1-limiter.declineExpRatio)
-		limiter.localPacingRewardIncrease = limiter.localPacingRewardIncrease*limiter.declineExpRatio + (curPacingReward-limiter.lastLocalPacingReward)*(1-limiter.declineExpRatio)
+		limiter.localIdealRewardIncrease = limiter.localIdealRewardIncrease*limiter.declineExpRatio + (curIdealReward-limiter.lastLocalIdealReward)*(1-limiter.declineExpRatio)
 		limiter.lastLocalRequest = curRequest
-		limiter.lastLocalPacingReward = curPacingReward
+		limiter.lastLocalIdealReward = curIdealReward
 
-		if limiter.localPacingRewardIncrease == 0 && limiter.localRequestIncrease == 0 || limiter.idealRewardRate == 0 {
+		if limiter.localIdealRewardIncrease == 0 && limiter.localRequestIncrease == 0 || limiter.idealRewardRate == 0 {
 			return
 		}
 
-		idealPassRate := (limiter.localPacingRewardIncrease / limiter.localRequestIncrease) / limiter.idealRewardRate
+		idealPassRate := (limiter.localIdealRewardIncrease / limiter.localRequestIncrease) / limiter.idealRewardRate
 		if idealPassRate <= 0.0 {
 			idealPassRate = 0.0
 		}
@@ -391,20 +401,20 @@ func (limiter *ClusterLimiter) updateIdealPassRate() {
 
 		var prevRequest, prevTime = limiter.RequestCounter.ClusterValue(prev)
 		var lastRequest, lastTime = limiter.RequestCounter.ClusterValue(last)
-		var prevPacingReward = limiter.getPacingReward(prevTime)
-		var lastPacingReward = limiter.getPacingReward(lastTime)
+		var prevIdealReward = limiter.getIdealReward(prevTime)
+		var lastIdealReward = limiter.getIdealReward(lastTime)
 
 		limiter.clusterRequestIncrease = limiter.clusterRequestIncrease*limiter.declineExpRatio + (lastRequest-prevRequest)*(1-limiter.declineExpRatio)
-		limiter.clusterPacingRewardIncrease = limiter.clusterPacingRewardIncrease*limiter.declineExpRatio + (lastPacingReward-prevPacingReward)*(1-limiter.declineExpRatio)
+		limiter.clusterIdealRewardIncrease = limiter.clusterIdealRewardIncrease*limiter.declineExpRatio + (lastIdealReward-prevIdealReward)*(1-limiter.declineExpRatio)
 
 		if limiter.clusterRequestIncrease == 0.0 ||
-			limiter.clusterPacingRewardIncrease == 0.0 {
+			limiter.clusterIdealRewardIncrease == 0.0 {
 			return
 		}
 
-		idealPassRate := (limiter.clusterPacingRewardIncrease / limiter.clusterRequestIncrease) / limiter.idealRewardRate
+		idealPassRate := (limiter.clusterIdealRewardIncrease / limiter.clusterRequestIncrease) / limiter.idealRewardRate
 
-		//fmt.Println("-----pacing: ", limiter.clusterPacingRewardIncrease, " ", lastPacingReward-prevPacingReward)
+		//fmt.Println("-----ideal_reward: ", limiter.clusterIdealRewardIncrease, " ", lastIdealReward-prevIdealReward)
 		//fmt.Println("-----request:", limiter.clusterRequestIncrease, " ", lastRequest-prevRequest)
 		//fmt.Println("-----reward rate: ", limiter.idealRewardRate)
 		//fmt.Println("-----idea_rate:", idealPassRate)
@@ -478,13 +488,13 @@ func (limiter *ClusterLimiter) updateRealPassRate() {
 		}
 	}
 
-	if len(limiter.scoreSamplesSorted) > 0 && limiter.realPassRate > 0 && limiter.realPassRate < 1.0{
+	if len(limiter.scoreSamplesSorted) > 0 && limiter.realPassRate > 0 && limiter.realPassRate < 1.0 {
 		limiter.scoreCutValue = limiter.scoreSamplesSorted[
-        int(float64((len(limiter.scoreSamplesSorted) - 1))*( 1 - limiter.realPassRate))]
+			int(float64(len(limiter.scoreSamplesSorted)-1)*(1-limiter.realPassRate))]
 		limiter.scoreCutReady = true
 	} else {
 		limiter.scoreCutReady = false
-    }
+	}
 }
 
 func (limiter *ClusterLimiter) sortScoreSamples() {

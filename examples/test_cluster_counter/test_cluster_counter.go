@@ -15,30 +15,28 @@ import (
 )
 
 var (
-	counterName         string
-	instanceName        string
-	discardPreviousData bool
-	periodInterval      int64
-	mockTrafficFactor   float64
-	listenPort          int64
-	localTrafficRatio   float64
-	redisAddr           string
-	redisPass           string
+	counterName            string
+	testerName             string
+	discardPreviousData    bool
+	periodInterval         int64
+	mockTrafficFactor      float64
+	listenPort             int64
+	localTrafficProportion float64
+	redisAddr              string
+	redisPass              string
 
 	metrics = prometheus.NewGaugeVec(prometheus.GaugeOpts{
-		Namespace:   "boostlearn",
-		Subsystem:   "test",
-		Name:        "cluster_counter",
-		Help:        "数量",
-		ConstLabels: nil,
+		Namespace: "boostlearn",
+		Subsystem: "test",
+		Name:      "cluster_counter",
 	}, []string{"counter_instance", "metric_name"})
 )
 
 func init() {
 	flag.StringVar(&counterName, "a", "test_cluster_counter", "cluster counter's unique name")
-	flag.StringVar(&instanceName, "b", "test1", "test instance name")
+	flag.StringVar(&testerName, "b", "test1", "test instance name")
 	flag.Int64Var(&periodInterval, "c", 60, "reset data interval")
-	flag.Float64Var(&localTrafficRatio, "e", 0.1, "default local traffic ratio of all cluster")
+	flag.Float64Var(&localTrafficProportion, "e", 0.1, "proportion of local traffic in cluster")
 	flag.StringVar(&redisAddr, "f", "127.0.0.1:6379", "store: redis address")
 	flag.StringVar(&redisPass, "g", "", "store: redis pass")
 	flag.Int64Var(&listenPort, "h", 20001, "prometheus listen port")
@@ -56,21 +54,17 @@ func main() {
 	}
 	factory := cluster_counter.NewFactory(
 		&cluster_counter.ClusterCounterFactoryOpts{
-			Name:                     "",
-			DefaultLocalTrafficRatio: localTrafficRatio,
-			HeartbeatInterval:        100 * time.Millisecond,
+			DefaultLocalTrafficProportion: localTrafficProportion,
+			HeartbeatInterval:             100 * time.Millisecond,
 		}, store)
 	factory.Start()
 
 	counterVec, err := factory.NewClusterCounterVec(
 		&cluster_counter.ClusterCounterOpts{
-			Name:                     counterName,
-			BeginTime:                time.Time{},
-			EndTime:                  time.Time{},
-			PeriodInterval:           time.Duration(periodInterval) * time.Second,
-			DiscardPreviousData:      discardPreviousData,
-			StoreDataInterval:        0,
-			InitLocalTrafficRatio: localTrafficRatio,
+			Name:                       counterName,
+			PeriodInterval:             time.Duration(periodInterval) * time.Second,
+			DiscardPreviousData:        discardPreviousData,
+			InitLocalTrafficProportion: localTrafficProportion,
 		},
 		[]string{"label1", "label2"})
 	if err != nil {
@@ -91,16 +85,16 @@ func main() {
 		clusterCur, _ := counter.ClusterValue(0)
 		localCur, _ := counter.LocalValue(0)
 		var data = map[string]float64{
-			"local_current":       localCur,
-			"cluster_last":        clusterLast,
-			"cluster_pred":        clusterCur,
-			"local_traffic_ratio": counter.LocalTrafficRatio(),
-			"local_increase":      counter.LocalIncrease(),
-			"cluster_increase":    counter.ClusterIncrease(),
+			"local_current":            localCur,
+			"cluster_last":             clusterLast,
+			"cluster_pred":             clusterCur,
+			"local_traffic_proportion": counter.LocalTrafficProportion(),
+			"local_increase":           counter.LocalIncrease(),
+			"cluster_increase":         counter.ClusterIncrease(),
 		}
 
 		for k, v := range data {
-			metrics.WithLabelValues(instanceName, k).Set(v)
+			metrics.WithLabelValues(testerName, k).Set(v)
 		}
 
 		if i%10 == 0 {

@@ -9,56 +9,50 @@ import (
 	"time"
 )
 
+const RedisKeySep = "####"
+
 type RedisStore struct {
-	cli    *redis.Client
-	prefix string
+	client    *redis.Client
+	keyPrefix string
 }
 
-const SEP = "####"
-
-func NewStore(address string, pass string, prefix string) (*RedisStore, error) {
+// build new store from redis's address
+func NewStore(address string, pass string, keyPrefix string) (*RedisStore, error) {
 	options := &redis.Options{
 		Addr:         address,
 		Password:     pass,
 		DB:           0,
 		DialTimeout:  1 * time.Second,
-		ReadTimeout:  500 * time.Millisecond,
-		WriteTimeout: 500 * time.Millisecond,
+		ReadTimeout:  100 * time.Millisecond,
+		WriteTimeout: 100 * time.Millisecond,
 	}
 	cli := redis.NewClient(options)
 
-	return NewRedisStore(cli, prefix)
+	return NewRedisStore(cli, keyPrefix)
 }
 
-func NewRedisStore(cli *redis.Client, prefix string) (*RedisStore, error) {
+// // build new store from redis cli
+func NewRedisStore(cli *redis.Client, keyPrefix string) (*RedisStore, error) {
 	_, err := cli.Ping().Result()
 	if err != nil {
 		return nil, err
 	}
-	return &RedisStore{cli: cli, prefix: prefix}, nil
+	return &RedisStore{client: cli, keyPrefix: keyPrefix}, nil
 }
 
-func generateRedisKey(name string, beginTime time.Time, endTime time.Time, lbs map[string]string) string {
-	var labels []string
-	for _, v := range lbs {
-		labels = append(labels, v)
-	}
-	sort.Stable(sort.StringSlice(labels))
-	key := fmt.Sprintf("%v%v%v_%v%v%v", name, SEP, beginTime.Unix(), endTime.Unix(), SEP, strings.Join(labels, SEP))
-	return key
-}
-
+// store client's data within cluster
 func (store *RedisStore) Store(name string, beginTime time.Time, endTime time.Time, lbs map[string]string, value float64, force bool) error {
-	key := store.prefix + generateRedisKey(name, beginTime, endTime, lbs)
-	v := store.cli.IncrBy(key, int64(value*10000))
+	key := store.keyPrefix + generateRedisKey(name, beginTime, endTime, lbs)
+	v := store.client.IncrBy(key, int64(value*10000))
 	if endTime.After(beginTime) {
-		store.cli.Expire(key, endTime.Sub(beginTime))
+		store.client.Expire(key, endTime.Sub(beginTime))
 	}
 	return v.Err()
 }
 
+// load cluster's data for clients
 func (store *RedisStore) Load(name string, beginTime time.Time, endTime time.Time, lbs map[string]string) (float64, error) {
-	v := store.cli.Get(store.prefix + generateRedisKey(name, beginTime, endTime, lbs))
+	v := store.client.Get(store.keyPrefix + generateRedisKey(name, beginTime, endTime, lbs))
 	if v.Err() == nil {
 		t, err := v.Result()
 		if err == nil {
@@ -69,4 +63,14 @@ func (store *RedisStore) Load(name string, beginTime time.Time, endTime time.Tim
 	} else {
 		return 0, v.Err()
 	}
+}
+
+func generateRedisKey(name string, beginTime time.Time, endTime time.Time, lbs map[string]string) string {
+	var labels []string
+	for _, v := range lbs {
+		labels = append(labels, v)
+	}
+	sort.Stable(sort.StringSlice(labels))
+	key := fmt.Sprintf("%v%v%v_%v%v%v", name, RedisKeySep, beginTime.Unix(), endTime.Unix(), RedisKeySep, strings.Join(labels, RedisKeySep))
+	return key
 }

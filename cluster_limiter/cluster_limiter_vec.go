@@ -9,6 +9,7 @@ import (
 
 const SEP = "####"
 
+// limiters with same configuration
 type ClusterLimiterVec struct {
 	name string
 
@@ -34,15 +35,16 @@ type ClusterLimiterVec struct {
 	burstInterval time.Duration
 
 	initIdealPassRate float64
-	initRewardRate float64
+	initRewardRate    float64
 
-	scoreSamplesSortInterval          time.Duration
-	scoreSamplesMax int64
+	scoreSamplesSortInterval time.Duration
+	scoreSamplesMax          int64
 
 	mu       sync.RWMutex
 	limiters sync.Map
 }
 
+// create new limiter with labels
 func (limiterVec *ClusterLimiterVec) WithLabelValues(lbs []string) *ClusterLimiter {
 	key := strings.Join(lbs, SEP)
 	if v, ok := limiterVec.limiters.Load(key); ok {
@@ -52,22 +54,22 @@ func (limiterVec *ClusterLimiterVec) WithLabelValues(lbs []string) *ClusterLimit
 	}
 
 	newLimiter := &ClusterLimiter{
-		name:                limiterVec.name,
-		lbs:                 append([]string{}, lbs...),
-		RequestCounter:      limiterVec.RequestCounter.WithLabelValues(lbs),
-		PassCounter:         limiterVec.PassCounter.WithLabelValues(lbs),
-		RewardCounter:       limiterVec.RewardCounter.WithLabelValues(lbs),
-		beginTime:           limiterVec.beginTime,
-		endTime:             limiterVec.endTime,
-		reserveInterval:     limiterVec.reserveInterval,
-		periodInterval:      limiterVec.periodInterval,
-		maxBoostFactor:      limiterVec.maxBoostFactor,
-		burstInterval:       limiterVec.burstInterval,
-		mu:                  sync.RWMutex{},
-		discardPreviousData: limiterVec.discardPreviousData,
-		idealPassRate: limiterVec.initIdealPassRate,
-		idealRewardRate: limiterVec.initRewardRate,
-		scoreSamplesMax: limiterVec.scoreSamplesMax,
+		name:                     limiterVec.name,
+		lbs:                      append([]string{}, lbs...),
+		RequestCounter:           limiterVec.RequestCounter.WithLabelValues(lbs),
+		PassCounter:              limiterVec.PassCounter.WithLabelValues(lbs),
+		RewardCounter:            limiterVec.RewardCounter.WithLabelValues(lbs),
+		beginTime:                limiterVec.beginTime,
+		endTime:                  limiterVec.endTime,
+		reserveInterval:          limiterVec.reserveInterval,
+		periodInterval:           limiterVec.periodInterval,
+		maxBoostFactor:           limiterVec.maxBoostFactor,
+		burstInterval:            limiterVec.burstInterval,
+		mu:                       sync.RWMutex{},
+		discardPreviousData:      limiterVec.discardPreviousData,
+		idealPassRate:            limiterVec.initIdealPassRate,
+		idealRewardRate:          limiterVec.initRewardRate,
+		scoreSamplesMax:          limiterVec.scoreSamplesMax,
 		scoreSamplesSortInterval: limiterVec.scoreSamplesSortInterval,
 	}
 	newLimiter.Init()
@@ -77,6 +79,7 @@ func (limiterVec *ClusterLimiterVec) WithLabelValues(lbs []string) *ClusterLimit
 	return limiterVec.WithLabelValues(lbs)
 }
 
+// update
 func (limiterVec *ClusterLimiterVec) Heartbeat() {
 	limiterVec.limiters.Range(func(k interface{}, v interface{}) bool {
 		if limiter, ok := v.(*ClusterLimiter); ok {
@@ -86,6 +89,7 @@ func (limiterVec *ClusterLimiterVec) Heartbeat() {
 	})
 }
 
+// check whether expired
 func (limiterVec *ClusterLimiterVec) Expire() bool {
 	limiterVec.mu.RLock()
 	defer limiterVec.mu.RUnlock()

@@ -14,7 +14,7 @@ func TestNewRedisStore(t *testing.T) {
 	}
 }
 
-func TestRedisStore_Load(t *testing.T) {
+func TestRedisStore_LoadAndLoad(t *testing.T) {
 	store, err := NewStore("127.0.0.1:6379", "", "")
 	if err != nil {
 		t.Fatal("check redis", err)
@@ -38,5 +38,19 @@ func TestRedisStore_Load(t *testing.T) {
 
 	if v != 100 {
 		t.Fatal("query value error")
+	}
+
+	err4 := store.Store("test", startTime, endTime, lbs, 200, false)
+	if err4 != nil {
+		t.Fatal("store data error", err2)
+	}
+
+	v2, err5 := store.Load("test", startTime, endTime, lbs)
+	if err5 != nil {
+		t.Fatal("load Data error", err3)
+	}
+
+	if v2 != 300 {
+		t.Fatal("merge data error")
 	}
 }
