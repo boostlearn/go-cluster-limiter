@@ -19,7 +19,7 @@ type ClusterLimiterVec struct {
 	PassCounter    *cluster_counter.ClusterCounterVec
 	RewardCounter  *cluster_counter.ClusterCounterVec
 
-	rewardTarget        float64
+	rewardTarget    float64
 	beginTime       time.Time
 	endTime         time.Time
 	completionTime  time.Time

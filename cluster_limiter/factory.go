@@ -13,7 +13,7 @@ const DefaultHeartbeatIntervalMilliseconds = 100
 // options for creating limiter
 type ClusterLimiterOpts struct {
 	Name                       string
-	RewardTarget float64
+	RewardTarget               float64
 	BeginTime                  time.Time
 	EndTime                    time.Time
 	CompletionTime             time.Time
@@ -102,7 +102,7 @@ func (factory *ClusterLimiterFactory) NewClusterLimiterVec(opts *ClusterLimiterO
 
 	var limiterVec = &ClusterLimiterVec{
 		name:                     opts.Name,
-		rewardTarget: opts.RewardTarget,
+		rewardTarget:             opts.RewardTarget,
 		beginTime:                opts.BeginTime,
 		endTime:                  opts.EndTime,
 		completionTime:           opts.CompletionTime,
@@ -176,7 +176,7 @@ func (factory *ClusterLimiterFactory) NewClusterLimiter(opts *ClusterLimiterOpts
 
 	var limiter = &ClusterLimiter{
 		name:                     opts.Name,
-		rewardTarget: opts.RewardTarget,
+		rewardTarget:             opts.RewardTarget,
 		beginTime:                opts.BeginTime,
 		endTime:                  opts.EndTime,
 		completionTime:           opts.EndTime,

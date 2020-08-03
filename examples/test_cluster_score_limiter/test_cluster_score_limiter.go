@@ -72,7 +72,7 @@ func main() {
 	limiterVec, err := limiterFactory.NewClusterLimiterVec(
 		&cluster_limiter.ClusterLimiterOpts{
 			Name:                limiterName,
-			RewardTarget: float64(targetNum),
+			RewardTarget:        float64(targetNum),
 			PeriodInterval:      time.Duration(resetInterval) * time.Second,
 			DiscardPreviousData: true,
 			ScoreSamplesMax:     10000,

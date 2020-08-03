@@ -52,7 +52,7 @@ func init() {
 	limiter, err = limiterFactory.NewClusterLimiter(
 		&cluster_limiter.ClusterLimiterOpts{
 			Name:                "test",
-			RewardTarget: 10000000,
+			RewardTarget:        10000000,
 			PeriodInterval:      time.Duration(60) * time.Second,
 			DiscardPreviousData: true,
 		})
@@ -64,7 +64,7 @@ func init() {
 	scorelimiter, err = limiterFactory.NewClusterLimiter(
 		&cluster_limiter.ClusterLimiterOpts{
 			Name:                     "test",
-			RewardTarget: 10000000,
+			RewardTarget:             10000000,
 			PeriodInterval:           time.Duration(60) * time.Second,
 			ScoreSamplesMax:          10000,
 			ScoreSamplesSortInterval: 10 * time.Second,

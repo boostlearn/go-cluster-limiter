@@ -36,13 +36,13 @@ type ClusterLimiter struct {
 	PassCounter    *cluster_counter.ClusterCounter
 	RewardCounter  *cluster_counter.ClusterCounter
 
-	maxBoostFactor         float64
-	burstInterval          time.Duration
-	lastIdealPassRateTime  time.Time
-	lastRewardPassRateTime time.Time
-	lastWorkingPassRateTime   time.Time
+	maxBoostFactor          float64
+	burstInterval           time.Duration
+	lastIdealPassRateTime   time.Time
+	lastRewardPassRateTime  time.Time
+	lastWorkingPassRateTime time.Time
 
-	workingPassRate    float64
+	workingPassRate float64
 	idealPassRate   float64
 	idealRewardRate float64
 	declineExpRatio float64
