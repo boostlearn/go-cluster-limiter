@@ -35,7 +35,6 @@ var (
 		Namespace: "boostlearn",
 		Subsystem: "test",
 		Name:      "cluster_score_limiter",
-		Help:      "数量",
 	}, []string{"limiter_instance", "metric_name"})
 )
 
@@ -159,7 +158,7 @@ func fakeTraffic(limiter *cluster_limiter.ClusterLimiter) {
 
 		for j := 0; j < int(v); j++ {
 			metrics.WithLabelValues(instanceName, "request").Add(1)
-			if limiter.ScoreTake(float64(1), rand.Float64()) == true {
+			if limiter.TakeWithScore(float64(1), rand.Float64()) == true {
 				metrics.WithLabelValues(instanceName, "pass").Add(1)
 				if rand.Float64() > 0.5 {
 					metrics.WithLabelValues(instanceName, "reward").Add(1)

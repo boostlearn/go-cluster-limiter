@@ -112,7 +112,7 @@ func doOnlyLimiter() {
 }
 
 func doOnlyScoreLimiter() {
-	if scorelimiter.ScoreAcquire(1, rand.Float64()) {
+	if scorelimiter.TakeWithScore(1, rand.Float64()) {
 		scorelimiter.Reward(1)
 	}
 }

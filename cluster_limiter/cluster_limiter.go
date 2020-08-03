@@ -148,7 +148,7 @@ func (limiter *ClusterLimiter) Reward(v float64) {
 }
 
 // request passed with score
-func (limiter *ClusterLimiter) ScoreTake(v float64, score float64) bool {
+func (limiter *ClusterLimiter) TakeWithScore(v float64, score float64) bool {
 	limiter.mu.RLock()
 	defer limiter.mu.RUnlock()
 
@@ -193,8 +193,8 @@ func (limiter *ClusterLimiter) Acquire(v float64) bool {
 }
 
 // request passed with score and reward for short
-func (limiter *ClusterLimiter) ScoreAcquire(v float64, score float64) bool {
-	if limiter.ScoreTake(v, score) {
+func (limiter *ClusterLimiter) AcquireWithScore(v float64, score float64) bool {
+	if limiter.TakeWithScore(v, score) {
 		limiter.Reward(v)
 		return true
 	} else {
@@ -285,7 +285,7 @@ func (limiter *ClusterLimiter) PassRate() float64 {
 	return limiter.realPassRate
 }
 
-// score discrimination threshold for ScoreTake
+// score discrimination threshold for TakeWithScore
 func (limiter *ClusterLimiter) ScoreCut() (bool, float64) {
 	limiter.mu.RLock()
 	defer limiter.mu.RUnlock()

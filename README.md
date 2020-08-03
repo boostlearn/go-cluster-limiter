@@ -197,7 +197,7 @@
     		
 分级限流器使用：
     
-    if limiter.ScoreAcquire(1, score) { // score代表评分
+    if limiter.TakeWithScore(1, score) { // score代表评分
     	doSomething()
     }
     ...
