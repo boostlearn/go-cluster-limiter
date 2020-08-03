@@ -2,6 +2,8 @@
 package cluster_counter
 
 import (
+	"reflect"
+
 	//"fmt"
 	"sync"
 	"time"
@@ -74,7 +76,7 @@ func (counter *ClusterCounter) Init() {
 		counter.localTrafficRatio = counter.initLocalTrafficRatio
 	}
 
-	if counter.factory != nil && counter.factory.Store != nil {
+	if counter.factory != nil && reflect.ValueOf(counter.factory.Store).IsNil() == false {
 		counter.mu.Unlock()
 		value, err := counter.factory.Store.Load(counter.name, counter.beginTime, counter.endTime, counter.lbs)
 		counter.mu.Lock()
@@ -259,7 +261,7 @@ func (counter *ClusterCounter) LoadData() bool {
 	counter.mu.Lock()
 	defer counter.mu.Unlock()
 
-	if counter.factory == nil || counter.factory.Store == nil {
+	if counter.factory == nil || reflect.ValueOf(counter.factory.Store).IsNil() == true {
 		return false
 	}
 
@@ -321,7 +323,7 @@ func (counter *ClusterCounter) StoreData() bool {
 	counter.mu.Lock()
 	defer counter.mu.Unlock()
 
-	if counter.factory == nil || counter.factory.Store == nil {
+	if counter.factory == nil || reflect.ValueOf(counter.factory.Store).IsNil() == true {
 		return false
 	}
 
