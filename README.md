@@ -4,18 +4,17 @@
 
 ## The difference with other limiters
      
-local host limiter mainly controls the use of local traffic, 
-and can be implemented using algorithms such as counters, leaky buckets, and token buckets. 
-the local limiter algorithms  does not depend on the external environment, has a good flow control effect, 
-low resource consumption, has a wide range of application scenarios.
+the local host limiter mainly controls the use of local traffic, 
+which can be implemented using algorithms such as counters, leaky buckets, and token buckets,
+that does not depend on the external environment and needs low resource consumption, has a wide range of application scenarios.
 
 However, the algorithm that implements local host limiter cannot run in the service partition mode. 
 The common method is to control the flow within one cluster by calling the external flow control (RPC) service interface. 
 however, cluster limiter carried out through the network, requires high network stability, consume certain time delay, 
-and easily forms a single hot spot, consumes a lot of resources, which limits its usage.
+easily forms a single hot spot, and consumes a lot of resources, limits its scope of usage.
 
 This project uses a decentralized flow control algorithm to move the control strategy to  decentralized clients, 
-which reducing the dependence on the network. 
+the goal is to reduce the dependence on the network. 
 the control algorithm of this project requires the request flow to meet the following requirements in most of the time:
 * In a short time (<10s), the overall traffic flow of the cluster is stable.
 * In a short time (<10s), the traffic flow of each node in the cluster is stable.
