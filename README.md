@@ -24,11 +24,10 @@ The algorithm of this project is also sensitive to traffic changes in the flow o
 In scenarios where the traffic flow is often non-continuous or has many of instantaneous burst traffic, the algorithm of this project may not work well.
 
 ## Supported interface
->The minimum flow control interval that can be set by the flow limiter of this project is the interval at which the client node performs global data synchronization (generally 2s~10s). 
-
 For the scenario of service protection, the total number of passes per period (minute or more) can be set. 
 For scenarios such as budget control and experimental diversion, the start and end time of the task can be set.
 During this limiter's working period, the smooth release of traffic can be achieved. 
+>The minimum flow control interval that can be set by the flow limiter of this project is the interval at which the client node performs global data synchronization (generally 2s~10s). 
 
 The flow limiter of this project can set the downstream reward as the target to control the passing of request flow. 
 For example, by controlling the number of advertisements cast, the goal of ad clicks can be achieved finally. 
