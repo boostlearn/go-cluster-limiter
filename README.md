@@ -23,7 +23,7 @@ The algorithm of this project is also sensitive to traffic changes in the flow o
 
 In scenarios where the traffic flow is often non-continuous or has many of instantaneous burst traffic, the algorithm of this project may not work well.
 
-## Supported flow limiter interface
+## Supported interface
 The minimum flow control interval that can be set by the flow limiter of this project is the interval at which the client node performs global data synchronization (generally 2s~10s). 
 
 For the scenario of service flow protection limitation, the total number of passes per minute (or more) can be set. During this time period, the smooth release of traffic can be achieved. 
@@ -38,6 +38,79 @@ The flow limiter of this project provides hierarchical flow limiter. If the requ
 the hierarchical flow limiter of this project can automatically pass traffic with a higher score to achieve the goal of traffic hierarchical selection. 
 Traffic classification selection to prioritize high-value traffic is a weapon to maximize system value.
 
+## Examples
+#### Storage
+The storage requirements are:
+* Can be unavailable for a short time, but the stored data should not be lost
+* The response time of data query under normal conditions is within 100ms
+
+The commonly used database like redis, influxdb, and mysql can all meet these conditions.
+Currently only redis is supported.
+
+Build:
+
+    import "github.com/boostlearn/go-cluster-limiter/cluster_limiter"
+    counterStore, err := redis_store.NewStore("127.0.0.1:6379","","")
+
+#### Limiter With Reset Period
+Build：
+    
+    import "github.com/boostlearn/go-cluster-limiter/cluster_limiter"
+    
+    limiterFactory := cluster_limiter.NewFactory(
+    	&cluster_limiter.ClusterLimiterFactoryOpts{
+    		Name:                  "test",
+    		HeartbeatInterval:     1000 * time.Millisecond,
+    		InitLocalTrafficProportion: 1.0,
+    	}, counterStore)
+    limiterFactory.Start()
+    
+    limiter, err := limiterFactory.NewClusterLimiter(
+    		&cluster_limiter.ClusterLimiterOpts{
+    			Name:                "test",
+    			PeriodInterval:      time.Duration(60) * time.Second,
+    			DiscardPreviousData: true,
+    		})
+
+Use：
+    
+    if limiter.Acquire(1) { 
+    	doSomething()
+    }
+    ...
+    
+    limiter.Reward(1) 
+
+
+#### Limiter With Score
+Build：
+
+    import "github.com/boostlearn/go-cluster-limiter/cluster_limiter"
+    
+    limiterFactory := cluster_limiter.NewFactory(
+    	&cluster_limiter.ClusterLimiterFactoryOpts{
+    		Name:                  "test",
+    	}, counterStore)
+    limiterFactory.Start()
+    
+    scorelimiter, err = limiterFactory.NewClusterLimiter(
+    	&cluster_limiter.ClusterLimiterOpts{
+    		Name:                     "test",
+    		PeriodInterval:           time.Duration(60) * time.Second,
+    		ScoreSamplesMax:          10000,
+    		ScoreSamplesSortInterval: 10 * time.Second,
+    		DiscardPreviousData:      true,
+    	})
+    		
+Use：
+    
+    if limiter.TakeWithScore(1, score) { 
+    	doSomething()
+    }
+    ...
+    limiter.Reward(1) // 反馈
+    
+    
 ## Principles of the limiter's algorithm
 The flow control calculation algorithm of this project re-evaluates the flow situation in a fixed period (about 2s~10s), and adapt to changes in traffic through parameter adjustment.
 
@@ -86,7 +159,7 @@ The calculation formula of the WorkingPassRate is as follows:
     WorkingPassRate: = IdealPassRate * (1 - ExcessTime/AccelerationPeriod)
     
 
-## 4. Benchmark
+## Benchmark
 benchmark test results:
 
 |module|1CPU|2CPU|3CPU|4CPU|
@@ -98,77 +171,3 @@ benchmark test results:
 in conclusion: 
 * The single-core serving is about 2 million qps, which has little impact on applications with a single-machine business capacity within 100,000 QPS, and can meet most usage scenarios.
 * The multi-core acceleration effect is not good. You can increase the stand-alone service capability by creating multiple copies of the limiter.
-
-## Examples
-#### Storage
-The storage requirements are:
-* Can be unavailable for a short time, but the stored data should not be lost
-* The response time of data query under normal conditions is within 100ms
-
-The commonly used database like redis, influxdb, and mysql can all meet these conditions.
-Currently only redis is supported.
-
-Build:
-
-    import "github.com/boostlearn/go-cluster-limiter/cluster_limiter"
-    counterStore, err := redis_store.NewStore("127.0.0.1:6379","","")
-
-#### Limiter With Reset Period
-Build：
-    
-    import "github.com/boostlearn/go-cluster-limiter/cluster_limiter"
-    
-    limiterFactory := cluster_limiter.NewFactory(
-    	&cluster_limiter.ClusterLimiterFactoryOpts{
-    		Name:                  "test",
-    		HeartbeatInterval:     1000 * time.Millisecond,
-    		InitLocalTrafficProportion: 1.0,
-    	}, counterStore)
-    limiterFactory.Start()
-    
-    limiter, err := limiterFactory.NewClusterLimiter(
-    		&cluster_limiter.ClusterLimiterOpts{
-    			Name:                "test",
-    			PeriodInterval:      time.Duration(60) * time.Second,
-    			DiscardPreviousData: true,
-    		})
-
-Use：
-    
-    if limiter.Acquire(1) { // 获取
-    	doSomething()
-    }
-    ...
-    
-    limiter.Reward(1) // 反馈
-
-
-#### Limiter With Score
-Build：
-
-    import "github.com/boostlearn/go-cluster-limiter/cluster_limiter"
-    
-    limiterFactory := cluster_limiter.NewFactory(
-    	&cluster_limiter.ClusterLimiterFactoryOpts{
-    		Name:                  "test",
-    	}, counterStore)
-    limiterFactory.Start()
-    
-    scorelimiter, err = limiterFactory.NewClusterLimiter(
-    	&cluster_limiter.ClusterLimiterOpts{
-    		Name:                     "test",
-    		PeriodInterval:           time.Duration(60) * time.Second,
-    		ScoreSamplesMax:          10000,
-    		ScoreSamplesSortInterval: 10 * time.Second,
-    		DiscardPreviousData:      true,
-    	})
-    		
-Use：
-    
-    if limiter.TakeWithScore(1, score) { // score代表评分
-    	doSomething()
-    }
-    ...
-    limiter.Reward(1) // 反馈
-    
-    
