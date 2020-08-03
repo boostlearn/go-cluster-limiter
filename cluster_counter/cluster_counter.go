@@ -45,8 +45,8 @@ type ClusterCounter struct {
 	initLocalTrafficProportion float64
 	localTrafficProportion     float64
 
-	localIncrease   float64
-	clusterIncrease float64
+	localRecently   float64
+	clusterRecently float64
 	declineExpRatio float64
 }
 
@@ -214,18 +214,18 @@ func (counter *ClusterCounter) ClusterValue(last int) (float64, time.Time) {
 	return 0, time.Unix(0, 0)
 }
 
-func (counter *ClusterCounter) LocalIncrease() float64 {
+func (counter *ClusterCounter) LocalRecently() float64 {
 	counter.mu.RLock()
 	defer counter.mu.RUnlock()
 
-	return counter.localIncrease
+	return counter.localRecently
 }
 
-func (counter *ClusterCounter) ClusterIncrease() float64 {
+func (counter *ClusterCounter) ClusterRecently() float64 {
 	counter.mu.RLock()
 	defer counter.mu.RUnlock()
 
-	return counter.clusterIncrease
+	return counter.clusterRecently
 }
 
 // Proportion of local traffic in cluster
@@ -307,17 +307,17 @@ func (counter *ClusterCounter) updateLocalTrafficProportion() {
 	if counter.loadHistoryPos > 2 {
 		clusterPrev := counter.loadClusterHistory[(counter.loadHistoryPos-2+HistoryMax)%HistoryMax]
 		clusterCur := counter.loadClusterHistory[(counter.loadHistoryPos-1+HistoryMax)%HistoryMax]
-		counter.clusterIncrease = counter.clusterIncrease*counter.declineExpRatio +
+		counter.clusterRecently = counter.clusterRecently*counter.declineExpRatio +
 			(clusterCur-clusterPrev)*(1-counter.declineExpRatio)
 
 		localPrev := counter.loadLocalHistory[(counter.loadHistoryPos-2+HistoryMax)%HistoryMax]
 		localCur := counter.loadLocalHistory[(counter.loadHistoryPos-1+HistoryMax)%HistoryMax]
-		counter.localIncrease = counter.localIncrease*counter.declineExpRatio +
+		counter.localRecently = counter.localRecently*counter.declineExpRatio +
 			(localCur-localPrev)*(1-counter.declineExpRatio)
 	}
 
-	if counter.localIncrease != 0.0 && counter.clusterIncrease != 0.0 {
-		ratio := counter.localIncrease / counter.clusterIncrease
+	if counter.localRecently != 0.0 && counter.clusterRecently != 0.0 {
+		ratio := counter.localRecently / counter.clusterRecently
 		if ratio > 1.0 {
 			ratio = 1.0
 		}
