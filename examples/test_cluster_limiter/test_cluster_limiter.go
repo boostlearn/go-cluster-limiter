@@ -94,29 +94,29 @@ func main() {
 	for range ticker.C {
 		data := make(map[string]float64)
 
-		data["pass_rate"] = float64(limiter.PassRate())
-		data["ideal_rate"] = float64(limiter.IdealPassRate())
-		data["reward_rate"] = float64(limiter.IdealRewardRate())
-		data["total_target"] = float64(limiter.GetRewardTarget())
-		data["ideal_reward"] = float64(limiter.IdealReward())
+		data["pass_rate"] = limiter.PassRate()
+		data["ideal_rate"] = limiter.IdealPassRate()
+		data["reward_rate"] = limiter.IdealRewardRate()
+		data["total_target"] = limiter.GetRewardTarget()
+		data["ideal_reward"] = limiter.IdealReward()
 
 		rewardCur, rewardTime := limiter.RewardCounter.ClusterValue(0)
-		data["lag_time"] = float64(limiter.LagTime(rewardCur, rewardTime))
+		data["lag_time"] = limiter.LagTime(rewardCur, rewardTime)
 
 		data["request_local"], _ = limiter.RequestCounter.LocalValue(0)
 		data["request_pred"], _ = limiter.RequestCounter.ClusterValue(0)
 		requestLast, _ := limiter.RequestCounter.ClusterValue(-1)
-		data["request_last"] = float64(requestLast)
+		data["request_last"] = requestLast
 
 		data["pass_local"], _ = limiter.PassCounter.LocalValue(0)
 		data["pass_pred"], _ = limiter.PassCounter.ClusterValue(0)
 		passLast, _ := limiter.PassCounter.ClusterValue(-1)
-		data["pass_last"] = float64(passLast)
+		data["pass_last"] = passLast
 
 		data["reward_local"], _ = limiter.RewardCounter.LocalValue(0)
 		data["reward_pred"], _ = limiter.RewardCounter.ClusterValue(0)
 		rewardLast, _ := limiter.RewardCounter.ClusterValue(-1)
-		data["reward_last"] = float64(rewardLast)
+		data["reward_last"] = rewardLast
 		data["request_local_traffic_proportion"] = limiter.RequestCounter.LocalTrafficProportion()
 		data["reward_local_traffic_proportion"] = limiter.RewardCounter.LocalTrafficProportion()
 
