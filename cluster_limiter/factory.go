@@ -222,6 +222,8 @@ func (factory *ClusterLimiterFactory) NewClusterLimiter(opts *ClusterLimiterOpts
 	if err != nil {
 		return nil, err
 	}
+	limiter.Initialize()
+
 
 	factory.limiters.Store(opts.Name, limiter)
 	return factory.NewClusterLimiter(opts)

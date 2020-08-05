@@ -147,7 +147,7 @@ func (factory *ClusterCounterFactory) NewClusterCounter(opts *ClusterCounterOpts
 		discardPreviousData:        opts.DiscardPreviousData,
 		declineExpRatio:            opts.DeclineExpRatio,
 	}
-	clusterCounter.Init()
+	clusterCounter.Initialize()
 
 	factory.clusterCounters.Store(opts.Name, clusterCounter)
 
