@@ -236,9 +236,12 @@ func (limiter *ClusterLimiter) IdealReward() float64 {
 
 func (limiter *ClusterLimiter) getIdealReward(t time.Time) float64 {
 	timeNow := time.Now()
-	if timeNow.Before(limiter.beginTime) || timeNow.After(limiter.endTime) ||
-		!limiter.beginTime.Before(limiter.endTime) {
+	if timeNow.Before(limiter.beginTime)  || !limiter.beginTime.Before(limiter.endTime) {
 		return 0
+	}
+
+	if timeNow.After(limiter.endTime) {
+		return limiter.rewardTarget
 	}
 
 	if limiter.discardPreviousData && limiter.initTime.Before(limiter.endTime) &&
