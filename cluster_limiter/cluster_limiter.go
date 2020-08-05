@@ -17,7 +17,7 @@ const DefaultScoreSamplesSortIntervalSeconds = 10
 
 // limiter: limit traffic within cluster
 type ClusterLimiter struct {
-	mu sync.RWMutex
+	mu      sync.RWMutex
 	expired bool
 
 	name     string
@@ -336,7 +336,7 @@ func (limiter *ClusterLimiter) Expire() bool {
 		limiter.expired = false
 		return limiter.expired
 	} else {
-		limiter.expired =  timeNow.After(limiter.endTime)
+		limiter.expired = timeNow.After(limiter.endTime)
 		return limiter.expired
 	}
 }
@@ -345,10 +345,6 @@ func (limiter *ClusterLimiter) Expire() bool {
 func (limiter *ClusterLimiter) Heartbeat() {
 	limiter.mu.Lock()
 	defer limiter.mu.Unlock()
-
-	if limiter.expired {
-		return
-	}
 
 	timeNow := time.Now()
 	if timeNow.After(limiter.endTime) || timeNow.Before(limiter.beginTime) {

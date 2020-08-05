@@ -119,6 +119,8 @@ func (factory *ClusterLimiterFactory) NewClusterLimiterVec(opts *ClusterLimiterO
 	var err error
 	limiterVec.RequestCounter, err = factory.counterFactory.NewClusterCounterVec(&cluster_counter.ClusterCounterOpts{
 		Name:                       factory.name + opts.Name + ":request",
+		BeginTime:                  opts.BeginTime,
+		EndTime:                    opts.EndTime,
 		PeriodInterval:             opts.PeriodInterval,
 		DiscardPreviousData:        opts.DiscardPreviousData,
 		StoreDataInterval:          opts.BurstInterval,
@@ -130,6 +132,8 @@ func (factory *ClusterLimiterFactory) NewClusterLimiterVec(opts *ClusterLimiterO
 
 	limiterVec.PassCounter, err = factory.counterFactory.NewClusterCounterVec(&cluster_counter.ClusterCounterOpts{
 		Name:                       factory.name + opts.Name + ":pass",
+		BeginTime:                  opts.BeginTime,
+		EndTime:                    opts.EndTime,
 		PeriodInterval:             limiterVec.periodInterval,
 		DiscardPreviousData:        opts.DiscardPreviousData,
 		StoreDataInterval:          opts.BurstInterval,
@@ -141,6 +145,8 @@ func (factory *ClusterLimiterFactory) NewClusterLimiterVec(opts *ClusterLimiterO
 
 	limiterVec.RewardCounter, err = factory.counterFactory.NewClusterCounterVec(&cluster_counter.ClusterCounterOpts{
 		Name:                       factory.name + opts.Name + ":reward",
+		BeginTime:                  opts.BeginTime,
+		EndTime:                    opts.EndTime,
 		PeriodInterval:             limiterVec.periodInterval,
 		DiscardPreviousData:        opts.DiscardPreviousData,
 		StoreDataInterval:          opts.BurstInterval,
@@ -192,6 +198,8 @@ func (factory *ClusterLimiterFactory) NewClusterLimiter(opts *ClusterLimiterOpts
 	var err error
 	limiter.RequestCounter, err = factory.counterFactory.NewClusterCounter(&cluster_counter.ClusterCounterOpts{
 		Name:                       factory.name + opts.Name + ":request",
+		BeginTime:                  opts.BeginTime,
+		EndTime:                    opts.EndTime,
 		PeriodInterval:             opts.PeriodInterval,
 		DiscardPreviousData:        opts.DiscardPreviousData,
 		StoreDataInterval:          opts.BurstInterval,
@@ -203,6 +211,8 @@ func (factory *ClusterLimiterFactory) NewClusterLimiter(opts *ClusterLimiterOpts
 
 	limiter.PassCounter, err = factory.counterFactory.NewClusterCounter(&cluster_counter.ClusterCounterOpts{
 		Name:                       factory.name + opts.Name + ":pass",
+		BeginTime:                  opts.BeginTime,
+		EndTime:                    opts.EndTime,
 		PeriodInterval:             opts.PeriodInterval,
 		DiscardPreviousData:        opts.DiscardPreviousData,
 		StoreDataInterval:          opts.BurstInterval,
@@ -214,6 +224,8 @@ func (factory *ClusterLimiterFactory) NewClusterLimiter(opts *ClusterLimiterOpts
 
 	limiter.RewardCounter, err = factory.counterFactory.NewClusterCounter(&cluster_counter.ClusterCounterOpts{
 		Name:                       factory.name + opts.Name + ":reward",
+		BeginTime:                  opts.BeginTime,
+		EndTime:                    opts.EndTime,
 		PeriodInterval:             opts.PeriodInterval,
 		DiscardPreviousData:        opts.DiscardPreviousData,
 		StoreDataInterval:          opts.BurstInterval,
@@ -223,7 +235,6 @@ func (factory *ClusterLimiterFactory) NewClusterLimiter(opts *ClusterLimiterOpts
 		return nil, err
 	}
 	limiter.Initialize()
-
 
 	factory.limiters.Store(opts.Name, limiter)
 	return factory.NewClusterLimiter(opts)

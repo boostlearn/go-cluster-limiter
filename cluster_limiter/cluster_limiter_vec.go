@@ -11,7 +11,7 @@ const SEP = "####"
 
 // limiters with same configuration
 type ClusterLimiterVec struct {
-	name string
+	name    string
 	expired bool
 
 	discardPreviousData bool
@@ -60,7 +60,7 @@ func (limiterVec *ClusterLimiterVec) WithLabelValues(lbs []string, rewardTarget 
 
 	newLimiter := &ClusterLimiter{
 		name:                     limiterVec.name,
-		rewardTarget: rewardTarget,
+		rewardTarget:             rewardTarget,
 		lbs:                      append([]string{}, lbs...),
 		RequestCounter:           limiterVec.RequestCounter.WithLabelValues(lbs),
 		PassCounter:              limiterVec.PassCounter.WithLabelValues(lbs),

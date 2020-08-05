@@ -8,7 +8,7 @@ import (
 
 // counter vector with same configuration
 type ClusterCounterVec struct {
-	mu                         sync.RWMutex
+	mu      sync.RWMutex
 	expired bool
 
 	name                       string
