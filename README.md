@@ -1,6 +1,6 @@
 >This project can be used as a service module that implements flow limiter in a cluster environment, 
 >and can be used in scenarios that require flow limiter such as service protection, consumption control, or experiment shunting and so on. 
->this project uses a decentralized flow control algorithm, which could effectively reduce the resource consumption and dependence on network resources.
+>this project uses a decentralized flow control algorithm, which could effectively reduce the resource consumption and dependence on network stability.
 
 ## The difference with other limiters
      
@@ -9,13 +9,13 @@ which can be implemented using algorithms such as counters, leaky buckets, or to
 the stand-alone limiter does not depend on the external environment and needs low resource consumption.
 
 However, the algorithm which used in stand-alone limiter cannot run in the cluster's service partition mode. 
-The common method is to control the cluster's flow by calling the external flow control (RPC) service. 
-however, cluster limiter carried out through the network, requires high network stability, consume certain request time delay, 
-easily forms a single hot spot, and consumes a lot of resources, limits its scope of usage.
+The common method used to control a cluster's flow is by calling the external flow control (RPC) service. 
+however, cluster limiter carried out through the network, requires high network stability, consume certain request time, 
+easily forms a single hot spot service, consumes a lot of resources, and finally limits its scope of usage.
 
-This project uses a decentralized flow control algorithm to move the control strategy to  decentralized clients, 
-the goal is to reduce the dependence on the network. 
-the control algorithm of this project requires the request flow to meet the following requirements in most of the time:
+This project uses a decentralized flow control algorithm to move the centralized control strategy to  decentralized nodes, 
+and the goal is to reduce the dependence on the network. 
+the control algorithm of this project requires the request flow to meet the following requirements in most of its lifetime:
 * In a short time (<10s), the overall traffic flow of the cluster is stable.
 * In a short time (<10s), the traffic flow of each node in the cluster is stable.
      
@@ -23,18 +23,18 @@ The algorithm of this project is also sensitive to traffic changes in the flow o
 
 In scenarios where the traffic flow is often non-continuous or has many of instantaneous burst traffic, the algorithm of this project may not work well.
 
-## Supported interface
-The flow limiter of this project can set the downstream reward as the target to control the passing of request flow. 
-For example, by controlling the number of advertisements cast, the goal of ad clicks can be achieved finally. 
-The reward and the pass should be positively correlated, otherwise the goal of the limiter may not be able to achieve control.
+## Supported Features
+The flow limiter of this project can set the downstream reward as the target to control the passing of a request flow. 
+For example, by controlling the number of advertisements cast, the target of ad clicks can be achieved finally. 
+The reward and the flow's passing traffic should be positively correlated, otherwise the reward target of the limiter may not be able to be achieved.
 
-The flow limiter of this project provides hierarchical flow limiter. If the requested traffic carries score value information, 
-the hierarchical flow limiter of this project can automatically pass traffic with a higher score to achieve the goal of traffic hierarchical selection. 
-Traffic classification selection to prioritize high-value traffic is a weapon to maximize system value.
+The flow limiter of this project also provides hierarchical flow limiter. If the requested traffic carries a score value, 
+the hierarchical flow limiter of this project can automatically select traffic with a higher score to be passed, and achieve the goal of traffic hierarchical selection. 
+Traffic hierarchical selection to prioritize high-value traffic is a weapon to maximize system value.
 
-For the scenario of service protection, the total number of passes per period (minute or more) can be set. 
-For scenarios such as budget control and experimental diversion, the start and end time of the task can be set.
-During this limiter's working period, the smooth release of traffic can be achieved. 
+For the scenario of service protection, the total number of reward of each cycle(minute or more) can be set. 
+For scenarios such as budget control and experimental diversion, the start time and end time of the task can be set.
+During this limiter's lifetime, the target reward can be reached smoothly.
 >The minimum flow control interval that can be set by the flow limiter of this project is the interval at which the client node performs global data synchronization (generally 2s~10s). 
 
 ## Examples
@@ -43,8 +43,7 @@ The storage requirements are:
 * Can be unavailable for a short time, but the stored data should not be lost
 * The response time of data query under normal conditions is within 100ms
 
-The commonly used database like redis, influxdb, and mysql can all meet these conditions.
-Currently only redis is supported.
+>The commonly used database like redis, influxdb, and mysql can all meet these conditions.Currently only redis is supported.
 
 **build cluster's storage**:
 
@@ -59,8 +58,8 @@ Currently only redis is supported.
     
     limiterFactory := cluster_limiter.NewFactory(
     	&cluster_limiter.ClusterLimiterFactoryOpts{
-    		Name:                  "test",
-    		HeartbeatInterval:     1000 * time.Millisecond,
+    		Name:                  "limiter-factory-a",
+    		HeartbeatInterval:     100 * time.Millisecond,
     		InitLocalTrafficProportion: 1.0,
     	}, counterStore)
     limiterFactory.Start()
@@ -71,18 +70,17 @@ Currently only redis is supported.
     endTime,_ := time.Parse("2006-01-02 15:04:05", "2020-01-01 18:00:00")
     limiter, err := limiterFactory.NewClusterLimiter(
     		&cluster_limiter.ClusterLimiterOpts{
-    			Name:                "test",
+    			Name:                "limiter-1",
     			RewardTarget: 10000,
     			BeginTime: beginTime,
     			EndTime: endTime,
-    			DiscardPreviousData: true,
     		})
     		
 **build limiter with  reset period**:
      
     limiter, err := limiterFactory.NewClusterLimiter(
     		&cluster_limiter.ClusterLimiterOpts{
-    			Name:                "test",
+    			Name:                "limiter-2",
     			RewardTarget: 10000,
     			PeriodInterval:      time.Duration(60) * time.Second,
     			DiscardPreviousData: true,
@@ -102,7 +100,7 @@ Currently only redis is supported.
     
     scorelimiter, err = limiterFactory.NewClusterLimiter(
     	&cluster_limiter.ClusterLimiterOpts{
-    		Name:                     "test",
+    		Name:                     "limiter-3",
     		RewardTarget: 10000,
     		PeriodInterval:           time.Duration(60) * time.Second,
     		ScoreSamplesMax:          10000,
@@ -121,7 +119,7 @@ Currently only redis is supported.
 
   
 ## Principles of the limiter's algorithm
-The flow control calculation algorithm of this project re-evaluates the flow situation in a fixed period (about 2s~10s), and adapt to changes in traffic through parameter adjustment.
+>The flow control calculation algorithm of this project re-evaluates the flow situation in a fixed period (about 2s~10s), and adapt to changes in traffic through parameter adjustment.
 
 #### Estimate current cluster's traffic volume by local traffic volume
 The flow control algorithm of this project believes that the cluster traffic and local traffic are stable for a short time, 
@@ -133,12 +131,12 @@ The dynamic update algorithm of LocalTrafficProportion is as follows:
     
    >Note: P stands for attenuation coefficient, used to control smoothness.
 
-Formula for estimating current cluster traffic:
+Formula for estimating current cluster's traffic:
 
     CurrentClusterTraffic: = LastSynchronizedClusterTraffic + LocalRequestSinceSynchronized/LocalTrafficProportion
     
     
-#### Calculate pass to reward ratio
+#### Calculate the ratio of passed to reward
 Since the flow limiter does not directly control the reward, 
 the conversion ratio needs to be calculated to calculate the pass quantum to achieve the target reward. 
 
@@ -146,15 +144,14 @@ Update ConversionRate formula:
     
     ConversionRatio: = ConversionRatio * P + (RewardRecently / PassRecently) * (1 – P)
 
-#### Calculate pass rate
-The limiter's flow pass is controlled by the pass rate parameter. 
+#### Calculate the ratio of requests pass
+Whether a request can pass through the limiter is controlled by the pass rate parameter
 
 The formula for calculating the IdealPassingRate is as follows:
 
     IdealPassRate : = IdealPassRate * P + ((RewardRecently/RequestRecently)/RewardRate) * (1-P)
     
-The IdealPassRate has a certain lag, 
-and the real working pass rate needs to be adjusted according to the actual conversion situation.
+The IdealPassRate has a certain lag, and the real working pass rate needs to be adjusted according to the actual achieved reward situation.
 
 If the current actual reward volume is less than the smoothed ideal reward quantum, 
 the calculation formula of the WorkingPassRate:
@@ -170,13 +167,13 @@ The calculation formula of the WorkingPassRate is as follows:
 ## Benchmark
 benchmark test results:
 
-|module|1CPU|2CPU|3CPU|4CPU|
+|module|1-core cpu|2-core cpu|3-core cpu|4-core cpu|
 |----|----|----|----|---|
-|counter|51.9 ns/op|71.8 ns/op|72.1 ns/op|73.5 ns/op|
-|limiter|465 ns/op|411 ns/op|265 ns/op|271 ns/op|
-|score limiter|492 ns/op|493 ns/op|528 ns/op|545 ns/op|
+|counter|50.7 ns/op|86.6 ns/op|72.7 ns/op|68.1 ns/op|
+|limiter|430 ns/op|422 ns/op|258 ns/op|416 ns/op|
+|score limiter|484 ns/op|521 ns/op|554 ns/op|725 ns/op|
 
 in conclusion: 
-* The single-core serving is about 2 million qps, which has little impact on applications with a single-machine business capacity within 100,000 QPS, and can meet most usage scenarios.
-* The multi-core acceleration effect is not good. You can increase the stand-alone service capability by creating multiple copies of the limiter.
+* The single-core service capacity  is about 2,000,000 qps, which has little impact on services with a service capacity of about 100,000 QPS. This is useful in most scenarios.
+* The multi-core acceleration effect is not good. You can increase the stand-alone service's capability by using multiple copies of the same limiter.
   
