@@ -143,7 +143,8 @@ func (counter *ClusterCounter) Add(v float64) {
 	counter.mu.RLock()
 	defer counter.mu.RUnlock()
 
-	if counter.expired {
+	timeNow := time.Now()
+	if timeNow.Before(counter.beginTime) || timeNow.After(counter.endTime) {
 		return
 	}
 
