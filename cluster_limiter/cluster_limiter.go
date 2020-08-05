@@ -124,7 +124,8 @@ func (limiter *ClusterLimiter) Take(v float64) bool {
 	limiter.mu.RLock()
 	defer limiter.mu.RUnlock()
 
-	if limiter.expired {
+	timeNow := time.Now()
+	if timeNow.Before(limiter.beginTime) || timeNow.After(limiter.endTime) {
 		return false
 	}
 
@@ -134,7 +135,7 @@ func (limiter *ClusterLimiter) Take(v float64) bool {
 	}
 
 	clusterPred, _ := limiter.RewardCounter.ClusterValue(0)
-	if clusterPred+v > limiter.getIdealReward(time.Now()) {
+	if clusterPred+v > limiter.getIdealReward(timeNow) {
 		return false
 	}
 
@@ -147,7 +148,8 @@ func (limiter *ClusterLimiter) Reward(v float64) {
 	limiter.mu.RLock()
 	defer limiter.mu.RUnlock()
 
-	if limiter.expired {
+	timeNow := time.Now()
+	if timeNow.Before(limiter.beginTime) || timeNow.After(limiter.endTime) {
 		return
 	}
 
@@ -159,7 +161,8 @@ func (limiter *ClusterLimiter) TakeWithScore(v float64, score float64) bool {
 	limiter.mu.RLock()
 	defer limiter.mu.RUnlock()
 
-	if limiter.expired {
+	timeNow := time.Now()
+	if timeNow.Before(limiter.beginTime) || timeNow.After(limiter.endTime) {
 		return false
 	}
 
@@ -181,7 +184,7 @@ func (limiter *ClusterLimiter) TakeWithScore(v float64, score float64) bool {
 	}
 
 	clusterPred, _ := limiter.RewardCounter.ClusterValue(0)
-	if clusterPred+v > limiter.getIdealReward(time.Now()) {
+	if clusterPred+v > limiter.getIdealReward(timeNow) {
 		return false
 	}
 
