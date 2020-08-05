@@ -87,7 +87,7 @@ The commonly used database like redis, influxdb, and mysql can all meet these co
 
 **limiter's take and reward**:
     
-    if limiter.Acquire(1) { 
+    if limiter.Take(1) { 
     	doSomething()
     }
     ...

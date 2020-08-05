@@ -79,7 +79,7 @@
 
 **限流器器的通过获取和反馈**:
     
-    if limiter.Acquire(1) { 
+    if limiter.Take(1) { 
     	doSomething()
     }
     ...
