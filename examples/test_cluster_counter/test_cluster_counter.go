@@ -14,6 +14,8 @@ var (
 	counterName            string
 	testerName             string
 	discardPreviousData    bool
+	startTime     int64
+	endTime     int64
 	periodInterval         int64
 	mockTrafficFactor      float64
 	listenPort             int64
@@ -38,6 +40,8 @@ func init() {
 	flag.Int64Var(&listenPort, "h", 20001, "prometheus listen port")
 	flag.Float64Var(&mockTrafficFactor, "i", 1.0, "mock traffic factor")
 	flag.BoolVar(&discardPreviousData, "j", true, "whether discard previous data")
+	flag.Int64Var(&startTime, "k", 0, "start time since now [seconds]")
+	flag.Int64Var(&endTime, "l", 0, "end time since now [seconds]")
 	//prometheus.MustRegister(metrics)
 }
 
@@ -58,6 +62,8 @@ func main() {
 	counterVec, err := factory.NewClusterCounterVec(
 		&cluster_counter.ClusterCounterOpts{
 			Name:                       counterName,
+			BeginTime: time.Now().Add(time.Duration(startTime) * time.Second).Truncate(time.Second),
+			EndTime: time.Now().Add(time.Duration(endTime) * time.Second).Truncate(time.Second),
 			PeriodInterval:             time.Duration(periodInterval) * time.Second,
 			DiscardPreviousData:        discardPreviousData,
 			InitLocalTrafficProportion: localTrafficProportion,

@@ -18,6 +18,8 @@ var (
 	localTrafficProportion float64
 
 	targetNum         int64
+	startTime     int64
+	endTime     int64
 	resetInterval     int64
 	mockTrafficFactor int64
 
@@ -44,6 +46,8 @@ func init() {
 	flag.Int64Var(&listenPort, "h", 20002, "prometheus: listen port")
 	flag.BoolVar(&discardPreviousData, "i", true, "whether discard previous data")
 	flag.Float64Var(&localTrafficProportion, "j", 1, "proportion of local traffic in cluster")
+	flag.Int64Var(&startTime, "k", 0, "start time since now [seconds]")
+	flag.Int64Var(&endTime, "l", 0, "end time since now [seconds]")
 
 	//prometheus.MustRegister(metrics)
 }
@@ -68,6 +72,8 @@ func main() {
 	limiterVec, err := limiterFactory.NewClusterLimiterVec(
 		&cluster_limiter.ClusterLimiterOpts{
 			Name:                limiterName,
+			BeginTime: time.Now().Add(time.Duration(startTime) * time.Second).Truncate(time.Second),
+			EndTime: time.Now().Add(time.Duration(endTime) * time.Second).Truncate(time.Second),
 			PeriodInterval:      time.Duration(resetInterval) * time.Second,
 			DiscardPreviousData: true,
 		},
