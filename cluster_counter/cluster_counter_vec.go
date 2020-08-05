@@ -9,6 +9,8 @@ import (
 // counter vector with same configuration
 type ClusterCounterVec struct {
 	mu                         sync.RWMutex
+	expired bool
+
 	name                       string
 	labelNames                 []string
 	factory                    *ClusterCounterFactory
@@ -24,6 +26,10 @@ type ClusterCounterVec struct {
 
 // build new counter with labels
 func (counterVec *ClusterCounterVec) WithLabelValues(lbs []string) *ClusterCounter {
+	if counterVec.expired {
+		return nil
+	}
+
 	if len(counterVec.labelNames) != len(lbs) {
 		return nil
 	}
@@ -54,7 +60,7 @@ func (counterVec *ClusterCounterVec) WithLabelValues(lbs []string) *ClusterCount
 		discardPreviousData:        counterVec.discardPreviousData,
 		declineExpRatio:            counterVec.declineExpRatio,
 	}
-	newCounter.Init()
+	newCounter.Initialize()
 
 	counterVec.counters.Store(key, newCounter)
 	return counterVec.WithLabelValues(lbs)
@@ -62,6 +68,10 @@ func (counterVec *ClusterCounterVec) WithLabelValues(lbs []string) *ClusterCount
 
 // update data heartbeat
 func (counterVec *ClusterCounterVec) Heartbeat() {
+	if counterVec.expired {
+		return
+	}
+
 	counterVec.counters.Range(func(k interface{}, v interface{}) bool {
 		if counter, ok := v.(*ClusterCounter); ok {
 			counter.Heartbeat()
@@ -96,5 +106,6 @@ func (counterVec *ClusterCounterVec) Expire() bool {
 		return false
 	}
 
+	counterVec.expired = allExpired
 	return allExpired
 }

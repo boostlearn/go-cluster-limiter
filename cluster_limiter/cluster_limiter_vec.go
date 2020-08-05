@@ -12,6 +12,7 @@ const SEP = "####"
 // limiters with same configuration
 type ClusterLimiterVec struct {
 	name string
+	expired bool
 
 	discardPreviousData bool
 
@@ -46,6 +47,10 @@ type ClusterLimiterVec struct {
 
 // create new limiter with labels
 func (limiterVec *ClusterLimiterVec) WithLabelValues(lbs []string, rewardTarget float64) *ClusterLimiter {
+	if limiterVec.expired {
+		return nil
+	}
+
 	key := strings.Join(lbs, SEP)
 	if v, ok := limiterVec.limiters.Load(key); ok {
 		if limiter, ok2 := v.(*ClusterLimiter); ok2 {
@@ -73,7 +78,7 @@ func (limiterVec *ClusterLimiterVec) WithLabelValues(lbs []string, rewardTarget 
 		scoreSamplesMax:          limiterVec.scoreSamplesMax,
 		scoreSamplesSortInterval: limiterVec.scoreSamplesSortInterval,
 	}
-	newLimiter.Init()
+	newLimiter.Initialize()
 	newLimiter.Heartbeat()
 
 	limiterVec.limiters.Store(key, newLimiter)
@@ -82,6 +87,10 @@ func (limiterVec *ClusterLimiterVec) WithLabelValues(lbs []string, rewardTarget 
 
 // update
 func (limiterVec *ClusterLimiterVec) Heartbeat() {
+	if limiterVec.expired {
+		return
+	}
+
 	limiterVec.limiters.Range(func(k interface{}, v interface{}) bool {
 		if limiter, ok := v.(*ClusterLimiter); ok {
 			limiter.Heartbeat()
@@ -119,8 +128,10 @@ func (limiterVec *ClusterLimiterVec) Expire() bool {
 				limiterVec.completionTime = limiterVec.endTime
 			}
 		}
+		limiterVec.expired = false
 		return false
 	}
 
-	return allExpired
+	limiterVec.expired = allExpired
+	return limiterVec.expired
 }

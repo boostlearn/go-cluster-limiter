@@ -18,6 +18,7 @@ const DefaultScoreSamplesSortIntervalSeconds = 10
 // limiter: limit traffic within cluster
 type ClusterLimiter struct {
 	mu sync.RWMutex
+	expired bool
 
 	name     string
 	lbs      []string
@@ -74,12 +75,14 @@ type ClusterLimiter struct {
 }
 
 // init limiter
-func (limiter *ClusterLimiter) Init() {
+func (limiter *ClusterLimiter) Initialize() {
 	limiter.mu.Lock()
 	defer limiter.mu.Unlock()
 
 	timeNow := time.Now()
 	limiter.initTime = timeNow
+	limiter.expired = false
+
 	if limiter.burstInterval.Truncate(time.Second) == 0 {
 		limiter.burstInterval = DefaultBurstIntervalSeconds * time.Second
 	}
@@ -121,7 +124,7 @@ func (limiter *ClusterLimiter) Take(v float64) bool {
 	limiter.mu.RLock()
 	defer limiter.mu.RUnlock()
 
-	if limiter.rewardTarget == 0 {
+	if limiter.expired {
 		return false
 	}
 
@@ -144,6 +147,10 @@ func (limiter *ClusterLimiter) Reward(v float64) {
 	limiter.mu.RLock()
 	defer limiter.mu.RUnlock()
 
+	if limiter.expired {
+		return
+	}
+
 	limiter.RewardCounter.Add(v)
 }
 
@@ -152,7 +159,7 @@ func (limiter *ClusterLimiter) TakeWithScore(v float64, score float64) bool {
 	limiter.mu.RLock()
 	defer limiter.mu.RUnlock()
 
-	if limiter.rewardTarget == 0 {
+	if limiter.expired {
 		return false
 	}
 
@@ -326,9 +333,11 @@ func (limiter *ClusterLimiter) Expire() bool {
 				limiter.completionTime = limiter.endTime
 			}
 		}
-		return false
+		limiter.expired = false
+		return limiter.expired
 	} else {
-		return timeNow.After(limiter.endTime)
+		limiter.expired =  timeNow.After(limiter.endTime)
+		return limiter.expired
 	}
 }
 
@@ -336,6 +345,10 @@ func (limiter *ClusterLimiter) Expire() bool {
 func (limiter *ClusterLimiter) Heartbeat() {
 	limiter.mu.Lock()
 	defer limiter.mu.Unlock()
+
+	if limiter.expired {
+		return
+	}
 
 	timeNow := time.Now()
 	if timeNow.After(limiter.endTime) || timeNow.Before(limiter.beginTime) {

@@ -16,6 +16,7 @@ const DefaultTrafficProportion = 1.0
 // counter within cluster
 type ClusterCounter struct {
 	mu sync.RWMutex
+	expired bool
 
 	name     string
 	lbs      map[string]string
@@ -51,12 +52,13 @@ type ClusterCounter struct {
 }
 
 // init counter
-func (counter *ClusterCounter) Init() {
+func (counter *ClusterCounter) Initialize() {
 	counter.mu.Lock()
 	defer counter.mu.Unlock()
 
 	timeNow := time.Now()
 	counter.initTime = timeNow
+	counter.expired = false
 
 	counter.periodInterval = counter.periodInterval.Truncate(time.Second)
 	if counter.periodInterval > 0 {
@@ -131,7 +133,8 @@ func (counter *ClusterCounter) Expire() bool {
 		}
 		return false
 	} else {
-		return timeNow.After(counter.endTime)
+		counter.expired =  timeNow.After(counter.endTime)
+		return counter.expired
 	}
 }
 
@@ -139,6 +142,10 @@ func (counter *ClusterCounter) Expire() bool {
 func (counter *ClusterCounter) Add(v float64) {
 	counter.mu.RLock()
 	defer counter.mu.RUnlock()
+
+	if counter.expired {
+		return
+	}
 
 	counter.localValue += v
 }
@@ -258,6 +265,10 @@ func (counter *ClusterCounter) StoreHistorySize() int {
 
 // update data heartbeat
 func (counter *ClusterCounter) Heartbeat() {
+	if counter.expired {
+		return
+	}
+
 	counter.StoreData()
 	counter.LoadData()
 }
@@ -266,6 +277,10 @@ func (counter *ClusterCounter) Heartbeat() {
 func (counter *ClusterCounter) LoadData() bool {
 	counter.mu.Lock()
 	defer counter.mu.Unlock()
+
+	if counter.expired {
+		return false
+	}
 
 	if counter.factory == nil || reflect.ValueOf(counter.factory.Store).IsNil() == true {
 		return false
@@ -329,6 +344,10 @@ func (counter *ClusterCounter) updateLocalTrafficProportion() {
 func (counter *ClusterCounter) StoreData() bool {
 	counter.mu.Lock()
 	defer counter.mu.Unlock()
+
+	if counter.expired {
+		return false
+	}
 
 	if counter.factory == nil || reflect.ValueOf(counter.factory.Store).IsNil() == true {
 		return false
