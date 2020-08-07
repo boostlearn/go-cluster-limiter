@@ -88,13 +88,17 @@ The commonly used database like redis, influxdb, and mysql can all meet these co
 **limiter's take and reward**:
     
     limiter := limiterFactory.GetClusterLimiter("test")
-    if limiter.Take(1) { 
-    	doSomething()
-    	if inCentainCondition {
-    	    limiter.Reward(1) 
-    	}
-    } else { 
-        errorHandle()
+    if limiter != nil {
+        if limiter.Take(1) { 
+    	    doSomething()
+    	    if inCentainCondition {
+    	        limiter.Reward(1) 
+    	    }
+        } else { 
+            doFail()
+        }
+    } else {
+       doSomething()
     }
 
 
@@ -113,14 +117,19 @@ The commonly used database like redis, influxdb, and mysql can all meet these co
     		
 **score limiter's take and reward**：
     
-    limiter := limiterFactory.NewClusterLimiter("limiter-3")
-    if limiter.TakeWithScore(1, score) { 
-    	doSomething()
-    	if inCentainCondition {
-    	    limiter.Reward(1) // reward
-    	}
+    scoreLimiter := limiterFactory.GetClusterLimiter("limiter-3")
+    if limiter != nil {
+        score := getScoreValue(...)
+        if scoreLimiter.TakeWithScore(1, score) { 
+    	    doSomething()
+    	    if inCentainCondition {
+    	        scoreLimiter.Reward(1) // reward
+    	    }
+        } else {
+           doFail()
+       }
     } else {
-        errorHandle()
+        doSomething()
     }
     
   

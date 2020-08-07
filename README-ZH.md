@@ -80,13 +80,17 @@
 **限流器器的通过获取和反馈**:
     
     limiter := limiterFactory.GetClusterLimiter("test")
-    if limiter.Take(1) { 
-    	doSomething()
-    	if inCentainCondition {
-    	    limiter.Reward(1) 
-    	}
-    } else { 
-        errorHandle()
+    if limiter != nil {
+        if limiter.Take(1) { 
+    	    doSomething()
+    	    if inCentainCondition {
+    	        limiter.Reward(1) 
+    	    }
+        } else { 
+            doFail()
+        }
+    } else {
+       doSomething()
     }
 
 #### 分级限流器
@@ -104,14 +108,19 @@
     		
 **分级限流器的通过获取和反馈**：
     
-    limiter := limiterFactory.NewClusterLimiter("limiter-3")
-    if limiter.TakeWithScore(1, score) { 
-    	doSomething()
-    	if inCentainCondition {
-    	    limiter.Reward(1) // reward
-    	}
+    scoreLimiter := limiterFactory.GetClusterLimiter("limiter-3")
+    if limiter != nil {
+        score := getScoreValue(...)
+        if scoreLimiter.TakeWithScore(1, score) { 
+    	    doSomething()
+    	    if inCentainCondition {
+    	        scoreLimiter.Reward(1) // reward
+    	    }
+        } else {
+           doFail()
+       }
     } else {
-        errorHandle()
+        doSomething()
     }
     
 ## 集群流控算法原理
