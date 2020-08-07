@@ -127,7 +127,7 @@ The commonly used database like redis, influxdb, and mysql can all meet these co
     	    }
         } else {
            doFail()
-       }
+        }
     } else {
         doSomething()
     }

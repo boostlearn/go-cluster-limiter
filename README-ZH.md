@@ -118,7 +118,7 @@
     	    }
         } else {
            doFail()
-       }
+        }
     } else {
         doSomething()
     }
