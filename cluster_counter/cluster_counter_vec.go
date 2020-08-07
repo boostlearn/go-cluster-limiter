@@ -8,7 +8,7 @@ import (
 
 // counter vector with same configuration
 type ClusterCounterVec struct {
-	mu      sync.RWMutex
+	mu sync.RWMutex
 
 	name                       string
 	labelNames                 []string
@@ -66,6 +66,16 @@ func (counterVec *ClusterCounterVec) Heartbeat() {
 	counterVec.counters.Range(func(k interface{}, v interface{}) bool {
 		if counter, ok := v.(*ClusterCounter); ok {
 			counter.Heartbeat()
+		}
+		return true
+	})
+}
+
+// collect metrics
+func (counterVec *ClusterCounterVec) CollectMetrics() {
+	counterVec.counters.Range(func(k interface{}, v interface{}) bool {
+		if counter, ok := v.(*ClusterCounter); ok {
+			counter.CollectMetrics()
 		}
 		return true
 	})

@@ -5,8 +5,11 @@ import (
 	"fmt"
 	"github.com/boostlearn/go-cluster-limiter/cluster_counter/redis_store"
 	"github.com/boostlearn/go-cluster-limiter/cluster_limiter"
+	"github.com/boostlearn/go-cluster-limiter/cluster_limiter/prometheus_reporter"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"log"
 	"math/rand"
+	"net/http"
 	"time"
 )
 
@@ -18,8 +21,8 @@ var (
 	localTrafficProportion float64
 
 	targetNum         int64
-	startTime     int64
-	endTime     int64
+	startTime         int64
+	endTime           int64
 	resetInterval     int64
 	mockTrafficFactor int64
 
@@ -27,12 +30,6 @@ var (
 	redisPass string
 
 	listenPort int64
-
-	//metrics = prometheus.NewGaugeVec(prometheus.GaugeOpts{
-	//	Namespace: "boostlearn",
-	//	Subsystem: "test",
-	//	Name:      "cluster_limiter",
-	//}, []string{"limiter_instance", "metric_name"})
 )
 
 func init() {
@@ -48,94 +45,49 @@ func init() {
 	flag.Float64Var(&localTrafficProportion, "j", 1, "proportion of local traffic in cluster")
 	flag.Int64Var(&startTime, "k", 0, "start time since now [seconds]")
 	flag.Int64Var(&endTime, "l", 0, "end time since now [seconds]")
-
-	//prometheus.MustRegister(metrics)
 }
 
 func main() {
 	flag.Parse()
 
-	counterStore, err := redis_store.NewStore(redisAddr, redisPass, "blcl:")
+	store, err := redis_store.NewStore(redisAddr, redisPass, "blcl:")
 	if err != nil {
 		log.Println("new store error:", err)
 	}
+
+	reporter := prometheus_reporter.NewCounterReporter("boostlearn")
 
 	limiterFactory := cluster_limiter.NewFactory(
 		&cluster_limiter.ClusterLimiterFactoryOpts{
 			Name:                       "test",
 			HeartbeatInterval:          100 * time.Millisecond,
 			InitLocalTrafficProportion: localTrafficProportion,
-		},
-		counterStore)
+			Reporter:                   reporter,
+			Store:                      store,
+		})
 	limiterFactory.Start()
 
 	limiterVec, err := limiterFactory.NewClusterLimiterVec(
 		&cluster_limiter.ClusterLimiterOpts{
 			Name:                limiterName,
-			BeginTime: time.Now().Add(time.Duration(startTime) * time.Second).Truncate(time.Second),
-			EndTime: time.Now().Add(time.Duration(endTime) * time.Second).Truncate(time.Second),
+			BeginTime:           time.Now().Add(time.Duration(startTime) * time.Second).Truncate(time.Second),
+			EndTime:             time.Now().Add(time.Duration(endTime) * time.Second).Truncate(time.Second),
 			PeriodInterval:      time.Duration(resetInterval) * time.Second,
 			DiscardPreviousData: true,
 		},
-		[]string{"label1", "label2"})
+		[]string{})
 
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	lbs := []string{"c1", "c2"}
+	var lbs []string
 	limiter := limiterVec.WithLabelValues(lbs, float64(targetNum))
-
-	go httpServer()
 	go fakeTraffic(limiter)
 
-	ticker := time.NewTicker(100000 * time.Microsecond)
-	i := 0
-	for range ticker.C {
-		data := make(map[string]float64)
-
-		data["pass_rate"] = limiter.PassRate()
-		data["ideal_rate"] = limiter.IdealPassRate()
-		data["reward_rate"] = limiter.IdealRewardRate()
-		data["total_target"] = limiter.GetRewardTarget()
-		data["ideal_reward"] = limiter.IdealReward()
-
-		rewardCur, rewardTime := limiter.RewardCounter.ClusterValue(0)
-		data["lag_time"] = limiter.LagTime(rewardCur, rewardTime)
-
-		data["request_local"], _ = limiter.RequestCounter.LocalValue(0)
-		data["request_pred"], _ = limiter.RequestCounter.ClusterValue(0)
-		requestLast, _ := limiter.RequestCounter.ClusterValue(-1)
-		data["request_last"] = requestLast
-
-		data["pass_local"], _ = limiter.PassCounter.LocalValue(0)
-		data["pass_pred"], _ = limiter.PassCounter.ClusterValue(0)
-		passLast, _ := limiter.PassCounter.ClusterValue(-1)
-		data["pass_last"] = passLast
-
-		data["reward_local"], _ = limiter.RewardCounter.LocalValue(0)
-		data["reward_pred"], _ = limiter.RewardCounter.ClusterValue(0)
-		rewardLast, _ := limiter.RewardCounter.ClusterValue(-1)
-		data["reward_last"] = rewardLast
-		data["request_local_traffic_proportion"] = limiter.RequestCounter.LocalTrafficProportion()
-		data["reward_local_traffic_proportion"] = limiter.RewardCounter.LocalTrafficProportion()
-
-		//for k, v := range data {
-		//	metrics.WithLabelValues(instanceName, k).Set(v)
-		//}
-
-		if i%10 == 0 {
-			fmt.Println(data)
-		}
-		i++
-	}
-
-}
-
-func httpServer() {
-	//http.Handle("/metrics", promhttp.Handler())
-	//err := http.ListenAndServe(fmt.Sprintf("0.0.0.0:%v", listenPort), nil)
-	//log.Fatal(err)
+	http.Handle("/metrics", promhttp.Handler())
+	err = http.ListenAndServe(fmt.Sprintf("0.0.0.0:%v", listenPort), nil)
+	log.Fatal(err)
 }
 
 func fakeTraffic(limiter *cluster_limiter.ClusterLimiter) {
@@ -151,11 +103,8 @@ func fakeTraffic(limiter *cluster_limiter.ClusterLimiter) {
 		v = v * mockTrafficFactor
 
 		for j := 0; j < int(v); j++ {
-			//metrics.WithLabelValues(instanceName, "request").Add(1)
 			if limiter.Take(float64(1)) == true {
-				//metrics.WithLabelValues(instanceName, "pass").Add(1)
 				if rand.Float64() > 0.5 {
-					//metrics.WithLabelValues(instanceName, "reward").Add(1)
 					limiter.Reward(float64(1))
 				}
 			}

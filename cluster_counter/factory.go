@@ -25,8 +25,10 @@ type ClusterCounterOpts struct {
 
 // Producer of counter
 type ClusterCounterFactory struct {
-	name   string
-	Store  DataStoreI
+	name     string
+	Store    DataStoreI
+	Reporter ReporterI
+
 	ticker *time.Ticker
 
 	defaultLocalTrafficProportion float64
@@ -41,10 +43,12 @@ type ClusterCounterFactoryOpts struct {
 	Name                          string
 	DefaultLocalTrafficProportion float64
 	HeartbeatInterval             time.Duration
+	Store                         DataStoreI
+	Reporter                      ReporterI
 }
 
 // create new counter's factory
-func NewFactory(opts *ClusterCounterFactoryOpts, store DataStoreI) *ClusterCounterFactory {
+func NewFactory(opts *ClusterCounterFactoryOpts) *ClusterCounterFactory {
 	if len(opts.Name) == 0 {
 		opts.Name = DefaultFactoryName
 	}
@@ -57,9 +61,9 @@ func NewFactory(opts *ClusterCounterFactoryOpts, store DataStoreI) *ClusterCount
 	}
 
 	factory := &ClusterCounterFactory{
-		name:  opts.Name,
-		Store: store,
-
+		name:                          opts.Name,
+		Store:                         opts.Store,
+		Reporter:                      opts.Reporter,
 		defaultLocalTrafficProportion: opts.DefaultLocalTrafficProportion,
 		heartbeatInterval:             opts.HeartbeatInterval,
 	}
@@ -73,10 +77,6 @@ func (factory *ClusterCounterFactory) NewClusterCounterVec(opts *ClusterCounterO
 ) (*ClusterCounterVec, error) {
 	if opts == nil || len(opts.Name) == 0 {
 		return nil, errors.New("name error")
-	}
-
-	if len(labelNames) == 0 {
-		return nil, errors.New("need label names")
 	}
 
 	if opts.InitLocalTrafficProportion == 0.0 {
@@ -179,6 +179,7 @@ func (factory *ClusterCounterFactory) Heartbeat() {
 	factory.clusterCounterVectors.Range(func(k interface{}, v interface{}) bool {
 		if counterVec, ok := v.(*ClusterCounterVec); ok {
 			counterVec.Heartbeat()
+			counterVec.CollectMetrics()
 
 			if counterVec.Expire() {
 				factory.clusterCounters.Delete(k)
@@ -190,6 +191,7 @@ func (factory *ClusterCounterFactory) Heartbeat() {
 	factory.clusterCounters.Range(func(k interface{}, v interface{}) bool {
 		if counter, ok := v.(*ClusterCounter); ok {
 			counter.Heartbeat()
+			counter.CollectMetrics()
 
 			if counter.Expire() {
 				factory.clusterCounters.Delete(k)

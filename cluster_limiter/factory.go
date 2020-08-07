@@ -37,6 +37,8 @@ type ClusterLimiterFactory struct {
 	limiterVectors    sync.Map
 	limiters          sync.Map
 	counterFactory    *cluster_counter.ClusterCounterFactory
+
+	Reporter ReporterI
 }
 
 // options of creating limiter's factory
@@ -44,12 +46,12 @@ type ClusterLimiterFactoryOpts struct {
 	Name                       string
 	HeartbeatInterval          time.Duration
 	InitLocalTrafficProportion float64
+	Store                      cluster_counter.DataStoreI
+	Reporter                   ReporterI
 }
 
 // build new factory
-func NewFactory(opts *ClusterLimiterFactoryOpts,
-	dataStore cluster_counter.DataStoreI,
-) *ClusterLimiterFactory {
+func NewFactory(opts *ClusterLimiterFactoryOpts) *ClusterLimiterFactory {
 	if opts.HeartbeatInterval == 0 {
 		opts.HeartbeatInterval = time.Duration(DefaultHeartbeatIntervalMilliseconds) * time.Millisecond
 	}
@@ -62,12 +64,14 @@ func NewFactory(opts *ClusterLimiterFactoryOpts,
 		Name:                          opts.Name + ":cls_ct:",
 		DefaultLocalTrafficProportion: opts.InitLocalTrafficProportion,
 		HeartbeatInterval:             opts.HeartbeatInterval,
-	}, dataStore)
+		Store:                         opts.Store,
+	})
 	factory := &ClusterLimiterFactory{
 		limiterVectors:    sync.Map{},
 		counterFactory:    counterFactory,
 		heartbeatInterval: opts.HeartbeatInterval,
 		name:              opts.Name,
+		Reporter:          opts.Reporter,
 	}
 	return factory
 }
@@ -84,10 +88,6 @@ func (factory *ClusterLimiterFactory) NewClusterLimiterVec(opts *ClusterLimiterO
 		return nil, errors.New("period interval not set or begin time bigger than end time")
 	}
 
-	if len(labelNames) == 0 {
-		return nil, errors.New("need label names")
-	}
-
 	if l, ok := factory.limiterVectors.Load(opts.Name); ok {
 		return l.(*ClusterLimiterVec), nil
 	}
@@ -102,6 +102,8 @@ func (factory *ClusterLimiterFactory) NewClusterLimiterVec(opts *ClusterLimiterO
 
 	var limiterVec = &ClusterLimiterVec{
 		name:                     opts.Name,
+		factory:                  factory,
+		labelNames:               append([]string{}, labelNames...),
 		beginTime:                opts.BeginTime,
 		endTime:                  opts.EndTime,
 		completionTime:           opts.CompletionTime,
@@ -181,6 +183,7 @@ func (factory *ClusterLimiterFactory) NewClusterLimiter(opts *ClusterLimiterOpts
 
 	var limiter = &ClusterLimiter{
 		name:                     opts.Name,
+		factory:                  factory,
 		rewardTarget:             opts.RewardTarget,
 		beginTime:                opts.BeginTime,
 		endTime:                  opts.EndTime,
@@ -266,6 +269,8 @@ func (factory *ClusterLimiterFactory) Heartbeat() {
 	factory.limiters.Range(func(k interface{}, v interface{}) bool {
 		if limiter, ok := v.(*ClusterLimiter); ok {
 			limiter.Heartbeat()
+			limiter.CollectMetrics()
+
 			if limiter.Expire() {
 				factory.limiters.Delete(k)
 			}
@@ -274,9 +279,11 @@ func (factory *ClusterLimiterFactory) Heartbeat() {
 	})
 
 	factory.limiterVectors.Range(func(k interface{}, v interface{}) bool {
-		if limiter, ok := v.(*ClusterLimiterVec); ok {
-			limiter.Heartbeat()
-			if limiter.Expire() {
+		if limiterVec, ok := v.(*ClusterLimiterVec); ok {
+			limiterVec.Heartbeat()
+			limiterVec.CollectMetrics()
+
+			if limiterVec.Expire() {
 				factory.limiterVectors.Delete(k)
 			}
 		}

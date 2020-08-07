@@ -11,9 +11,12 @@ const SEP = "####"
 
 // limiters with same configuration
 type ClusterLimiterVec struct {
-	name    string
+	name string
 
+	factory             *ClusterLimiterFactory
 	discardPreviousData bool
+
+	labelNames []string
 
 	RequestCounter *cluster_counter.ClusterCounterVec
 	PassCounter    *cluster_counter.ClusterCounterVec
@@ -46,6 +49,10 @@ type ClusterLimiterVec struct {
 
 // create new limiter with labels
 func (limiterVec *ClusterLimiterVec) WithLabelValues(lbs []string, rewardTarget float64) *ClusterLimiter {
+	if len(lbs) != len(limiterVec.labelNames) {
+		return nil
+	}
+
 	key := strings.Join(lbs, SEP)
 	if v, ok := limiterVec.limiters.Load(key); ok {
 		if limiter, ok2 := v.(*ClusterLimiter); ok2 {
@@ -53,10 +60,16 @@ func (limiterVec *ClusterLimiterVec) WithLabelValues(lbs []string, rewardTarget 
 		}
 	}
 
+	limiterLabels := make(map[string]string)
+	for i, labelName := range limiterVec.labelNames {
+		limiterLabels[labelName] = lbs[i]
+	}
+
 	newLimiter := &ClusterLimiter{
 		name:                     limiterVec.name,
+		factory:                  limiterVec.factory,
 		rewardTarget:             rewardTarget,
-		lbs:                      append([]string{}, lbs...),
+		lbs:                      limiterLabels,
 		RequestCounter:           limiterVec.RequestCounter.WithLabelValues(lbs),
 		PassCounter:              limiterVec.PassCounter.WithLabelValues(lbs),
 		RewardCounter:            limiterVec.RewardCounter.WithLabelValues(lbs),
@@ -85,6 +98,16 @@ func (limiterVec *ClusterLimiterVec) Heartbeat() {
 	limiterVec.limiters.Range(func(k interface{}, v interface{}) bool {
 		if limiter, ok := v.(*ClusterLimiter); ok {
 			limiter.Heartbeat()
+		}
+		return true
+	})
+}
+
+// collect metrics
+func (limiterVec *ClusterLimiterVec) CollectMetrics() {
+	limiterVec.limiters.Range(func(k interface{}, v interface{}) bool {
+		if limiter, ok := v.(*ClusterLimiter); ok {
+			limiter.CollectMetrics()
 		}
 		return true
 	})

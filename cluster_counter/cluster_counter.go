@@ -78,7 +78,7 @@ func (counter *ClusterCounter) Initialize() {
 		counter.localTrafficProportion = counter.initLocalTrafficProportion
 	}
 
-	if counter.factory != nil && reflect.ValueOf(counter.factory.Store).IsNil() == false {
+	if counter.factory != nil && counter.factory.Store != nil && reflect.ValueOf(counter.factory.Store).IsNil() == false {
 		counter.mu.Unlock()
 		value, err := counter.factory.Store.Load(counter.name, counter.beginTime, counter.endTime, counter.lbs)
 		counter.mu.Lock()
@@ -124,7 +124,8 @@ func (counter *ClusterCounter) Expire() bool {
 			counter.loadHistoryPos = 0
 			counter.loadInitValue = 0
 			counter.storeHistoryPos = 0
-			if pushValue > 0 && counter.factory != nil && reflect.ValueOf(counter.factory.Store).IsNil() == false {
+			if pushValue > 0 && counter.factory != nil && counter.factory.Store != nil &&
+				reflect.ValueOf(counter.factory.Store).IsNil() == false {
 				counter.mu.Unlock()
 				_ = counter.factory.Store.Store(counter.name, lastBeginTime, lastEndTime, counter.lbs,
 					pushValue, true)
@@ -275,7 +276,8 @@ func (counter *ClusterCounter) LoadData() bool {
 	counter.mu.Lock()
 	defer counter.mu.Unlock()
 
-	if counter.factory == nil || reflect.ValueOf(counter.factory.Store).IsNil() == true {
+	if counter.factory == nil || counter.factory.Store == nil ||
+		reflect.ValueOf(counter.factory.Store).IsNil() == true {
 		return false
 	}
 
@@ -342,7 +344,8 @@ func (counter *ClusterCounter) StoreData() bool {
 	counter.mu.Lock()
 	defer counter.mu.Unlock()
 
-	if counter.factory == nil || reflect.ValueOf(counter.factory.Store).IsNil() == true {
+	if counter.factory == nil || counter.factory.Store == nil ||
+		reflect.ValueOf(counter.factory.Store).IsNil() == true {
 		return false
 	}
 
@@ -373,4 +376,30 @@ func (counter *ClusterCounter) StoreData() bool {
 		}
 	}
 	return false
+}
+
+// update metrics
+func (counter *ClusterCounter) CollectMetrics() bool {
+	if counter.factory == nil || counter.factory.Reporter == nil {
+		return false
+	}
+
+	if reflect.ValueOf(counter.factory.Reporter).IsNil() == true {
+		return false
+	}
+
+	clusterLast, clusterLastTime := counter.ClusterValue(-1)
+	clusterEstimated, _ := counter.ClusterValue(0)
+	localCur, _ := counter.LocalValue(0)
+	var metrics = map[string]float64{
+		"local_current":            localCur,
+		"cluster_estimated":        clusterEstimated,
+		"cluster_last":             clusterLast,
+		"cluster_last_ts":          float64(clusterLastTime.Unix()),
+		"local_recently":           counter.LocalRecently(),
+		"cluster_recently":         counter.ClusterRecently(),
+		"local_traffic_proportion": counter.LocalTrafficProportion(),
+	}
+	counter.factory.Reporter.Update(counter.name, counter.lbs, metrics)
+	return true
 }

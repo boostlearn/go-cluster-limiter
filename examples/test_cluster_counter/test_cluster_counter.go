@@ -5,8 +5,11 @@ import (
 	"fmt"
 	"github.com/boostlearn/go-cluster-limiter/cluster_counter"
 	"github.com/boostlearn/go-cluster-limiter/cluster_counter/redis_store"
+	"github.com/boostlearn/go-cluster-limiter/cluster_limiter/prometheus_reporter"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"log"
 	"math/rand"
+	"net/http"
 	"time"
 )
 
@@ -14,27 +17,21 @@ var (
 	counterName            string
 	testerName             string
 	discardPreviousData    bool
-	startTime     int64
-	endTime     int64
+	startTime              int64
+	endTime                int64
 	periodInterval         int64
 	mockTrafficFactor      float64
 	listenPort             int64
 	localTrafficProportion float64
 	redisAddr              string
 	redisPass              string
-
-	//metrics = prometheus.NewGaugeVec(prometheus.GaugeOpts{
-	//	Namespace: "boostlearn",
-	//	Subsystem: "test",
-	//	Name:      "cluster_counter",
-	//}, []string{"counter_instance", "metric_name"})
 )
 
 func init() {
 	flag.StringVar(&counterName, "a", "test_cluster_counter", "cluster counter's unique name")
 	flag.StringVar(&testerName, "b", "test1", "test instance name")
 	flag.Int64Var(&periodInterval, "c", 60, "reset data interval")
-	flag.Float64Var(&localTrafficProportion, "e", 0.1, "proportion of local traffic in cluster")
+	flag.Float64Var(&localTrafficProportion, "e", 1.0, "proportion of local traffic in cluster")
 	flag.StringVar(&redisAddr, "f", "127.0.0.1:6379", "store: redis address")
 	flag.StringVar(&redisPass, "g", "", "store: redis pass")
 	flag.Int64Var(&listenPort, "h", 20001, "prometheus listen port")
@@ -42,7 +39,6 @@ func init() {
 	flag.BoolVar(&discardPreviousData, "j", true, "whether discard previous data")
 	flag.Int64Var(&startTime, "k", 0, "start time since now [seconds]")
 	flag.Int64Var(&endTime, "l", 0, "end time since now [seconds]")
-	//prometheus.MustRegister(metrics)
 }
 
 func main() {
@@ -52,65 +48,42 @@ func main() {
 	if err != nil {
 		log.Println("newStore Error:", err)
 	}
+
+	reporter := prometheus_reporter.NewCounterReporter("boostlearn")
+
 	factory := cluster_counter.NewFactory(
 		&cluster_counter.ClusterCounterFactoryOpts{
 			DefaultLocalTrafficProportion: localTrafficProportion,
 			HeartbeatInterval:             100 * time.Millisecond,
-		}, store)
+			Store:                         store,
+			Reporter:                      reporter,
+		})
 	factory.Start()
 
 	counterVec, err := factory.NewClusterCounterVec(
 		&cluster_counter.ClusterCounterOpts{
 			Name:                       counterName,
-			BeginTime: time.Now().Add(time.Duration(startTime) * time.Second).Truncate(time.Second),
-			EndTime: time.Now().Add(time.Duration(endTime) * time.Second).Truncate(time.Second),
+			BeginTime:                  time.Now().Add(time.Duration(startTime) * time.Second).Truncate(time.Second),
+			EndTime:                    time.Now().Add(time.Duration(endTime) * time.Second).Truncate(time.Second),
 			PeriodInterval:             time.Duration(periodInterval) * time.Second,
 			DiscardPreviousData:        discardPreviousData,
 			InitLocalTrafficProportion: localTrafficProportion,
 		},
-		[]string{"label1", "label2"})
+		[]string{})
 	if err != nil {
 		fmt.Println(err)
 		return
 	}
 
-	lbs := []string{"c1", "c2"}
+	var lbs []string
 	counter := counterVec.WithLabelValues(lbs)
 
 	go mockTraffic(counter)
-	go httpServer()
 
-	i := 0
-	ticker := time.NewTicker(100000 * time.Microsecond)
-	for range ticker.C {
-		clusterLast, _ := counter.ClusterValue(-1)
-		clusterCur, _ := counter.ClusterValue(0)
-		localCur, _ := counter.LocalValue(0)
-		var data = map[string]float64{
-			"local_current":            localCur,
-			"cluster_last":             clusterLast,
-			"cluster_pred":             clusterCur,
-			"local_traffic_proportion": counter.LocalTrafficProportion(),
-			"local_recently":           counter.LocalRecently(),
-			"cluster_recently":         counter.ClusterRecently(),
-		}
+	http.Handle("/metrics", promhttp.Handler())
+	err = http.ListenAndServe(fmt.Sprintf("0.0.0.0:%v", listenPort), nil)
+	log.Fatal(err)
 
-		//for k, v := range data {
-		//	metrics.WithLabelValues(testerName, k).Set(v)
-		//}
-
-		if i%10 == 0 {
-			fmt.Println(data)
-		}
-		i++
-	}
-
-}
-
-func httpServer() {
-	//http.Handle("/metrics", promhttp.Handler())
-	//err := http.ListenAndServe(fmt.Sprintf("0.0.0.0:%v", listenPort), nil)
-	//log.Fatal(err)
 }
 
 func mockTraffic(counter *cluster_counter.ClusterCounter) {

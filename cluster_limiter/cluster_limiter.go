@@ -4,6 +4,7 @@ import (
 	//"fmt"
 	"github.com/boostlearn/go-cluster-limiter/cluster_counter"
 	"math/rand"
+	"reflect"
 	"sort"
 	"sync"
 	"time"
@@ -20,8 +21,10 @@ type ClusterLimiter struct {
 	mu      sync.RWMutex
 	expired bool
 
+	factory *ClusterLimiterFactory
+
 	name     string
-	lbs      []string
+	lbs      map[string]string
 	initTime time.Time
 
 	beginTime       time.Time
@@ -236,7 +239,7 @@ func (limiter *ClusterLimiter) IdealReward() float64 {
 
 func (limiter *ClusterLimiter) getIdealReward(t time.Time) float64 {
 	timeNow := time.Now()
-	if timeNow.Before(limiter.beginTime)  || !limiter.beginTime.Before(limiter.endTime) {
+	if timeNow.Before(limiter.beginTime) || !limiter.beginTime.Before(limiter.endTime) {
 		return 0
 	}
 
@@ -532,4 +535,54 @@ func (limiter *ClusterLimiter) sortScoreSamples() {
 
 	limiter.lastScoreSortTime = time.Now()
 	limiter.scoreSamplesSorted = samples
+}
+
+// update metrics
+func (limiter *ClusterLimiter) CollectMetrics() bool {
+	if limiter.factory == nil || limiter.factory.Reporter == nil {
+		return false
+	}
+
+	if reflect.ValueOf(limiter.factory.Reporter).IsNil() == true {
+		return false
+	}
+
+	metrics := make(map[string]float64)
+
+	metrics["working_pass_rate"] = limiter.PassRate()
+	metrics["ideal_pass_rate"] = limiter.IdealPassRate()
+	metrics["reward_rate"] = limiter.IdealRewardRate()
+
+	metrics["reward_target"] = limiter.GetRewardTarget()
+	metrics["ideal_reward"] = limiter.IdealReward()
+
+	rewardCur, rewardTime := limiter.RewardCounter.ClusterValue(0)
+	metrics["lag_time"] = limiter.LagTime(rewardCur, rewardTime)
+
+	metrics["request_local"], _ = limiter.RequestCounter.LocalValue(0)
+	metrics["request_estimated"], _ = limiter.RequestCounter.ClusterValue(0)
+	requestLast, _ := limiter.RequestCounter.ClusterValue(-1)
+	metrics["request_last"] = requestLast
+
+	metrics["pass_local"], _ = limiter.PassCounter.LocalValue(0)
+	metrics["pass_estimated"], _ = limiter.PassCounter.ClusterValue(0)
+	passLast, _ := limiter.PassCounter.ClusterValue(-1)
+	metrics["pass_last"] = passLast
+
+	metrics["reward_local"], _ = limiter.RewardCounter.LocalValue(0)
+	metrics["reward_estimated"], _ = limiter.RewardCounter.ClusterValue(0)
+	rewardLast, _ := limiter.RewardCounter.ClusterValue(-1)
+	metrics["reward_last"] = rewardLast
+
+	metrics["request_local_traffic_proportion"] = limiter.RequestCounter.LocalTrafficProportion()
+	metrics["reward_local_traffic_proportion"] = limiter.RewardCounter.LocalTrafficProportion()
+
+	scoreFlag, scoreCutValue := limiter.ScoreCut()
+	if scoreFlag == false {
+		scoreCutValue = 1.0
+	}
+	metrics["score_cut"] = scoreCutValue
+
+	limiter.factory.Reporter.Update(limiter.name, limiter.lbs, metrics)
+	return true
 }
