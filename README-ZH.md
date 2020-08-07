@@ -108,7 +108,7 @@
     if limiter.TakeWithScore(1, score) { 
     	doSomething()
     	if someCondition {
-    	        limiter.Reward(1) // reward
+    	    limiter.Reward(1) // reward
     	}
     } else {
         errorHandle()
