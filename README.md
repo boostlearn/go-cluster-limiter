@@ -87,11 +87,15 @@ The commonly used database like redis, influxdb, and mysql can all meet these co
 
 **limiter's take and reward**:
     
+    limiter := limiterFactory.GetClusterLimiter("test")
     if limiter.Take(1) { 
     	doSomething()
+    	if someCondition {
+    	    limiter.Reward(1) 
+    	}
+    } else { 
+        errorHandle()
     }
-    ...
-    limiter.Reward(1) 
 
 
 #### Limiter With Score
@@ -109,13 +113,16 @@ The commonly used database like redis, influxdb, and mysql can all meet these co
     		
 **score limiter's take and reward**：
     
+    limiter := limiterFactory.NewClusterLimiter("limiter-3")
     if limiter.TakeWithScore(1, score) { 
     	doSomething()
+    	if someCondition {
+            limiter.Reward(1) // reward
+    	}
+    } else {
+        errorHandle()
     }
-    ...
-    limiter.Reward(1) // 反馈
     
-
   
 ## Principles of the limiter's algorithm
 >The flow control calculation algorithm of this project re-evaluates the flow situation in a fixed period (about 2s~10s), and adapt to changes in traffic through parameter adjustment.

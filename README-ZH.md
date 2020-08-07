@@ -79,12 +79,15 @@
 
 **限流器器的通过获取和反馈**:
     
+    limiter := limiterFactory.GetClusterLimiter("test")
     if limiter.Take(1) { 
     	doSomething()
+    	if someCondition {
+    	    limiter.Reward(1) 
+    	}
+    } else { 
+        errorHandle()
     }
-    ...
-    limiter.Reward(1) 
-
 
 #### 分级限流器
 **构建分级限流器**：
@@ -101,11 +104,15 @@
     		
 **分级限流器的通过获取和反馈**：
     
+    limiter := limiterFactory.NewClusterLimiter("limiter-3")
     if limiter.TakeWithScore(1, score) { 
     	doSomething()
+    	if someCondition {
+            limiter.Reward(1) // reward
+    	}
+    } else {
+        errorHandle()
     }
-    ...
-    limiter.Reward(1) // 反馈
     
 ## 集群流控算法原理
 >本项目流控算算法以固定周期(大约2s~10s)重新评估流量情况，通过参数调整来调价请求的通过量。
