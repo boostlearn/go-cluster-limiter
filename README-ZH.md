@@ -50,7 +50,8 @@
     		Name:                  "test",
     		HeartbeatInterval:     1000 * time.Millisecond,
     		InitLocalTrafficProportion: 1.0,
-    	}, counterStore)
+    		Store: counterStore,
+    	})
     limiterFactory.Start()
  
 **构建带起始结束时间的限流器**:

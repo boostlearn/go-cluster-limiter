@@ -57,10 +57,11 @@ The commonly used database like redis, influxdb, and mysql can all meet these co
     
     limiterFactory := cluster_limiter.NewFactory(
     	&cluster_limiter.ClusterLimiterFactoryOpts{
-    		Name:                  "limiter-factory-a",
-    		HeartbeatInterval:     100 * time.Millisecond,
+    		Name:                  "test",
+    		HeartbeatInterval:     1000 * time.Millisecond,
     		InitLocalTrafficProportion: 1.0,
-    	}, counterStore)
+    		Store: counterStore,
+    	})
     limiterFactory.Start()
  
 **build limiter with start-end time**:
