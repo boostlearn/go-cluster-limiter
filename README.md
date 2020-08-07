@@ -90,7 +90,7 @@ The commonly used database like redis, influxdb, and mysql can all meet these co
     limiter := limiterFactory.GetClusterLimiter("test")
     if limiter.Take(1) { 
     	doSomething()
-    	if someCondition {
+    	if inCentainCondition {
     	    limiter.Reward(1) 
     	}
     } else { 
@@ -116,7 +116,7 @@ The commonly used database like redis, influxdb, and mysql can all meet these co
     limiter := limiterFactory.NewClusterLimiter("limiter-3")
     if limiter.TakeWithScore(1, score) { 
     	doSomething()
-    	if someCondition {
+    	if inCentainCondition {
     	    limiter.Reward(1) // reward
     	}
     } else {

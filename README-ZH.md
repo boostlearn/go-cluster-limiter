@@ -82,7 +82,7 @@
     limiter := limiterFactory.GetClusterLimiter("test")
     if limiter.Take(1) { 
     	doSomething()
-    	if someCondition {
+    	if inCentainCondition {
     	    limiter.Reward(1) 
     	}
     } else { 
@@ -107,7 +107,7 @@
     limiter := limiterFactory.NewClusterLimiter("limiter-3")
     if limiter.TakeWithScore(1, score) { 
     	doSomething()
-    	if someCondition {
+    	if inCentainCondition {
     	    limiter.Reward(1) // reward
     	}
     } else {
