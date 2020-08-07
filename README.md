@@ -117,7 +117,7 @@ The commonly used database like redis, influxdb, and mysql can all meet these co
     if limiter.TakeWithScore(1, score) { 
     	doSomething()
     	if someCondition {
-            limiter.Reward(1) // reward
+    	        limiter.Reward(1) // reward
     	}
     } else {
         errorHandle()
