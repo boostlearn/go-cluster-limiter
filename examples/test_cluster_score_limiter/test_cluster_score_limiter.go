@@ -54,7 +54,7 @@ func main() {
 	if err != nil {
 		log.Println("new store error:", err)
 	}
-	reporter := prometheus_reporter.NewCounterReporter("boostlearn")
+	reporter := prometheus_reporter.NewLimiterReporter("boostlearn")
 
 	limiterFactory := cluster_limiter.NewFactory(
 		&cluster_limiter.ClusterLimiterFactoryOpts{
