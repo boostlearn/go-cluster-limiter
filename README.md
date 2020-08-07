@@ -2,6 +2,8 @@
 >and can be used in scenarios that require flow limiter such as service protection, consumption control, or experiment shunting and so on. 
 >this project uses a decentralized flow control algorithm, which could effectively reduce the resource consumption and dependence on network stability.
 
+[中文](../README-ZH.md)
+
 ## The difference with other limiters
      
 the stand-alone limiter mainly controls the use of local traffic, 
