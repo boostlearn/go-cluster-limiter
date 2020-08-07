@@ -19,12 +19,16 @@ var (
 
 	discardPreviousData    bool
 	localTrafficProportion float64
+	initPassRate float64
+	initRewardRate float64
 
-	rewardRate float64
+
 
 	targetNum         int64
 	resetInterval     int64
-	mockTrafficFactor int64
+
+	fakeTrafficFactor int64
+	fakeRewardRate float64
 
 	redisAddr string
 	redisPass string
@@ -37,7 +41,7 @@ var (
 func init() {
 	flag.Int64Var(&targetNum, "a", 1000000, "total target num")
 	flag.Int64Var(&resetInterval, "b", 3600, "reset data interval")
-	flag.Int64Var(&mockTrafficFactor, "c", 5, "mock traffic factor")
+	flag.Int64Var(&fakeTrafficFactor, "c", 5, "mock traffic factor")
 	flag.StringVar(&limiterName, "d", "test_cluster_limiter", "limiter's unique name")
 	flag.StringVar(&instanceName, "e", "test1", "test instance name")
 	flag.StringVar(&redisAddr, "f", "127.0.0.1:6379", "store: redis address")
@@ -47,7 +51,9 @@ func init() {
 	flag.Float64Var(&localTrafficProportion, "j", 1, "proportion of local traffic in cluster")
 	flag.Int64Var(&startTime, "k", 0, "start time since now [seconds]")
 	flag.Int64Var(&endTime, "l", 0, "end time since now [seconds]")
-	flag.Float64Var(&rewardRate, "m", 0.5, "reward rate")
+	flag.Float64Var(&fakeRewardRate, "m", 0.5, "reward rate")
+	flag.Float64Var(&initPassRate, "n", 0.0, "init pass rate")
+	flag.Float64Var(&initRewardRate, "o", 1.0, "init reward rate")
 }
 
 func main() {
@@ -77,6 +83,8 @@ func main() {
 			PeriodInterval:      time.Duration(resetInterval) * time.Second,
 			DiscardPreviousData: true,
 			ScoreSamplesMax:     10000,
+			InitRewardRate: initRewardRate,
+			InitIdealPassRate: initPassRate,
 		},
 		[]string{})
 
@@ -105,11 +113,11 @@ func fakeTraffic(limiter *cluster_limiter.ClusterLimiter) {
 			k = 60 - k
 		}
 		v := k + 30
-		v = v * mockTrafficFactor
+		v = v * fakeTrafficFactor
 
 		for j := 0; j < int(v); j++ {
 			if limiter.TakeWithScore(float64(1), rand.Float64()) == true {
-				if rand.Float64() < rewardRate {
+				if rand.Float64() < fakeRewardRate {
 					limiter.Reward(float64(1))
 				}
 			}

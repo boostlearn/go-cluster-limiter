@@ -15,6 +15,8 @@ const DefaultBoostBurstFactor = 10.0
 const DefaultBurstIntervalSeconds = 5
 const DefaultDeclineExpRatio = 0.5
 const DefaultScoreSamplesSortIntervalSeconds = 10
+const DefaultInitPassRate = 0.0
+const DefaultInitRewardRate = 1.0
 
 // limiter: limit traffic within cluster
 type ClusterLimiter struct {
@@ -108,8 +110,13 @@ func (limiter *ClusterLimiter) Initialize() {
 		limiter.scoreCutReady = false
 	}
 
-	limiter.idealRewardRate = 1.0
-	limiter.idealPassRate = 0.0
+	if limiter.idealRewardRate == 0 {
+		limiter.idealRewardRate = DefaultInitRewardRate
+	}
+
+	if limiter.idealPassRate == 0 {
+		limiter.idealPassRate = DefaultInitPassRate
+	}
 
 	if limiter.reserveInterval > 0 {
 		limiter.beginTime = timeNow.Truncate(limiter.periodInterval)
