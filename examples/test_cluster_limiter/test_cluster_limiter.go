@@ -19,16 +19,15 @@ var (
 
 	discardPreviousData    bool
 	localTrafficProportion float64
-	initPassRate float64
-	initRewardRate float64
-
+	initPassRate           float64
+	initRewardRate         float64
 
 	targetNum         int64
 	startTime         int64
 	endTime           int64
 	resetInterval     int64
 	fakeTrafficFactor int64
-	fakeRewardRate float64
+	fakeRewardRate    float64
 
 	redisAddr string
 	redisPass string
@@ -80,8 +79,8 @@ func main() {
 			BeginTime:           time.Now().Add(time.Duration(startTime) * time.Second).Truncate(time.Second),
 			EndTime:             time.Now().Add(time.Duration(endTime) * time.Second).Truncate(time.Second),
 			PeriodInterval:      time.Duration(resetInterval) * time.Second,
-			InitRewardRate: initRewardRate,
-			InitIdealPassRate: initPassRate,
+			InitRewardRate:      initRewardRate,
+			InitIdealPassRate:   initPassRate,
 			DiscardPreviousData: true,
 		},
 		[]string{})

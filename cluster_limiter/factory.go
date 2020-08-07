@@ -81,15 +81,12 @@ func (factory *ClusterLimiterFactory) NewClusterLimiterVec(opts *ClusterLimiterO
 	labelNames []string,
 ) (*ClusterLimiterVec, error) {
 	if len(opts.Name) == 0 {
-		return nil, errors.New("need name")
+		return nil, errors.New("name cannot be nil")
 	}
+
 	if opts.PeriodInterval.Truncate(time.Second) == 0 &&
 		opts.BeginTime.Truncate(time.Second).Before(opts.EndTime.Truncate(time.Second)) == false {
 		return nil, errors.New("period interval not set or begin time bigger than end time")
-	}
-
-	if l, ok := factory.limiterVectors.Load(opts.Name); ok {
-		return l.(*ClusterLimiterVec), nil
 	}
 
 	if opts.BurstInterval == 0 {
@@ -159,22 +156,26 @@ func (factory *ClusterLimiterFactory) NewClusterLimiterVec(opts *ClusterLimiterO
 	}
 
 	factory.limiterVectors.Store(opts.Name, limiterVec)
-	return factory.NewClusterLimiterVec(opts, labelNames)
+	return factory.GetClusterLimiterVec(opts.Name), nil
+}
+
+// GET
+func (factory *ClusterLimiterFactory) GetClusterLimiterVec(name string) *ClusterLimiterVec {
+	if l, ok := factory.limiterVectors.Load(name); ok {
+		return l.(*ClusterLimiterVec)
+	}
+	return nil
 }
 
 // create new limiter
 func (factory *ClusterLimiterFactory) NewClusterLimiter(opts *ClusterLimiterOpts,
 ) (*ClusterLimiter, error) {
 	if len(opts.Name) == 0 {
-		return nil, errors.New("need name")
+		return nil, errors.New("name cannot be nil")
 	}
 	if opts.PeriodInterval.Truncate(time.Second) == 0 &&
 		opts.BeginTime.Truncate(time.Second).Before(opts.EndTime.Truncate(time.Second)) == false {
 		return nil, errors.New("period interval not set or begin time bigger than end time")
-	}
-
-	if l, ok := factory.limiters.Load(opts.Name); ok {
-		return l.(*ClusterLimiter), nil
 	}
 
 	if opts.CompletionTime.Unix() == 0 {
@@ -240,7 +241,15 @@ func (factory *ClusterLimiterFactory) NewClusterLimiter(opts *ClusterLimiterOpts
 	limiter.Initialize()
 
 	factory.limiters.Store(opts.Name, limiter)
-	return factory.NewClusterLimiter(opts)
+	return factory.GetClusterLimiter(opts.Name), nil
+}
+
+// get limiter
+func (factory *ClusterLimiterFactory) GetClusterLimiter(name string) *ClusterLimiter {
+	if l, ok := factory.limiters.Load(name); ok {
+		return l.(*ClusterLimiter)
+	}
+	return nil
 }
 
 func (factory *ClusterLimiterFactory) Start() {

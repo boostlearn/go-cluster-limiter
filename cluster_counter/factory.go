@@ -76,7 +76,7 @@ func (factory *ClusterCounterFactory) NewClusterCounterVec(opts *ClusterCounterO
 	labelNames []string,
 ) (*ClusterCounterVec, error) {
 	if opts == nil || len(opts.Name) == 0 {
-		return nil, errors.New("name error")
+		return nil, errors.New("name cannot be nil")
 	}
 
 	if opts.InitLocalTrafficProportion == 0.0 {
@@ -85,10 +85,6 @@ func (factory *ClusterCounterFactory) NewClusterCounterVec(opts *ClusterCounterO
 
 	if opts.StoreDataInterval.Truncate(time.Second) == 0 {
 		opts.StoreDataInterval = time.Duration(DefaultStoreIntervalSeconds) * time.Second
-	}
-
-	if counter, ok := factory.clusterCounterVectors.Load(opts.Name); ok {
-		return counter.(*ClusterCounterVec), nil
 	}
 
 	if opts.InitLocalTrafficProportion == 0 {
@@ -110,7 +106,15 @@ func (factory *ClusterCounterFactory) NewClusterCounterVec(opts *ClusterCounterO
 
 	factory.clusterCounterVectors.Store(opts.Name, clusterCounterVec)
 
-	return factory.NewClusterCounterVec(opts, labelNames)
+	return factory.GetClusterCounterVec(opts.Name), nil
+}
+
+// get counter vector
+func (factory *ClusterCounterFactory) GetClusterCounterVec(name string) *ClusterCounterVec {
+	if counter, ok := factory.clusterCounterVectors.Load(name); ok {
+		return counter.(*ClusterCounterVec)
+	}
+	return nil
 }
 
 // create new counter
@@ -126,10 +130,6 @@ func (factory *ClusterCounterFactory) NewClusterCounter(opts *ClusterCounterOpts
 
 	if opts.StoreDataInterval.Truncate(time.Second) == 0 {
 		opts.StoreDataInterval = time.Duration(DefaultStoreIntervalSeconds) * time.Second
-	}
-
-	if counter, ok := factory.clusterCounters.Load(opts.Name); ok {
-		return counter.(*ClusterCounter), nil
 	}
 
 	if opts.InitLocalTrafficProportion == 0 {
@@ -151,7 +151,15 @@ func (factory *ClusterCounterFactory) NewClusterCounter(opts *ClusterCounterOpts
 
 	factory.clusterCounters.Store(opts.Name, clusterCounter)
 
-	return factory.NewClusterCounter(opts)
+	return factory.GetClusterCounter(opts.Name), nil
+}
+
+// create new counter
+func (factory *ClusterCounterFactory) GetClusterCounter(name string) *ClusterCounter {
+	if counter, ok := factory.clusterCounters.Load(name); ok {
+		return counter.(*ClusterCounter)
+	}
+	return nil
 }
 
 // start update
