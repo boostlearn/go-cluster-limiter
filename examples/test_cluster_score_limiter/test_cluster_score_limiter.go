@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"flag"
 	"fmt"
 	"github.com/boostlearn/go-cluster-limiter/cluster_counter/redis_store"
@@ -73,9 +74,10 @@ func main() {
 		})
 	limiterFactory.Start()
 
-	limiterVec, err := limiterFactory.NewClusterLimiterVec(
+	limiter, err := limiterFactory.NewClusterLimiter(
 		&cluster_limiter.ClusterLimiterOpts{
 			Name:                limiterName,
+			RewardTarget:        float64(targetNum),
 			BeginTime:           time.Now().Add(time.Duration(startTime) * time.Second).Truncate(time.Second),
 			EndTime:             time.Now().Add(time.Duration(endTime) * time.Second).Truncate(time.Second),
 			PeriodInterval:      time.Duration(resetInterval) * time.Second,
@@ -83,15 +85,15 @@ func main() {
 			ScoreSamplesMax:     10000,
 			InitRewardRate:      initRewardRate,
 			InitIdealPassRate:   initPassRate,
-		},
-		[]string{})
+		})
 
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	var lbs []string
-	limiter := limiterVec.WithLabelValues(lbs, float64(targetNum))
+	options := limiterFactory.AllOptions()
+	optionsEncode, _ := json.Marshal(options)
+	fmt.Println(string(optionsEncode))
 
 	go fakeTraffic(limiter)
 

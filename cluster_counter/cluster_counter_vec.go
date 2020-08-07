@@ -8,14 +8,17 @@ import (
 
 // counter vector with same configuration
 type ClusterCounterVec struct {
-	mu sync.RWMutex
+	mu         sync.RWMutex
+	name       string
+	labelNames []string
 
-	name                       string
-	labelNames                 []string
-	factory                    *ClusterCounterFactory
-	beginTime                  time.Time
-	endTime                    time.Time
-	periodInterval             time.Duration
+	Options *ClusterCounterOpts
+
+	factory       *ClusterCounterFactory
+	beginTime     time.Time
+	endTime       time.Time
+	resetInterval time.Duration
+
 	storeInterval              time.Duration
 	initLocalTrafficProportion float64
 	discardPreviousData        bool
@@ -46,7 +49,7 @@ func (counterVec *ClusterCounterVec) WithLabelValues(lbs []string) *ClusterCount
 		lbs:                        counterLabels,
 		beginTime:                  counterVec.beginTime,
 		endTime:                    counterVec.endTime,
-		periodInterval:             counterVec.periodInterval,
+		resetInterval:              counterVec.resetInterval,
 		mu:                         sync.RWMutex{},
 		factory:                    counterVec.factory,
 		storeInterval:              counterVec.storeInterval,
@@ -71,16 +74,6 @@ func (counterVec *ClusterCounterVec) Heartbeat() {
 	})
 }
 
-// collect metrics
-func (counterVec *ClusterCounterVec) CollectMetrics() {
-	counterVec.counters.Range(func(k interface{}, v interface{}) bool {
-		if counter, ok := v.(*ClusterCounter); ok {
-			counter.CollectMetrics()
-		}
-		return true
-	})
-}
-
 // check whether expired
 func (counterVec *ClusterCounterVec) Expire() bool {
 	counterVec.mu.RLock()
@@ -99,10 +92,10 @@ func (counterVec *ClusterCounterVec) Expire() bool {
 	})
 
 	timeNow := time.Now().Truncate(time.Second)
-	if counterVec.periodInterval > 0 {
+	if counterVec.resetInterval > 0 {
 		if timeNow.After(counterVec.endTime) {
-			counterVec.beginTime = timeNow.Truncate(counterVec.periodInterval)
-			counterVec.endTime = counterVec.beginTime.Add(counterVec.periodInterval)
+			counterVec.beginTime = timeNow.Truncate(counterVec.resetInterval)
+			counterVec.endTime = counterVec.beginTime.Add(counterVec.resetInterval)
 		}
 		return false
 	}

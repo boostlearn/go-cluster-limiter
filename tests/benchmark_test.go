@@ -22,17 +22,16 @@ func init() {
 
 	counterFactory := cluster_counter.NewFactory(
 		&cluster_counter.ClusterCounterFactoryOpts{
-			Name:                          "",
-			DefaultLocalTrafficProportion: 1.0,
-			HeartbeatInterval:             1000 * time.Millisecond,
-		},
-		counterStore)
+			Name:              "test",
+			HeartbeatInterval: 1000 * time.Millisecond,
+			Store:             counterStore,
+		})
 	counterFactory.Start()
 
 	counter, _ = counterFactory.NewClusterCounter(
 		&cluster_counter.ClusterCounterOpts{
 			Name:                       "test",
-			PeriodInterval:             time.Duration(60) * time.Second,
+			ResetInterval:              time.Duration(60) * time.Second,
 			DiscardPreviousData:        true,
 			StoreDataInterval:          0,
 			InitLocalTrafficProportion: 1.0,
@@ -43,8 +42,8 @@ func init() {
 			Name:                       "test",
 			HeartbeatInterval:          1000 * time.Millisecond,
 			InitLocalTrafficProportion: 1.0,
-		},
-		counterStore)
+			Store:                      counterStore,
+		})
 	limiterFactory.Start()
 
 	limiter, err = limiterFactory.NewClusterLimiter(

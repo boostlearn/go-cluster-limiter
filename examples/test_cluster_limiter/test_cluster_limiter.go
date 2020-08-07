@@ -73,24 +73,22 @@ func main() {
 		})
 	limiterFactory.Start()
 
-	limiterVec, err := limiterFactory.NewClusterLimiterVec(
+	limiter, err := limiterFactory.NewClusterLimiter(
 		&cluster_limiter.ClusterLimiterOpts{
 			Name:                limiterName,
+			RewardTarget:        float64(targetNum),
 			BeginTime:           time.Now().Add(time.Duration(startTime) * time.Second).Truncate(time.Second),
 			EndTime:             time.Now().Add(time.Duration(endTime) * time.Second).Truncate(time.Second),
 			PeriodInterval:      time.Duration(resetInterval) * time.Second,
 			InitRewardRate:      initRewardRate,
 			InitIdealPassRate:   initPassRate,
 			DiscardPreviousData: true,
-		},
-		[]string{})
+		})
 
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	var lbs []string
-	limiter := limiterVec.WithLabelValues(lbs, float64(targetNum))
 	go fakeTraffic(limiter)
 
 	http.Handle("/metrics", promhttp.Handler())

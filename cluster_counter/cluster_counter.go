@@ -18,15 +18,18 @@ type ClusterCounter struct {
 	mu      sync.RWMutex
 	expired bool
 
+	Options *ClusterCounterOpts
+
 	name     string
 	lbs      map[string]string
 	factory  *ClusterCounterFactory
 	initTime time.Time
 
-	beginTime      time.Time
-	endTime        time.Time
-	periodInterval time.Duration
-	storeInterval  time.Duration
+	beginTime     time.Time
+	endTime       time.Time
+	resetInterval time.Duration
+
+	storeInterval time.Duration
 
 	localValue        float64
 	storeHistoryPos   int64
@@ -60,10 +63,10 @@ func (counter *ClusterCounter) Initialize() {
 	counter.initTime = timeNow
 	counter.expired = false
 
-	counter.periodInterval = counter.periodInterval.Truncate(time.Second)
-	if counter.periodInterval > 0 {
-		counter.beginTime = timeNow.Truncate(counter.periodInterval)
-		counter.endTime = counter.beginTime.Add(counter.periodInterval)
+	counter.resetInterval = counter.resetInterval.Truncate(time.Second)
+	if counter.resetInterval > 0 {
+		counter.beginTime = timeNow.Truncate(counter.resetInterval)
+		counter.endTime = counter.beginTime.Add(counter.resetInterval)
 	}
 
 	if counter.initLocalTrafficProportion == 0.0 {
@@ -111,13 +114,13 @@ func (counter *ClusterCounter) Expire() bool {
 	defer counter.mu.Unlock()
 
 	timeNow := time.Now()
-	if counter.periodInterval > 0 {
+	if counter.resetInterval > 0 {
 		if timeNow.After(counter.endTime) {
 			//fmt.Println(timeNow.Format("2006-01-02 15:04:05 .9999"), counter.endTime.Format("2006-01-02 15:04:05 .9999"))
 			lastBeginTime := counter.beginTime
 			lastEndTime := counter.endTime
-			counter.beginTime = timeNow.Truncate(counter.periodInterval)
-			counter.endTime = counter.beginTime.Add(counter.periodInterval)
+			counter.beginTime = timeNow.Truncate(counter.resetInterval)
+			counter.endTime = counter.beginTime.Add(counter.resetInterval)
 			pushValue := counter.localValue - counter.lastStoreValue
 			counter.localValue = 0
 			counter.lastStoreValue = 0
@@ -376,30 +379,4 @@ func (counter *ClusterCounter) StoreData() bool {
 		}
 	}
 	return false
-}
-
-// update metrics
-func (counter *ClusterCounter) CollectMetrics() bool {
-	if counter.factory == nil || counter.factory.Reporter == nil {
-		return false
-	}
-
-	if reflect.ValueOf(counter.factory.Reporter).IsNil() == true {
-		return false
-	}
-
-	clusterLast, clusterLastTime := counter.ClusterValue(-1)
-	clusterEstimated, _ := counter.ClusterValue(0)
-	localCur, _ := counter.LocalValue(0)
-	var metrics = map[string]float64{
-		"local_current":            localCur,
-		"cluster_estimated":        clusterEstimated,
-		"cluster_last":             clusterLast,
-		"cluster_last_ts":          float64(clusterLastTime.Unix()),
-		"local_recently":           counter.LocalRecently(),
-		"cluster_recently":         counter.ClusterRecently(),
-		"local_traffic_proportion": counter.LocalTrafficProportion(),
-	}
-	counter.factory.Reporter.Update(counter.name, counter.lbs, metrics)
-	return true
 }

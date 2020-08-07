@@ -23,10 +23,10 @@ type ClusterLimiter struct {
 	mu      sync.RWMutex
 	expired bool
 
+	Options *ClusterLimiterOpts
 	factory *ClusterLimiterFactory
 
 	name     string
-	lbs      map[string]string
 	initTime time.Time
 
 	beginTime       time.Time
@@ -590,6 +590,6 @@ func (limiter *ClusterLimiter) CollectMetrics() bool {
 	}
 	metrics["score_cut"] = scoreCutValue
 
-	limiter.factory.Reporter.Update(limiter.name, limiter.lbs, metrics)
+	limiter.factory.Reporter.Update(limiter.name, metrics)
 	return true
 }

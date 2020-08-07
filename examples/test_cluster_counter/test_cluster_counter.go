@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"github.com/boostlearn/go-cluster-limiter/cluster_counter"
 	"github.com/boostlearn/go-cluster-limiter/cluster_counter/redis_store"
-	"github.com/boostlearn/go-cluster-limiter/cluster_limiter/prometheus_reporter"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"log"
 	"math/rand"
@@ -49,14 +48,10 @@ func main() {
 		log.Println("newStore Error:", err)
 	}
 
-	reporter := prometheus_reporter.NewCounterReporter("boostlearn")
-
 	factory := cluster_counter.NewFactory(
 		&cluster_counter.ClusterCounterFactoryOpts{
-			DefaultLocalTrafficProportion: localTrafficProportion,
-			HeartbeatInterval:             100 * time.Millisecond,
-			Store:                         store,
-			Reporter:                      reporter,
+			HeartbeatInterval: 100 * time.Millisecond,
+			Store:             store,
 		})
 	factory.Start()
 
@@ -65,7 +60,7 @@ func main() {
 			Name:                       counterName,
 			BeginTime:                  time.Now().Add(time.Duration(startTime) * time.Second).Truncate(time.Second),
 			EndTime:                    time.Now().Add(time.Duration(endTime) * time.Second).Truncate(time.Second),
-			PeriodInterval:             time.Duration(periodInterval) * time.Second,
+			ResetInterval:              time.Duration(periodInterval) * time.Second,
 			DiscardPreviousData:        discardPreviousData,
 			InitLocalTrafficProportion: localTrafficProportion,
 		},
