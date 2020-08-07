@@ -20,6 +20,8 @@ var (
 	discardPreviousData    bool
 	localTrafficProportion float64
 
+	rewardRate float64
+
 	targetNum         int64
 	resetInterval     int64
 	mockTrafficFactor int64
@@ -45,6 +47,7 @@ func init() {
 	flag.Float64Var(&localTrafficProportion, "j", 1, "proportion of local traffic in cluster")
 	flag.Int64Var(&startTime, "k", 0, "start time since now [seconds]")
 	flag.Int64Var(&endTime, "l", 0, "end time since now [seconds]")
+	flag.Float64Var(&rewardRate, "m", 0.5, "reward rate")
 }
 
 func main() {
@@ -106,7 +109,7 @@ func fakeTraffic(limiter *cluster_limiter.ClusterLimiter) {
 
 		for j := 0; j < int(v); j++ {
 			if limiter.TakeWithScore(float64(1), rand.Float64()) == true {
-				if rand.Float64() > 0.5 {
+				if rand.Float64() < rewardRate {
 					limiter.Reward(float64(1))
 				}
 			}
