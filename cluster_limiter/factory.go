@@ -205,7 +205,7 @@ func (factory *ClusterLimiterFactory) LoadOptions(options []*ClusterLimiterOpts)
 	return err
 }
 
-func  (factory *ClusterLimiterFactory) LoadFile(filePath string) error {
+func (factory *ClusterLimiterFactory) LoadFile(filePath string) error {
 	fs, err := ioutil.ReadFile(filePath)
 	if err != nil {
 		fmt.Println("open file error: ", filePath)

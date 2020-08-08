@@ -10,8 +10,6 @@ import (
 	"time"
 )
 
-
-
 // limiter: limit traffic within cluster
 type ClusterLimiter struct {
 	mu      sync.RWMutex
@@ -114,7 +112,7 @@ func (limiter *ClusterLimiter) Initialize() {
 		limiter.idealPassRate = DefaultInitPassRate
 	}
 
-	if limiter.reserveInterval > 0 {
+	if limiter.periodInterval > 0 {
 		limiter.beginTime = timeNow.Truncate(limiter.periodInterval)
 		limiter.endTime = limiter.beginTime.Add(limiter.periodInterval)
 	}

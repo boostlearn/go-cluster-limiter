@@ -9,27 +9,30 @@ import (
 	"github.com/boostlearn/go-cluster-limiter/cluster_limiter/prometheus_reporter"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"log"
+	"math"
 	"math/rand"
 	"net/http"
 	"time"
 )
 
 var (
-	fakeTrafficFactor int64
-	fakeRewardRate    float64
-
-	redisAddr string
-	redisPass string
-
+	redisAddr  string
+	redisPass  string
 	listenPort int64
+
+	limiterType       string
+	fakeTrafficFactor float64
+	fakeRewardFactor  float64
 )
 
 func init() {
-	flag.Int64Var(&fakeTrafficFactor, "c", 2, "mock traffic factor")
-	flag.StringVar(&redisAddr, "f", "127.0.0.1:6379", "store: redis address")
-	flag.StringVar(&redisPass, "g", "", "store: redis pass")
-	flag.Int64Var(&listenPort, "h", 20002, "prometheus: listen port")
-	flag.Float64Var(&fakeRewardRate, "m", 0.5, "fake reward rate")
+	flag.StringVar(&redisAddr, "s", "127.0.0.1:6379", "store: redis address")
+	flag.StringVar(&redisPass, "p", "", "store: redis pass")
+	flag.Int64Var(&listenPort, "l", 20001, "prometheus: listen port")
+	flag.StringVar(&limiterType, "m", "normal", "limiter type: normal or score")
+	flag.Float64Var(&fakeTrafficFactor, "f", 2, "mock traffic factor")
+	flag.Float64Var(&fakeRewardFactor, "r", 1, "fake reward factor")
+
 }
 
 func main() {
@@ -44,15 +47,15 @@ func main() {
 
 	limiterFactory := cluster_limiter.NewFactory(
 		&cluster_limiter.ClusterLimiterFactoryOpts{
-			Name:                       "test",
-			HeartbeatInterval:          100 * time.Millisecond,
-			Reporter:                   reporter,
-			Store:                      store,
+			Name:              "test",
+			HeartbeatInterval: 100 * time.Millisecond,
+			Reporter:          reporter,
+			Store:             store,
 		})
 	limiterFactory.Start()
 
 	err = limiterFactory.LoadFile(flag.Arg(0))
-	if err != nil  {
+	if err != nil {
 		log.Fatal(err)
 	}
 
@@ -71,43 +74,27 @@ func fakeTraffic(limiters []*cluster_limiter.ClusterLimiter) {
 	rand.Seed(time.Now().Unix())
 
 	ticker := time.NewTicker(100000 * time.Microsecond)
+	v := 0.0
 	for range ticker.C {
-		k := (time.Now().Unix() / 60) % 60
-		if k >= 30 {
-			k = 60 - k
-		}
-		v := k + 30
-		v = v * fakeTrafficFactor
+		now := time.Now()
+		hours := now.Sub(now.Truncate(time.Duration(3600) * time.Second)).Hours()
+		v += (math.Sin(hours*math.Pi) + 2.0) * 30 * fakeTrafficFactor
 
-		for j := 0; j < int(v); j++ {
+		for ; v > 1.0; v -= 1 {
 			for _, limiter := range limiters {
-				if limiter.Take(float64(1)) == true {
-					if rand.Float64() < fakeRewardRate {
-						limiter.Reward(float64(1))
+				if limiterType == "normal" {
+					if limiter.Take(float64(1)) == true {
+						if rand.Float64() < fakeRewardFactor {
+							limiter.Reward(float64(1))
+						}
 					}
-				}
-			}
-		}
-	}
-}
-
-
-func fakeTraffic2(limiter *cluster_limiter.ClusterLimiter) {
-	rand.Seed(time.Now().Unix())
-
-	ticker := time.NewTicker(100000 * time.Microsecond)
-	for range ticker.C {
-		k := (time.Now().Unix() / 60) % 60
-		if k >= 30 {
-			k = 60 - k
-		}
-		v := k + 30
-		v = v * fakeTrafficFactor
-
-		for j := 0; j < int(v); j++ {
-			if limiter.TakeWithScore(float64(1), rand.Float64()) == true {
-				if rand.Float64() < fakeRewardRate {
-					limiter.Reward(float64(1))
+				} else if limiterType == "score" {
+					if limiter.TakeWithScore(float64(1), rand.Float64()) == true {
+						rewardRate := (math.Cos(hours*math.Pi)/2 + 0.5) * fakeTrafficFactor
+						if rand.Float64() < rewardRate {
+							limiter.Reward(float64(1))
+						}
+					}
 				}
 			}
 		}
