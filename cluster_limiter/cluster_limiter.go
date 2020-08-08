@@ -385,9 +385,7 @@ func (limiter *ClusterLimiter) updateIdealPassRate() {
 	}
 	limiter.lastIdealPassRateTime = time.Now()
 
-	if timeNow.Before(limiter.initTime.Add(limiter.burstInterval)) ||
-		timeNow.After(limiter.endTime.Add(-limiter.burstInterval)) ||
-		timeNow.Before(limiter.beginTime.Add(limiter.burstInterval)) {
+	if timeNow.Before(limiter.initTime.Add(limiter.burstInterval)) {
 		limiter.workingPassRate = limiter.idealPassRate
 		return
 	}
@@ -476,9 +474,7 @@ func (limiter *ClusterLimiter) updateIdealRewardRate() {
 
 func (limiter *ClusterLimiter) updateWorkingPassRate() {
 	timeNow := time.Now()
-	if timeNow.Before(limiter.initTime.Add(limiter.burstInterval*2)) ||
-		timeNow.After(limiter.endTime.Add(-limiter.burstInterval)) ||
-		timeNow.Before(limiter.beginTime.Add(limiter.burstInterval*2)) {
+	if timeNow.Before(limiter.initTime.Add(limiter.burstInterval*2)) {
 		limiter.workingPassRate = limiter.idealPassRate
 		return
 	}
