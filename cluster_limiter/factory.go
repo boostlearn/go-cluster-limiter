@@ -41,6 +41,7 @@ type ClusterLimiterOpts struct {
 	InitIdealPassRate          float64
 	InitRewardRate             float64
 
+	TakeWithScore bool
 	ScoreSamplesSortInterval time.Duration
 	ScoreSamplesMax          int64
 }
@@ -117,10 +118,10 @@ func (factory *ClusterLimiterFactory) NewClusterLimiter(opts *ClusterLimiterOpts
 		opts.MaxBoostFactor = DefaultMaxBoostFactor
 	}
 
-	if opts.ScoreSamplesMax == 0 {
+	if opts.TakeWithScore && opts.ScoreSamplesMax == 0 {
 		opts.ScoreSamplesMax = 10000
 	}
-	if opts.ScoreSamplesMax > 0 || opts.ScoreSamplesSortInterval == 0 {
+	if opts.TakeWithScore && opts.ScoreSamplesMax > 0 && opts.ScoreSamplesSortInterval == 0 {
 		opts.ScoreSamplesSortInterval = DefaultScoreSamplesSortIntervalSeconds * time.Second
 	}
 

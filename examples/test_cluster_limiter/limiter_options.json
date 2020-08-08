@@ -1,6 +1,6 @@
 [
   {
-    "Name": "test_cluster_limiter",
+    "Name": "test_limiter",
     "RewardTarget": 1000000,
     "BeginTime": "1900-01-01T00:00:00+08:00",
     "EndTime": "3000-01-01T00:00:00+08:00",
@@ -13,6 +13,24 @@
     "InitLocalTrafficProportion": 1,
     "InitIdealPassRate": 0,
     "InitRewardRate": 1,
+    "ScoreSamplesSortInterval": 0,
+    "ScoreSamplesMax": 0
+  },
+  {
+    "Name": "test_score_limiter",
+    "RewardTarget": 1000000,
+    "BeginTime": "1900-01-01T00:00:00+08:00",
+    "EndTime": "3000-01-01T00:00:00+08:00",
+    "CompletionTime": "0001-01-01T00:00:00Z",
+    "PeriodInterval": 3600000000000,
+    "ReserveInterval": 0,
+    "BurstInterval": 5000000000,
+    "MaxBoostFactor": 2,
+    "DiscardPreviousData": true,
+    "InitLocalTrafficProportion": 1,
+    "InitIdealPassRate": 0,
+    "InitRewardRate": 1,
+    "TakeWithScore":true,
     "ScoreSamplesSortInterval": 10000000000,
     "ScoreSamplesMax": 10000
   }

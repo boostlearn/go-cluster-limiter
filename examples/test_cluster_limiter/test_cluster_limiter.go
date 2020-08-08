@@ -82,13 +82,13 @@ func fakeTraffic(limiters []*cluster_limiter.ClusterLimiter) {
 
 		for ; v > 1.0; v -= 1 {
 			for _, limiter := range limiters {
-				if limiterType == "normal" {
+				if limiter.Options.TakeWithScore == false {
 					if limiter.Take(float64(1)) == true {
 						if rand.Float64() < fakeRewardFactor {
 							limiter.Reward(float64(1))
 						}
 					}
-				} else if limiterType == "score" {
+				} else {
 					if limiter.TakeWithScore(float64(1), rand.Float64()) == true {
 						rewardRate := (math.Cos(hours*math.Pi)/2 + 0.5) * fakeTrafficFactor
 						if rand.Float64() < rewardRate {
