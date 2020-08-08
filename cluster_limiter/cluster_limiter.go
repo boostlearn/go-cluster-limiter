@@ -38,6 +38,8 @@ type ClusterLimiter struct {
 	rewardTarget        float64
 	discardPreviousData bool
 
+	periodRewardBase float64
+
 	RequestCounter *cluster_counter.ClusterCounter
 	PassCounter    *cluster_counter.ClusterCounter
 	RewardCounter  *cluster_counter.ClusterCounter
@@ -127,6 +129,8 @@ func (limiter *ClusterLimiter) Initialize() {
 	} else {
 		limiter.completionTime = limiter.endTime
 	}
+
+	limiter.periodRewardBase, _ = limiter.RewardCounter.ClusterValue(0)
 }
 
 // request passed
@@ -348,6 +352,8 @@ func (limiter *ClusterLimiter) Expire() bool {
 			} else {
 				limiter.completionTime = limiter.endTime
 			}
+
+			limiter.periodRewardBase, _ = limiter.RewardCounter.ClusterValue(0)
 		}
 		limiter.expired = false
 		return limiter.expired
@@ -491,6 +497,7 @@ func (limiter *ClusterLimiter) updateWorkingPassRate() {
 	limiter.lastWorkingPassRateTime = time.Now()
 
 	curReward, _ := limiter.RewardCounter.ClusterValue(0)
+	curReward -= limiter.periodRewardBase
 	lagTime := limiter.getLagTime(curReward, timeNow)
 	if lagTime > 0 {
 		smoothPassRate := limiter.idealPassRate * (1 + lagTime*1e9/
@@ -564,6 +571,7 @@ func (limiter *ClusterLimiter) CollectMetrics() bool {
 	metrics["ideal_reward"] = limiter.IdealReward()
 
 	rewardCur, rewardTime := limiter.RewardCounter.ClusterValue(0)
+	rewardCur -= limiter.periodRewardBase
 	metrics["lag_time"] = limiter.LagTime(rewardCur, rewardTime)
 
 	metrics["request_local"], _ = limiter.RequestCounter.LocalValue(0)

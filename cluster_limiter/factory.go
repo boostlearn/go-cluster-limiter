@@ -99,7 +99,7 @@ func (factory *ClusterLimiterFactory) NewClusterLimiter(opts *ClusterLimiterOpts
 		opts.InitLocalTrafficProportion = 1.0
 	}
 
-	if opts.ScoreSamplesMax > 0 || opts.ScoreSamplesSortInterval == 0{
+	if opts.ScoreSamplesMax > 0 || opts.ScoreSamplesSortInterval == 0 {
 		opts.ScoreSamplesSortInterval = DefaultScoreSamplesSortIntervalSeconds * time.Second
 	}
 
@@ -121,12 +121,18 @@ func (factory *ClusterLimiterFactory) NewClusterLimiter(opts *ClusterLimiterOpts
 		scoreSamplesMax:          opts.ScoreSamplesMax,
 	}
 
+	counterBeginTime := opts.BeginTime
+	counterEndTime := opts.EndTime
+	if opts.PeriodInterval > 0 {
+		counterBeginTime = time.Date(1900, 1, 1, 0, 0, 0, 0, time.Local)
+		counterEndTime = time.Date(3000, 1, 1, 0, 0, 0, 0, time.Local)
+	}
+
 	var err error
 	limiter.RequestCounter, err = factory.counterFactory.NewClusterCounter(&cluster_counter.ClusterCounterOpts{
 		Name:                       factory.name + opts.Name + ":request",
-		BeginTime:                  opts.BeginTime,
-		EndTime:                    opts.EndTime,
-		ResetInterval:              opts.PeriodInterval,
+		BeginTime:                  counterBeginTime,
+		EndTime:                    counterEndTime,
 		DiscardPreviousData:        opts.DiscardPreviousData,
 		StoreDataInterval:          opts.BurstInterval,
 		InitLocalTrafficProportion: opts.InitLocalTrafficProportion,
@@ -137,9 +143,8 @@ func (factory *ClusterLimiterFactory) NewClusterLimiter(opts *ClusterLimiterOpts
 
 	limiter.PassCounter, err = factory.counterFactory.NewClusterCounter(&cluster_counter.ClusterCounterOpts{
 		Name:                       factory.name + opts.Name + ":pass",
-		BeginTime:                  opts.BeginTime,
-		EndTime:                    opts.EndTime,
-		ResetInterval:              opts.PeriodInterval,
+		BeginTime:                  counterBeginTime,
+		EndTime:                    counterEndTime,
 		DiscardPreviousData:        opts.DiscardPreviousData,
 		StoreDataInterval:          opts.BurstInterval,
 		InitLocalTrafficProportion: opts.InitLocalTrafficProportion,
@@ -150,9 +155,8 @@ func (factory *ClusterLimiterFactory) NewClusterLimiter(opts *ClusterLimiterOpts
 
 	limiter.RewardCounter, err = factory.counterFactory.NewClusterCounter(&cluster_counter.ClusterCounterOpts{
 		Name:                       factory.name + opts.Name + ":reward",
-		BeginTime:                  opts.BeginTime,
-		EndTime:                    opts.EndTime,
-		ResetInterval:              opts.PeriodInterval,
+		BeginTime:                  counterBeginTime,
+		EndTime:                    counterEndTime,
 		DiscardPreviousData:        opts.DiscardPreviousData,
 		StoreDataInterval:          opts.BurstInterval,
 		InitLocalTrafficProportion: opts.InitLocalTrafficProportion,
@@ -181,7 +185,6 @@ func (factory *ClusterLimiterFactory) Load(options []*ClusterLimiterOpts) error 
 	}
 	return err
 }
-
 
 func (factory *ClusterLimiterFactory) Start() {
 	if factory.ticker == nil {

@@ -59,8 +59,15 @@ func (store *RedisStore) Load(name string, beginTime time.Time, endTime time.Tim
 			value, err := strconv.ParseFloat(t, 64)
 			return value / 10000, err
 		}
+
+		if err == redis.Nil {
+			return 0, nil
+		}
 		return 0, err
 	} else {
+		if v.Err() == redis.Nil {
+			return 0, nil
+		}
 		return 0, v.Err()
 	}
 }
