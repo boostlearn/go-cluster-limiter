@@ -141,7 +141,8 @@ func (limiter *ClusterLimiter) Take(v float64) bool {
 	}
 
 	clusterPred, _ := limiter.RewardCounter.ClusterValue(0)
-	if clusterPred+v > limiter.getIdealReward(timeNow) {
+	clusterCur := clusterPred - limiter.periodRewardBase
+	if clusterCur+v > limiter.getIdealReward(timeNow) {
 		return false
 	}
 
@@ -190,7 +191,8 @@ func (limiter *ClusterLimiter) TakeWithScore(v float64, score float64) bool {
 	}
 
 	clusterPred, _ := limiter.RewardCounter.ClusterValue(0)
-	if clusterPred+v > limiter.getIdealReward(timeNow) {
+	clusterCur := clusterPred - limiter.periodRewardBase
+	if clusterCur+v > limiter.getIdealReward(timeNow) {
 		return false
 	}
 
