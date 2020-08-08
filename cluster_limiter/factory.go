@@ -1,14 +1,24 @@
 package cluster_limiter
 
 import (
+	"encoding/json"
 	"errors"
+	"fmt"
 	"github.com/boostlearn/go-cluster-limiter/cluster_counter"
+	"io/ioutil"
 	"sync"
 	"time"
 )
 
 const DefaultLimiterName = "lmt:"
 const DefaultHeartbeatIntervalMilliseconds = 100
+const DefaultMaxBoostFactor = 2.0
+const DefaultBoostBurstFactor = 10.0
+const DefaultBurstIntervalSeconds = 5
+const DefaultDeclineExpRatio = 0.5
+const DefaultScoreSamplesSortIntervalSeconds = 10
+const DefaultInitPassRate = 0.0
+const DefaultInitRewardRate = 1.0
 
 // options for creating limiter
 type ClusterLimiterOpts struct {
@@ -99,6 +109,17 @@ func (factory *ClusterLimiterFactory) NewClusterLimiter(opts *ClusterLimiterOpts
 		opts.InitLocalTrafficProportion = 1.0
 	}
 
+	if opts.BurstInterval == 0 {
+		opts.BurstInterval = DefaultBurstIntervalSeconds * time.Second
+	}
+
+	if opts.MaxBoostFactor == 0 {
+		opts.MaxBoostFactor = DefaultMaxBoostFactor
+	}
+
+	if opts.ScoreSamplesMax == 0 {
+		opts.ScoreSamplesMax = 10000
+	}
 	if opts.ScoreSamplesMax > 0 || opts.ScoreSamplesSortInterval == 0 {
 		opts.ScoreSamplesSortInterval = DefaultScoreSamplesSortIntervalSeconds * time.Second
 	}
@@ -121,18 +142,16 @@ func (factory *ClusterLimiterFactory) NewClusterLimiter(opts *ClusterLimiterOpts
 		scoreSamplesMax:          opts.ScoreSamplesMax,
 	}
 
-	counterBeginTime := opts.BeginTime
-	counterEndTime := opts.EndTime
 	if opts.PeriodInterval > 0 {
-		counterBeginTime = time.Date(1900, 1, 1, 0, 0, 0, 0, time.Local)
-		counterEndTime = time.Date(3000, 1, 1, 0, 0, 0, 0, time.Local)
+		opts.BeginTime = time.Date(1900, 1, 1, 0, 0, 0, 0, time.Local)
+		opts.EndTime = time.Date(3000, 1, 1, 0, 0, 0, 0, time.Local)
 	}
 
 	var err error
 	limiter.RequestCounter, err = factory.counterFactory.NewClusterCounter(&cluster_counter.ClusterCounterOpts{
 		Name:                       factory.name + opts.Name + ":request",
-		BeginTime:                  counterBeginTime,
-		EndTime:                    counterEndTime,
+		BeginTime:                  opts.BeginTime,
+		EndTime:                    opts.EndTime,
 		DiscardPreviousData:        opts.DiscardPreviousData,
 		StoreDataInterval:          opts.BurstInterval,
 		InitLocalTrafficProportion: opts.InitLocalTrafficProportion,
@@ -143,8 +162,8 @@ func (factory *ClusterLimiterFactory) NewClusterLimiter(opts *ClusterLimiterOpts
 
 	limiter.PassCounter, err = factory.counterFactory.NewClusterCounter(&cluster_counter.ClusterCounterOpts{
 		Name:                       factory.name + opts.Name + ":pass",
-		BeginTime:                  counterBeginTime,
-		EndTime:                    counterEndTime,
+		BeginTime:                  opts.BeginTime,
+		EndTime:                    opts.EndTime,
 		DiscardPreviousData:        opts.DiscardPreviousData,
 		StoreDataInterval:          opts.BurstInterval,
 		InitLocalTrafficProportion: opts.InitLocalTrafficProportion,
@@ -155,8 +174,8 @@ func (factory *ClusterLimiterFactory) NewClusterLimiter(opts *ClusterLimiterOpts
 
 	limiter.RewardCounter, err = factory.counterFactory.NewClusterCounter(&cluster_counter.ClusterCounterOpts{
 		Name:                       factory.name + opts.Name + ":reward",
-		BeginTime:                  counterBeginTime,
-		EndTime:                    counterEndTime,
+		BeginTime:                  opts.BeginTime,
+		EndTime:                    opts.EndTime,
 		DiscardPreviousData:        opts.DiscardPreviousData,
 		StoreDataInterval:          opts.BurstInterval,
 		InitLocalTrafficProportion: opts.InitLocalTrafficProportion,
@@ -178,12 +197,24 @@ func (factory *ClusterLimiterFactory) GetClusterLimiter(name string) *ClusterLim
 	return nil
 }
 
-func (factory *ClusterLimiterFactory) Load(options []*ClusterLimiterOpts) error {
+func (factory *ClusterLimiterFactory) LoadOptions(options []*ClusterLimiterOpts) error {
 	var err error
 	for _, opts := range options {
 		_, err = factory.NewClusterLimiter(opts)
 	}
 	return err
+}
+
+func  (factory *ClusterLimiterFactory) LoadFile(filePath string) error {
+	fs, err := ioutil.ReadFile(filePath)
+	if err != nil {
+		fmt.Println("open file error: ", filePath)
+		return err
+	}
+	var options []*ClusterLimiterOpts
+	_ = json.Unmarshal(fs, &options)
+
+	return factory.LoadOptions(options)
 }
 
 func (factory *ClusterLimiterFactory) Start() {
@@ -240,4 +271,17 @@ func (factory *ClusterLimiterFactory) AllOptions() []*ClusterLimiterOpts {
 		return true
 	})
 	return opts
+}
+
+func (factory *ClusterLimiterFactory) AllLimiters() []*ClusterLimiter {
+	var limiters []*ClusterLimiter
+	factory.limiters.Range(func(k interface{}, v interface{}) bool {
+		if limiter, ok := v.(*ClusterLimiter); ok {
+			if limiter.Expire() == false {
+				limiters = append(limiters, limiter)
+			}
+		}
+		return true
+	})
+	return limiters
 }

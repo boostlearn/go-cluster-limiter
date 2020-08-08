@@ -10,13 +10,7 @@ import (
 	"time"
 )
 
-const DefaultMaxBoostFactor = 2.0
-const DefaultBoostBurstFactor = 10.0
-const DefaultBurstIntervalSeconds = 5
-const DefaultDeclineExpRatio = 0.5
-const DefaultScoreSamplesSortIntervalSeconds = 10
-const DefaultInitPassRate = 0.0
-const DefaultInitRewardRate = 1.0
+
 
 // limiter: limit traffic within cluster
 type ClusterLimiter struct {
