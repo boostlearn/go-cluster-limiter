@@ -424,11 +424,10 @@ func (limiter *ClusterLimiter) updateIdealPassRate() {
 
 		var prevRequest, prevTime = limiter.RequestCounter.ClusterValue(prev)
 		var lastRequest, lastTime = limiter.RequestCounter.ClusterValue(last)
-		var prevIdealReward = limiter.getIdealReward(prevTime)
-		var lastIdealReward = limiter.getIdealReward(lastTime)
+		var idealReward = limiter.rewardTarget * lastTime.Sub(prevTime).Seconds()/limiter.endTime.Sub(limiter.beginTime).Seconds()
 
 		limiter.clusterRequestRecently = limiter.clusterRequestRecently*limiter.declineExpRatio + (lastRequest-prevRequest)*(1-limiter.declineExpRatio)
-		limiter.clusterIdealRewardRecently = limiter.clusterIdealRewardRecently*limiter.declineExpRatio + (lastIdealReward-prevIdealReward)*(1-limiter.declineExpRatio)
+		limiter.clusterIdealRewardRecently = limiter.clusterIdealRewardRecently*limiter.declineExpRatio + idealReward*(1-limiter.declineExpRatio)
 
 		if limiter.clusterRequestRecently == 0.0 ||
 			limiter.clusterIdealRewardRecently == 0.0 {
