@@ -338,11 +338,11 @@ func (counter *ClusterCounter) updateLocalTrafficProportion() {
 	if counter.loadHistoryPos > 2 {
 		clusterPrev := counter.loadClusterHistory[(counter.loadHistoryPos-2+HistoryMax)%HistoryMax]
 		clusterCur := counter.loadClusterHistory[(counter.loadHistoryPos-1+HistoryMax)%HistoryMax]
-		counter.clusterRecently = counter.clusterRecently.Decline(clusterCur.Sub(clusterPrev), counter.declineExpRatio)
+		counter.clusterRecently.Decline(clusterCur.Sub(clusterPrev), counter.declineExpRatio)
 
 		localPrev := counter.loadLocalHistory[(counter.loadHistoryPos-2+HistoryMax)%HistoryMax]
 		localCur := counter.loadLocalHistory[(counter.loadHistoryPos-1+HistoryMax)%HistoryMax]
-		counter.localRecently = counter.localRecently.Decline(localCur.Sub(localPrev), counter.declineExpRatio)
+		counter.localRecently.Decline(localCur.Sub(localPrev), counter.declineExpRatio)
 	}
 
 	if counter.localRecently.Sum != 0.0 && counter.clusterRecently.Sum != 0.0 {

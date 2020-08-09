@@ -19,9 +19,7 @@ func (counterValue *CounterValue) Sub(c CounterValue) CounterValue {
 	}
 }
 
-func (counterValue *CounterValue) Decline(c CounterValue, ratio float64) CounterValue {
-	return CounterValue{
-		Sum:   counterValue.Sum*ratio + c.Sum*(1-ratio),
-		Count: int64(float64(counterValue.Count)*ratio + float64(c.Count)*(1-ratio)),
-	}
+func (counterValue *CounterValue) Decline(c CounterValue, ratio float64) {
+	counterValue.Sum = counterValue.Sum*ratio + c.Sum*(1-ratio)
+	counterValue.Count = int64(float64(counterValue.Count)*ratio + float64(c.Count)*(1-ratio))
 }

@@ -402,14 +402,14 @@ func (limiter *ClusterLimiter) updateIdealPassRate() {
 
 	var _, lastLoadTime = limiter.RequestCounter.ClusterValue(-1)
 	if timeNow.After(lastLoadTime.Add(limiter.burstInterval * 10)) {
-		var curRequest, _ = limiter.RequestCounter.LocalStoreValue(0)
+		var curLocalRequest, _ = limiter.RequestCounter.LocalStoreValue(0)
 		var curIdealReward = limiter.getIdealReward(timeNow) * limiter.RequestCounter.LocalTrafficProportion()
-		if curRequest.Count < limiter.prevLocalRequest.Count+DefaultUpdatePassRateMinCount {
+		if curLocalRequest.Count < limiter.prevLocalRequest.Count+DefaultUpdatePassRateMinCount {
 			return
 		}
 
-		limiter.localRequestRecently = limiter.localRequestRecently.Decline(curRequest.Sub(limiter.prevLocalRequest), limiter.declineExpRatio)
-		limiter.prevLocalRequest = curRequest
+		limiter.localRequestRecently.Decline(curLocalRequest.Sub(limiter.prevLocalRequest), limiter.declineExpRatio)
+		limiter.prevLocalRequest = curLocalRequest
 		limiter.prevLocalIdealReward.Sum = curIdealReward
 
 		idealPassRate := (limiter.localIdealRewardRecently.Sum / limiter.localRequestRecently.Sum) / limiter.idealRewardRate
@@ -422,25 +422,35 @@ func (limiter *ClusterLimiter) updateIdealPassRate() {
 		limiter.idealPassRate = limiter.idealPassRate*limiter.declineExpRatio + idealPassRate*(1-limiter.declineExpRatio)
 		return
 	} else {
-		var lastRequest, lastRequestTime = limiter.RequestCounter.ClusterValue(-1)
+		var lastClusterRequest, lastClusterRequestTime = limiter.RequestCounter.ClusterValue(-1)
+		if lastClusterRequestTime.Before(limiter.initTime) {
+			return
+		}
+
 		if limiter.prevClusterRequestTime.Before(limiter.initTime) {
-			limiter.prevClusterRequest = lastRequest
-			limiter.prevClusterRequestTime = lastRequestTime
+			limiter.prevClusterRequest = lastClusterRequest
+			limiter.prevClusterRequestTime = lastClusterRequestTime
 			return
 		}
 
-		if lastRequest.Count < limiter.prevClusterRequest.Count+DefaultUpdatePassRateMinCount {
+		if lastClusterRequest.Count < limiter.prevClusterRequest.Count+DefaultUpdatePassRateMinCount {
 			return
 		}
 
-		var idealReward = limiter.rewardTarget * lastRequestTime.Sub(limiter.prevClusterRequestTime).Seconds() / limiter.endTime.Sub(limiter.beginTime).Seconds()
+		limiter.clusterRequestRecently.Decline(lastClusterRequest.Sub(limiter.prevClusterRequest),
+			limiter.declineExpRatio)
 
-		limiter.clusterRequestRecently = limiter.clusterRequestRecently.Decline(lastRequest.Sub(limiter.prevClusterRequest), limiter.declineExpRatio)
+		var idealReward = limiter.rewardTarget * lastClusterRequestTime.Sub(limiter.prevClusterRequestTime).Seconds() /
+			limiter.endTime.Sub(limiter.beginTime).Seconds()
 		limiter.clusterIdealRewardRecently.Sum = limiter.clusterIdealRewardRecently.Sum*limiter.declineExpRatio +
 			idealReward*(1-limiter.declineExpRatio)
 
-		limiter.prevClusterRequest = lastRequest
-		limiter.prevClusterRequestTime = lastRequestTime
+		limiter.prevClusterRequest = lastClusterRequest
+		limiter.prevClusterRequestTime = lastClusterRequestTime
+
+		if limiter.clusterRequestRecently.Sum == 0 {
+			return
+		}
 
 		idealPassRate := (limiter.clusterIdealRewardRecently.Sum / limiter.clusterRequestRecently.Sum) / limiter.idealRewardRate
 		if idealPassRate > 0 {
@@ -459,16 +469,20 @@ func (limiter *ClusterLimiter) updateIdealRewardRate() {
 	}
 	limiter.lastRewardPassRateTime = time.Now()
 
-	var curReward, _ = limiter.RewardCounter.LocalStoreValue(0)
-	var curPass, _ = limiter.PassCounter.LocalStoreValue(0)
-	if curPass.Count < limiter.prevLocalPass.Count+DefaultUpdateRewardRateMinCount {
+	var curLocalReward, _ = limiter.RewardCounter.LocalStoreValue(0)
+	var curLocalPass, _ = limiter.PassCounter.LocalStoreValue(0)
+	if curLocalPass.Count < limiter.prevLocalPass.Count+DefaultUpdateRewardRateMinCount {
 		return
 	}
 
-	limiter.localPassRecently = limiter.localPassRecently.Decline(
-		curPass.Sub(limiter.prevLocalPass), limiter.rewardRateDeclineExpRatio)
-	limiter.localRewardRecently = limiter.localRewardRecently.Decline(
-		curReward.Sub(limiter.prevLocalReward), limiter.rewardRateDeclineExpRatio)
+	limiter.localPassRecently.Decline(
+		curLocalPass.Sub(limiter.prevLocalPass), limiter.rewardRateDeclineExpRatio)
+	limiter.localRewardRecently.Decline(
+		curLocalReward.Sub(limiter.prevLocalReward), limiter.rewardRateDeclineExpRatio)
+
+	if limiter.localPassRecently.Sum == 0 {
+		return
+	}
 
 	idealRewardRate := limiter.localRewardRecently.Sum / limiter.localPassRecently.Sum
 	if idealRewardRate > 0 {
@@ -476,8 +490,8 @@ func (limiter *ClusterLimiter) updateIdealRewardRate() {
 			idealRewardRate*(1-limiter.rewardRateDeclineExpRatio)
 	}
 
-	limiter.prevLocalReward = curReward
-	limiter.prevLocalPass = curPass
+	limiter.prevLocalReward = curLocalReward
+	limiter.prevLocalPass = curLocalPass
 
 	return
 
