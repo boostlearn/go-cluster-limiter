@@ -20,6 +20,8 @@ const DefaultRewardRatioDeclineExpRatio = 0.5
 const DefaultScoreSamplesSortIntervalSeconds = 10
 const DefaultInitPassRate = 0.0
 const DefaultInitRewardRate = 1.0
+const DefaultUpdatePassRateMinCount = 100
+const DefaultUpdateRewardRateMinCount = 100
 
 // options for creating limiter
 type ClusterLimiterOpts struct {

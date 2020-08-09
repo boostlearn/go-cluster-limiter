@@ -12,7 +12,7 @@ const HistoryMax = 30
 const DefaultDeclineExpRatio = 0.8
 const DefaultStoreIntervalSeconds = 2
 const DefaultTrafficProportion = 1.0
-const DefaultUpdateTrafficProportionMinCount = 1
+const DefaultUpdateTrafficProportionMinCount = 100
 
 // counter within cluster
 type ClusterCounter struct {
@@ -55,11 +55,6 @@ type ClusterCounter struct {
 	localRecently   CounterValue
 	clusterRecently CounterValue
 	declineExpRatio float64
-}
-
-type CounterValue struct {
-	Sum   float64
-	Count int64
 }
 
 // init counter
@@ -131,10 +126,7 @@ func (counter *ClusterCounter) Expire() bool {
 			counter.beginTime = timeNow.Truncate(counter.resetInterval)
 			counter.endTime = counter.beginTime.Add(counter.resetInterval)
 
-			pushValue := CounterValue{}
-			pushValue.Sum = counter.localValue.Sum - counter.lastStoreValue.Sum
-			pushValue.Count = counter.localValue.Count - counter.lastStoreValue.Count
-
+			pushValue := counter.localValue.Sub(counter.lastStoreValue)
 			counter.localValue = CounterValue{}
 			counter.lastStoreValue = CounterValue{}
 			counter.loadHistoryPos = 0
@@ -225,8 +217,7 @@ func (counter *ClusterCounter) ClusterValue(last int) (CounterValue, time.Time) 
 		clusterPred.Sum = clusterLast.Sum + (localValue.Sum-localLast.Sum)/counter.localTrafficProportion
 		clusterPred.Count = clusterLast.Count + int64(float64(localValue.Count-localLast.Count)/counter.localTrafficProportion)
 		if counter.discardPreviousData {
-			clusterPred.Sum -= counter.loadInitValue.Sum
-			clusterPred.Count -= counter.loadInitValue.Count
+			clusterPred = clusterPred.Sub(counter.loadInitValue)
 		}
 		return clusterPred, time.Now()
 	}
@@ -235,8 +226,7 @@ func (counter *ClusterCounter) ClusterValue(last int) (CounterValue, time.Time) 
 		clusterLast := counter.loadClusterHistory[(counter.loadHistoryPos+int64(last)+HistoryMax)%HistoryMax]
 		if counter.discardPreviousData && counter.initTime.After(counter.beginTime) &&
 			counter.initTime.Before(counter.endTime) {
-			clusterLast.Sum -= counter.loadInitValue.Sum
-			clusterLast.Count -= counter.loadInitValue.Count
+			clusterLast = clusterLast.Sub(counter.loadInitValue)
 		}
 		return clusterLast, counter.loadTimeHistory[(counter.loadHistoryPos+int64(last)+HistoryMax)%HistoryMax]
 	}
@@ -348,17 +338,11 @@ func (counter *ClusterCounter) updateLocalTrafficProportion() {
 	if counter.loadHistoryPos > 2 {
 		clusterPrev := counter.loadClusterHistory[(counter.loadHistoryPos-2+HistoryMax)%HistoryMax]
 		clusterCur := counter.loadClusterHistory[(counter.loadHistoryPos-1+HistoryMax)%HistoryMax]
-		counter.clusterRecently.Sum = counter.clusterRecently.Sum*counter.declineExpRatio +
-			(clusterCur.Sum-clusterPrev.Sum)*(1-counter.declineExpRatio)
-		counter.clusterRecently.Count = int64(float64(counter.clusterRecently.Count)*counter.declineExpRatio +
-			float64(clusterCur.Count-clusterPrev.Count)*(1-counter.declineExpRatio))
+		counter.clusterRecently = counter.clusterRecently.Decline(clusterCur.Sub(clusterPrev), counter.declineExpRatio)
 
 		localPrev := counter.loadLocalHistory[(counter.loadHistoryPos-2+HistoryMax)%HistoryMax]
 		localCur := counter.loadLocalHistory[(counter.loadHistoryPos-1+HistoryMax)%HistoryMax]
-		counter.localRecently.Sum = counter.localRecently.Sum*counter.declineExpRatio +
-			(localCur.Sum-localPrev.Sum)*(1-counter.declineExpRatio)
-		counter.localRecently.Count = int64(float64(counter.localRecently.Count)*counter.declineExpRatio +
-			float64(localCur.Count-localPrev.Count)*(1-counter.declineExpRatio))
+		counter.localRecently = counter.localRecently.Decline(localCur.Sub(localPrev), counter.declineExpRatio)
 	}
 
 	if counter.localRecently.Sum != 0.0 && counter.clusterRecently.Sum != 0.0 {
@@ -397,17 +381,14 @@ func (counter *ClusterCounter) StoreData() bool {
 		counter.storeHistoryPos += 1
 		counter.lastStoreTime = timeNow.Truncate(counter.storeInterval)
 
-		pushValue := CounterValue{}
-		pushValue.Sum = counter.localValue.Sum - counter.lastStoreValue.Sum
-		pushValue.Count = counter.localValue.Count - counter.lastStoreValue.Count
+		pushValue := counter.localValue.Sub(counter.lastStoreValue)
 		if pushValue.Count > 0 {
 			counter.mu.Unlock()
 			err := counter.factory.Store.Store(counter.name, counter.beginTime, counter.endTime, counter.lbs,
 				pushValue, false)
 			counter.mu.Lock()
 			if err == nil {
-				counter.lastStoreValue.Sum += pushValue.Sum
-				counter.lastStoreValue.Count = pushValue.Count
+				counter.lastStoreValue = counter.lastStoreValue.Sub(pushValue)
 				return true
 			}
 
