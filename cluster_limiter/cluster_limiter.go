@@ -46,6 +46,7 @@ type ClusterLimiter struct {
 	idealPassRate   float64
 	idealRewardRate float64
 	declineExpRatio float64
+	rewardRateDeclineExpRatio float64
 
 	localRequestRecently     float64
 	localPassRecently        float64
@@ -92,6 +93,10 @@ func (limiter *ClusterLimiter) Initialize() {
 
 	if limiter.declineExpRatio == 0.0 {
 		limiter.declineExpRatio = DefaultDeclineExpRatio
+	}
+
+	if limiter.rewardRateDeclineExpRatio == 0.0 {
+		limiter.rewardRateDeclineExpRatio = DefaultRewardRatioDeclineExpRatio
 	}
 
 	if limiter.scoreSamplesSortInterval == 0 {
@@ -457,13 +462,24 @@ func (limiter *ClusterLimiter) updateIdealRewardRate() {
 	limiter.lastRewardPassRateTime = time.Now()
 
 	var curReward, _ = limiter.RewardCounter.LocalStoreValue(0)
+	if curReward == limiter.lastLocalReward {
+		return
+	}
+
 	var curPass, _ = limiter.PassCounter.LocalStoreValue(0)
-	limiter.localPassRecently = limiter.localPassRecently*limiter.declineExpRatio + (curPass-limiter.lastLocalPass)*(1-limiter.declineExpRatio)
-	limiter.localRewardRecently = limiter.localRewardRecently*limiter.declineExpRatio + (curReward-limiter.lastLocalReward)*(1-limiter.declineExpRatio)
+	if curPass == limiter.lastLocalPass {
+		return
+	}
+
+	limiter.localPassRecently = limiter.localPassRecently*limiter.rewardRateDeclineExpRatio +
+		(curPass-limiter.lastLocalPass)*(1-limiter.rewardRateDeclineExpRatio)
+	limiter.localRewardRecently = limiter.localRewardRecently*limiter.rewardRateDeclineExpRatio +
+		(curReward-limiter.lastLocalReward)*(1-limiter.rewardRateDeclineExpRatio)
 	if limiter.localRewardRecently != 0 && limiter.localPassRecently != 0 {
 		idealRewardRate := limiter.localRewardRecently / limiter.localPassRecently
 		if idealRewardRate > 0 {
-			limiter.idealRewardRate = limiter.idealRewardRate*limiter.declineExpRatio + idealRewardRate*(1-limiter.declineExpRatio)
+			limiter.idealRewardRate = limiter.idealRewardRate*limiter.rewardRateDeclineExpRatio +
+				idealRewardRate*(1-limiter.rewardRateDeclineExpRatio)
 		}
 	}
 	limiter.lastLocalReward = curReward
