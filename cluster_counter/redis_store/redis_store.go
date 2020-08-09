@@ -2,6 +2,7 @@ package redis_store
 
 import (
 	"fmt"
+	"github.com/boostlearn/go-cluster-limiter/cluster_counter"
 	"github.com/go-redis/redis"
 	"sort"
 	"strconv"
@@ -41,35 +42,49 @@ func NewRedisStore(cli *redis.Client, keyPrefix string) (*RedisStore, error) {
 }
 
 // store client's data within cluster
-func (store *RedisStore) Store(name string, beginTime time.Time, endTime time.Time, lbs map[string]string, value float64, force bool) error {
-	key := store.keyPrefix + generateRedisKey(name, beginTime, endTime, lbs)
-	v := store.client.IncrBy(key, int64(value*10000))
+func (store *RedisStore) Store(name string, beginTime time.Time, endTime time.Time, lbs map[string]string,
+	value cluster_counter.CounterValue, force bool) error {
+	redisKey := store.keyPrefix + generateRedisKey(name, beginTime, endTime, lbs)
+
+	var result = store.client.IncrBy(redisKey+":sum", int64(value.Sum*10000))
+	result = store.client.IncrBy(redisKey+":cnt", int64(value.Count))
 	if endTime.After(beginTime) {
-		store.client.Expire(key, endTime.Sub(beginTime))
+		store.client.Expire(redisKey+":sum", endTime.Sub(beginTime))
+		store.client.Expire(redisKey+":cnt", endTime.Sub(beginTime))
 	}
-	return v.Err()
+	return result.Err()
 }
 
 // load cluster's data for clients
-func (store *RedisStore) Load(name string, beginTime time.Time, endTime time.Time, lbs map[string]string) (float64, error) {
-	v := store.client.Get(store.keyPrefix + generateRedisKey(name, beginTime, endTime, lbs))
-	if v.Err() == nil {
-		t, err := v.Result()
-		if err == nil {
-			value, err := strconv.ParseFloat(t, 64)
-			return value / 10000, err
-		}
+func (store *RedisStore) Load(name string, beginTime time.Time, endTime time.Time, lbs map[string]string,
+) (cluster_counter.CounterValue, error) {
+	key := store.keyPrefix + generateRedisKey(name, beginTime, endTime, lbs)
 
-		if err == redis.Nil {
-			return 0, nil
+	var counterValue cluster_counter.CounterValue
+	var err error
+	result := store.client.Get(key + ":sum")
+	err = result.Err()
+	if err == nil {
+		t, err := result.Result()
+		if err == nil {
+			value, _ := strconv.ParseFloat(t, 64)
+			counterValue.Sum = value / 10000
 		}
-		return 0, err
-	} else {
-		if v.Err() == redis.Nil {
-			return 0, nil
-		}
-		return 0, v.Err()
 	}
+	result = store.client.Get(key + ":cnt")
+	err = result.Err()
+	if err == nil {
+		t, err := result.Result()
+		if err == nil {
+			counterValue.Count, err = strconv.ParseInt(t, 10, 64)
+
+		}
+	}
+	if err == redis.Nil {
+		return counterValue, nil
+	}
+
+	return counterValue, err
 }
 
 func generateRedisKey(name string, beginTime time.Time, endTime time.Time, lbs map[string]string) string {

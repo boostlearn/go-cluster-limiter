@@ -42,10 +42,10 @@ type ClusterLimiterOpts struct {
 	InitIdealPassRate          float64
 	InitRewardRate             float64
 
-	DeclineExpRatio float64
+	DeclineExpRatio            float64
 	RewardRatioDeclineExpRatio float64
 
-	TakeWithScore bool
+	TakeWithScore            bool
 	ScoreSamplesSortInterval time.Duration
 	ScoreSamplesMax          int64
 }
@@ -133,27 +133,27 @@ func (factory *ClusterLimiterFactory) NewClusterLimiter(opts *ClusterLimiterOpts
 		opts.DeclineExpRatio = DefaultDeclineExpRatio
 	}
 
-	if opts.RewardRatioDeclineExpRatio  == 0.0 {
+	if opts.RewardRatioDeclineExpRatio == 0.0 {
 		opts.RewardRatioDeclineExpRatio = DefaultRewardRatioDeclineExpRatio
 	}
 
 	var limiter = &ClusterLimiter{
-		name:                     opts.Name,
-		Options:                  opts,
-		factory:                  factory,
-		rewardTarget:             opts.RewardTarget,
-		beginTime:                opts.BeginTime,
-		endTime:                  opts.EndTime,
-		completionTime:           opts.EndTime,
-		periodInterval:           opts.PeriodInterval,
-		reserveInterval:          opts.ReserveInterval,
-		maxBoostFactor:           opts.MaxBoostFactor,
-		discardPreviousData:      opts.DiscardPreviousData,
-		idealPassRate:            opts.InitIdealPassRate,
-		idealRewardRate:          opts.InitRewardRate,
-		scoreSamplesSortInterval: opts.ScoreSamplesSortInterval,
-		scoreSamplesMax:          opts.ScoreSamplesMax,
-		declineExpRatio: opts.DeclineExpRatio,
+		name:                      opts.Name,
+		Options:                   opts,
+		factory:                   factory,
+		rewardTarget:              opts.RewardTarget,
+		beginTime:                 opts.BeginTime,
+		endTime:                   opts.EndTime,
+		completionTime:            opts.EndTime,
+		periodInterval:            opts.PeriodInterval,
+		reserveInterval:           opts.ReserveInterval,
+		maxBoostFactor:            opts.MaxBoostFactor,
+		discardPreviousData:       opts.DiscardPreviousData,
+		idealPassRate:             opts.InitIdealPassRate,
+		idealRewardRate:           opts.InitRewardRate,
+		scoreSamplesSortInterval:  opts.ScoreSamplesSortInterval,
+		scoreSamplesMax:           opts.ScoreSamplesMax,
+		declineExpRatio:           opts.DeclineExpRatio,
 		rewardRateDeclineExpRatio: opts.RewardRatioDeclineExpRatio,
 	}
 

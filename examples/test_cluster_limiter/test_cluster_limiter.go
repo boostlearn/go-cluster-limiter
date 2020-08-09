@@ -80,9 +80,9 @@ func fakeTraffic(limiters []*cluster_limiter.ClusterLimiter) {
 	for range ticker.C {
 		now := time.Now()
 		hours := now.Sub(now.Truncate(time.Duration(3600) * time.Second)).Hours()
-		v += (math.Sin(hours* 2 * math.Pi) + 2.0) * 30 * fakeTrafficFactor
+		v += (math.Sin(hours*2*math.Pi) + 2.0) * 30 * fakeTrafficFactor
 
-        fmt.Println(">>>>", hours, " ", v, " ", math.Sin(hours* 2 * math.Pi))
+		fmt.Println(">>>>", hours, " ", v, " ", math.Sin(hours*2*math.Pi))
 		for ; v > 1.0; v -= 1 {
 			for _, limiter := range limiters {
 				if limiter.Options.TakeWithScore == false {

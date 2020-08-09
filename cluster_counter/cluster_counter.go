@@ -12,6 +12,7 @@ const HistoryMax = 30
 const DefaultDeclineExpRatio = 0.8
 const DefaultStoreIntervalSeconds = 2
 const DefaultTrafficProportion = 1.0
+const DefaultUpdateTrafficProportionMinCount = 1
 
 // counter within cluster
 type ClusterCounter struct {
@@ -31,29 +32,34 @@ type ClusterCounter struct {
 
 	storeInterval time.Duration
 
-	localValue        float64
+	localValue        CounterValue
 	storeHistoryPos   int64
 	lastStoreTime     time.Time
-	storeLocalHistory [HistoryMax]float64
+	storeLocalHistory [HistoryMax]CounterValue
 	storeTimeHistory  [HistoryMax]time.Time
-	lastStoreValue    float64
+	lastStoreValue    CounterValue
 
 	discardPreviousData bool
-	loadInitValue       float64
+	loadInitValue       CounterValue
 	hasInitValue        bool
 
 	loadHistoryPos     int64
 	lastLoadTime       time.Time
 	loadTimeHistory    [HistoryMax]time.Time
-	loadLocalHistory   [HistoryMax]float64
-	loadClusterHistory [HistoryMax]float64
+	loadLocalHistory   [HistoryMax]CounterValue
+	loadClusterHistory [HistoryMax]CounterValue
 
 	initLocalTrafficProportion float64
 	localTrafficProportion     float64
 
-	localRecently   float64
-	clusterRecently float64
+	localRecently   CounterValue
+	clusterRecently CounterValue
 	declineExpRatio float64
+}
+
+type CounterValue struct {
+	Sum   float64
+	Count int64
 }
 
 // init counter
@@ -90,7 +96,7 @@ func (counter *ClusterCounter) Initialize() {
 
 		if err == nil {
 			counter.loadClusterHistory[(counter.loadHistoryPos)%HistoryMax] = value
-			counter.loadLocalHistory[(counter.loadHistoryPos)%HistoryMax] = 0
+			counter.loadLocalHistory[(counter.loadHistoryPos)%HistoryMax] = CounterValue{}
 			counter.loadTimeHistory[(counter.loadHistoryPos)%HistoryMax] = time.Now()
 			counter.loadHistoryPos += 1
 			counter.loadInitValue = value
@@ -124,13 +130,17 @@ func (counter *ClusterCounter) Expire() bool {
 			lastEndTime := counter.endTime
 			counter.beginTime = timeNow.Truncate(counter.resetInterval)
 			counter.endTime = counter.beginTime.Add(counter.resetInterval)
-			pushValue := counter.localValue - counter.lastStoreValue
-			counter.localValue = 0
-			counter.lastStoreValue = 0
+
+			pushValue := CounterValue{}
+			pushValue.Sum = counter.localValue.Sum - counter.lastStoreValue.Sum
+			pushValue.Count = counter.localValue.Count - counter.lastStoreValue.Count
+
+			counter.localValue = CounterValue{}
+			counter.lastStoreValue = CounterValue{}
 			counter.loadHistoryPos = 0
-			counter.loadInitValue = 0
+			counter.loadInitValue = CounterValue{}
 			counter.storeHistoryPos = 0
-			if pushValue > 0 && counter.factory != nil && counter.factory.Store != nil &&
+			if pushValue.Count > 0 && counter.factory != nil && counter.factory.Store != nil &&
 				reflect.ValueOf(counter.factory.Store).IsNil() == false {
 				counter.mu.Unlock()
 				_ = counter.factory.Store.Store(counter.name, lastBeginTime, lastEndTime, counter.lbs,
@@ -155,12 +165,13 @@ func (counter *ClusterCounter) Add(v float64) {
 		return
 	}
 
-	counter.localValue += v
+	counter.localValue.Sum += v
+	counter.localValue.Count += 1
 }
 
 // get local value
 // last: A negative number represents the query history data
-func (counter *ClusterCounter) LocalValue(last int) (float64, time.Time) {
+func (counter *ClusterCounter) LocalValue(last int) (CounterValue, time.Time) {
 	counter.mu.RLock()
 	defer counter.mu.RUnlock()
 
@@ -172,11 +183,11 @@ func (counter *ClusterCounter) LocalValue(last int) (float64, time.Time) {
 			counter.loadTimeHistory[(counter.loadHistoryPos+int64(last)+HistoryMax)%HistoryMax]
 	}
 
-	return 0, time.Unix(0, 0)
+	return CounterValue{}, time.Unix(0, 0)
 }
 
 // get local stored history data
-func (counter *ClusterCounter) LocalStoreValue(last int) (float64, time.Time) {
+func (counter *ClusterCounter) LocalStoreValue(last int) (CounterValue, time.Time) {
 	counter.mu.RLock()
 	defer counter.mu.RUnlock()
 
@@ -188,12 +199,12 @@ func (counter *ClusterCounter) LocalStoreValue(last int) (float64, time.Time) {
 			counter.storeTimeHistory[(counter.storeHistoryPos+int64(last)+HistoryMax)%HistoryMax]
 	}
 
-	return 0, time.Unix(0, 0)
+	return CounterValue{}, time.Unix(0, 0)
 }
 
 // get cluster value
 // last: A negative number represents the query history data
-func (counter *ClusterCounter) ClusterValue(last int) (float64, time.Time) {
+func (counter *ClusterCounter) ClusterValue(last int) (CounterValue, time.Time) {
 	counter.mu.RLock()
 	defer counter.mu.RUnlock()
 
@@ -202,17 +213,20 @@ func (counter *ClusterCounter) ClusterValue(last int) (float64, time.Time) {
 			counter.localTrafficProportion = counter.initLocalTrafficProportion
 		}
 
-		var clusterLast float64 = 0
-		var localLast float64 = 0
+		var clusterLast CounterValue
+		var localLast CounterValue
 		localValue := counter.localValue
 		if counter.loadHistoryPos > 0 {
 			clusterLast = counter.loadClusterHistory[(counter.loadHistoryPos-1+HistoryMax)%HistoryMax]
 			localLast = counter.loadLocalHistory[(counter.loadHistoryPos-1+HistoryMax)%HistoryMax]
 		}
 
-		clusterPred := clusterLast + (localValue-localLast)/counter.localTrafficProportion
+		clusterPred := CounterValue{}
+		clusterPred.Sum = clusterLast.Sum + (localValue.Sum-localLast.Sum)/counter.localTrafficProportion
+		clusterPred.Count = clusterLast.Count + int64(float64(localValue.Count-localLast.Count)/counter.localTrafficProportion)
 		if counter.discardPreviousData {
-			clusterPred -= counter.loadInitValue
+			clusterPred.Sum -= counter.loadInitValue.Sum
+			clusterPred.Count -= counter.loadInitValue.Count
 		}
 		return clusterPred, time.Now()
 	}
@@ -221,22 +235,23 @@ func (counter *ClusterCounter) ClusterValue(last int) (float64, time.Time) {
 		clusterLast := counter.loadClusterHistory[(counter.loadHistoryPos+int64(last)+HistoryMax)%HistoryMax]
 		if counter.discardPreviousData && counter.initTime.After(counter.beginTime) &&
 			counter.initTime.Before(counter.endTime) {
-			clusterLast -= counter.loadInitValue
+			clusterLast.Sum -= counter.loadInitValue.Sum
+			clusterLast.Count -= counter.loadInitValue.Count
 		}
 		return clusterLast, counter.loadTimeHistory[(counter.loadHistoryPos+int64(last)+HistoryMax)%HistoryMax]
 	}
 
-	return 0, time.Unix(0, 0)
+	return CounterValue{}, time.Unix(0, 0)
 }
 
-func (counter *ClusterCounter) LocalRecently() float64 {
+func (counter *ClusterCounter) LocalRecently() CounterValue {
 	counter.mu.RLock()
 	defer counter.mu.RUnlock()
 
 	return counter.localRecently
 }
 
-func (counter *ClusterCounter) ClusterRecently() float64 {
+func (counter *ClusterCounter) ClusterRecently() CounterValue {
 	counter.mu.RLock()
 	defer counter.mu.RUnlock()
 
@@ -306,7 +321,7 @@ func (counter *ClusterCounter) LoadData() bool {
 		if counter.loadHistoryPos > 0 {
 			counter.loadLocalHistory[counter.loadHistoryPos%HistoryMax] = counter.storeLocalHistory[(counter.storeHistoryPos+-1+HistoryMax)%HistoryMax]
 		} else {
-			counter.loadLocalHistory[counter.loadHistoryPos%HistoryMax] = 0
+			counter.loadLocalHistory[counter.loadHistoryPos%HistoryMax] = CounterValue{}
 		}
 
 		if counter.hasInitValue == false {
@@ -333,17 +348,21 @@ func (counter *ClusterCounter) updateLocalTrafficProportion() {
 	if counter.loadHistoryPos > 2 {
 		clusterPrev := counter.loadClusterHistory[(counter.loadHistoryPos-2+HistoryMax)%HistoryMax]
 		clusterCur := counter.loadClusterHistory[(counter.loadHistoryPos-1+HistoryMax)%HistoryMax]
-		counter.clusterRecently = counter.clusterRecently*counter.declineExpRatio +
-			(clusterCur-clusterPrev)*(1-counter.declineExpRatio)
+		counter.clusterRecently.Sum = counter.clusterRecently.Sum*counter.declineExpRatio +
+			(clusterCur.Sum-clusterPrev.Sum)*(1-counter.declineExpRatio)
+		counter.clusterRecently.Count = int64(float64(counter.clusterRecently.Count)*counter.declineExpRatio +
+			float64(clusterCur.Count-clusterPrev.Count)*(1-counter.declineExpRatio))
 
 		localPrev := counter.loadLocalHistory[(counter.loadHistoryPos-2+HistoryMax)%HistoryMax]
 		localCur := counter.loadLocalHistory[(counter.loadHistoryPos-1+HistoryMax)%HistoryMax]
-		counter.localRecently = counter.localRecently*counter.declineExpRatio +
-			(localCur-localPrev)*(1-counter.declineExpRatio)
+		counter.localRecently.Sum = counter.localRecently.Sum*counter.declineExpRatio +
+			(localCur.Sum-localPrev.Sum)*(1-counter.declineExpRatio)
+		counter.localRecently.Count = int64(float64(counter.localRecently.Count)*counter.declineExpRatio +
+			float64(localCur.Count-localPrev.Count)*(1-counter.declineExpRatio))
 	}
 
-	if counter.localRecently != 0.0 && counter.clusterRecently != 0.0 {
-		ratio := counter.localRecently / counter.clusterRecently
+	if counter.localRecently.Sum != 0.0 && counter.clusterRecently.Sum != 0.0 {
+		ratio := counter.localRecently.Sum / counter.clusterRecently.Sum
 		if ratio > 1.0 {
 			ratio = 1.0
 		}
@@ -378,14 +397,17 @@ func (counter *ClusterCounter) StoreData() bool {
 		counter.storeHistoryPos += 1
 		counter.lastStoreTime = timeNow.Truncate(counter.storeInterval)
 
-		pushValue := counter.localValue - counter.lastStoreValue
-		if pushValue > 0 {
+		pushValue := CounterValue{}
+		pushValue.Sum = counter.localValue.Sum - counter.lastStoreValue.Sum
+		pushValue.Count = counter.localValue.Count - counter.lastStoreValue.Count
+		if pushValue.Count > 0 {
 			counter.mu.Unlock()
 			err := counter.factory.Store.Store(counter.name, counter.beginTime, counter.endTime, counter.lbs,
 				pushValue, false)
 			counter.mu.Lock()
 			if err == nil {
-				counter.lastStoreValue += pushValue
+				counter.lastStoreValue.Sum += pushValue.Sum
+				counter.lastStoreValue.Count = pushValue.Count
 				return true
 			}
 

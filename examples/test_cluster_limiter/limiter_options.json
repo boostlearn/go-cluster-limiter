@@ -30,7 +30,7 @@
     "InitLocalTrafficProportion": 1,
     "InitIdealPassRate": 0,
     "InitRewardRate": 1,
-    "TakeWithScore":true,
+    "TakeWithScore": true,
     "ScoreSamplesSortInterval": 10000000000,
     "ScoreSamplesMax": 10000
   },
@@ -65,7 +65,7 @@
     "InitLocalTrafficProportion": 1,
     "InitIdealPassRate": 0,
     "InitRewardRate": 1,
-    "TakeWithScore":true,
+    "TakeWithScore": true,
     "ScoreSamplesSortInterval": 10000000000,
     "ScoreSamplesMax": 10000
   },
@@ -100,7 +100,7 @@
     "InitLocalTrafficProportion": 1,
     "InitIdealPassRate": 0,
     "InitRewardRate": 1,
-    "TakeWithScore":true,
+    "TakeWithScore": true,
     "ScoreSamplesSortInterval": 10000000000,
     "ScoreSamplesMax": 10000
   },
@@ -135,7 +135,7 @@
     "InitLocalTrafficProportion": 1,
     "InitIdealPassRate": 0,
     "InitRewardRate": 1,
-    "TakeWithScore":true,
+    "TakeWithScore": true,
     "ScoreSamplesSortInterval": 10000000000,
     "ScoreSamplesMax": 10000
   },
@@ -170,7 +170,7 @@
     "InitLocalTrafficProportion": 1,
     "InitIdealPassRate": 0,
     "InitRewardRate": 1,
-    "TakeWithScore":true,
+    "TakeWithScore": true,
     "ScoreSamplesSortInterval": 10000000000,
     "ScoreSamplesMax": 10000
   },
@@ -205,7 +205,7 @@
     "InitLocalTrafficProportion": 1,
     "InitIdealPassRate": 0,
     "InitRewardRate": 1,
-    "TakeWithScore":true,
+    "TakeWithScore": true,
     "ScoreSamplesSortInterval": 10000000000,
     "ScoreSamplesMax": 10000
   }
