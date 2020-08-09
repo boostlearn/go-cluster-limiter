@@ -119,6 +119,10 @@ func (factory *ClusterCounterFactory) NewClusterCounter(opts *ClusterCounterOpts
 		opts.InitLocalTrafficProportion = 1.0
 	}
 
+	if opts.DeclineExpRatio == 0 {
+		opts.DeclineExpRatio = DefaultDeclineExpRatio
+	}
+
 	clusterCounter := &ClusterCounter{
 		factory: factory,
 		Options: opts,

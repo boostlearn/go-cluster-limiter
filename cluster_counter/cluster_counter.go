@@ -388,7 +388,7 @@ func (counter *ClusterCounter) StoreData() bool {
 				pushValue, false)
 			counter.mu.Lock()
 			if err == nil {
-				counter.lastStoreValue = counter.lastStoreValue.Sub(pushValue)
+				counter.lastStoreValue = counter.lastStoreValue.Add(pushValue)
 				return true
 			}
 
