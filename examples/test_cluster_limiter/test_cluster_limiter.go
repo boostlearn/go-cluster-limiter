@@ -54,9 +54,11 @@ func main() {
 		})
 	limiterFactory.Start()
 
-	err = limiterFactory.LoadFile(flag.Arg(0))
-	if err != nil {
-		log.Fatal(err)
+	for _, file := range flag.Args() {
+		err = limiterFactory.LoadFile(file)
+		if err != nil {
+			log.Fatal(err)
+		}
 	}
 
 	options := limiterFactory.AllOptions()
