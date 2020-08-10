@@ -46,8 +46,8 @@ func (store *RedisStore) Store(name string, beginTime time.Time, endTime time.Ti
 	value cluster_counter.CounterValue, force bool) error {
 	redisKey := store.keyPrefix + generateRedisKey(name, beginTime, endTime, lbs)
 
-	var result = store.client.IncrBy(redisKey+":sum", int64(value.Sum*10000))
-	result = store.client.IncrBy(redisKey+":cnt", int64(value.Count))
+	_ = store.client.IncrByFloat(redisKey+":sum", value.Sum)
+	result := store.client.IncrBy(redisKey+":cnt", int64(value.Count))
 	if endTime.After(beginTime) {
 		store.client.Expire(redisKey+":sum", endTime.Sub(beginTime))
 		store.client.Expire(redisKey+":cnt", endTime.Sub(beginTime))
@@ -68,7 +68,7 @@ func (store *RedisStore) Load(name string, beginTime time.Time, endTime time.Tim
 		t, err := result.Result()
 		if err == nil {
 			value, _ := strconv.ParseFloat(t, 64)
-			counterValue.Sum = value / 10000
+			counterValue.Sum = value
 		}
 	}
 	result = store.client.Get(key + ":cnt")
