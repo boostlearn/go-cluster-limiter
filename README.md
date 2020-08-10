@@ -15,6 +15,8 @@ One common method used to control a cluster's flow is by calling the external fl
 however, cluster limiter carried out through the network, requires high network stability, consume certain request time, 
 easily forms a single hot spot service, consumes a lot of resources, and finally limits its scope of usage.
 
+![avatar](https://github.com/boostlearn/go-cluster-limiter/raw/master/doc/pictures/limiter_frame.png)
+
 This project uses a decentralized flow control algorithm to move the centralized control strategy to  decentralized nodes, 
 and the goal is to reduce the dependence on the network. 
 the control algorithm of this project needs the flow to meet the following requirements in most of its lifetime:
@@ -30,9 +32,13 @@ The flow limiter of this project can set the downstream reward as the target to 
 For example, by controlling the number of advertisements cast, the target of ad clicks can be achieved finally. 
 The reward and the flow's passing traffic should be positively correlated, otherwise the reward target of the limiter may not be able to be achieved.
 
+![avatar](https://github.com/boostlearn/go-cluster-limiter/raw/master/doc/pictures/limiter-reward.png)
+
 The flow limiter of this project also provides hierarchical flow limiter. If the requested traffic carries a score value, 
 the hierarchical flow limiter of this project can automatically select traffic that with a higher score to be passed, and achieve the goal of traffic hierarchical selection. 
 Traffic hierarchical selection to prioritize high-value traffic is a good weapon to maximize the system's value.
+
+![avatar](https://github.com/boostlearn/go-cluster-limiter/raw/master/doc/pictures/limiter-multilevel.png)
 
 For the scenario of service protection, the total number of reward in each cycle(minute or more) can be set to achieve,
 For scenarios such as budget control and experimental diversion, the start time and end time of the task can be set to achieve too.

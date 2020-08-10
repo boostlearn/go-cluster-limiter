@@ -10,6 +10,8 @@
 但上述实现单体流控的算法无法在集群的服务分区模式下运行。常见的集群流控办法是通过实时调用外部的流控服务接口(RPC)来控制集群的流量，
 但这个方案对网络稳定性和请求时间延迟要求都很高，也容易形成单一热点和消耗大量的资源，限制了其应用范围。
 
+![avatar](https://github.com/boostlearn/go-cluster-limiter/raw/master/doc/pictures/limiter_frame.png)
+
 本项目使用非中心化的流控算法，把控制策略的下方到各个需要流控的节点，可以有效降低对网络的依赖。
 本项目算法假设流量在大部分的时间满足如下条件：
  * 在很短的时间(<10s), 集群整体流量稳定。 
@@ -23,9 +25,13 @@
 本项目流控器可以用下游的转化指标(reward)为目标来控制流量释放。比如通过控制广告投放(pass)来达成广告点击量(reward)控制的目标。
 下游转化目标要求和请求的通过量是正相关的，否则流控器可能无法实现流控目标。
 
+![avatar](https://github.com/boostlearn/go-cluster-limiter/raw/master/doc/pictures/limiter-reward.png)
+
 本项目流控器可提供流量分级控制的功能。如果请求流量携带了对请求的打分级别信息, 
 本项目分级流控器可以自动让打分较高的流量通过，达到流量对分级挑选的目标。
 流量分级挑选可以优先保障高价值的流量通过，是最大化系统价值的利器。
+
+![avatar](https://github.com/boostlearn/go-cluster-limiter/raw/master/doc/pictures/limiter-multilevel.png)
 
 针对服务限流的场景，可以按周期设置目标的达成。针对预算控制、实验分流等场景，可以设置任务的起始和结束时间来的设置目标的达成。
 在整个任务周期内， 限流器实现了目标值的平滑释放。
