@@ -21,8 +21,9 @@ var (
 	listenPort int64
 
 	limiterType       string
-	fakeTrafficFactor float64
-	fakeRewardFactor  float64
+	trafficFactor float64
+	rewardRateFactor  float64
+	rewardRateBias float64
 )
 
 func init() {
@@ -30,8 +31,9 @@ func init() {
 	flag.StringVar(&redisPass, "p", "", "store: redis pass")
 	flag.Int64Var(&listenPort, "l", 20001, "prometheus: listen port")
 	flag.StringVar(&limiterType, "m", "normal", "limiter type: normal or score")
-	flag.Float64Var(&fakeTrafficFactor, "f", 2, "mock traffic factor")
-	flag.Float64Var(&fakeRewardFactor, "r", 1, "fake reward factor")
+	flag.Float64Var(&trafficFactor, "f", 2, "traffic factor")
+	flag.Float64Var(&rewardRateFactor, "r", 1, "reward rate factor")
+	flag.Float64Var(&rewardRateBias, "b", 0.5, "reward rate bias")
 
 }
 
@@ -80,21 +82,21 @@ func fakeTraffic(limiters []*cluster_limiter.ClusterLimiter) {
 	for range ticker.C {
 		now := time.Now()
 		hours := now.Sub(now.Truncate(time.Duration(3600) * time.Second)).Hours()
-		v += (math.Sin(hours*2*math.Pi) + 2.0) * 30 * fakeTrafficFactor
+		v += (math.Sin(hours*2*math.Pi) + 2.0) * 30 * trafficFactor
 
 		fmt.Println(">>>>", hours, " ", v, " ", math.Sin(hours*2*math.Pi))
 		for ; v > 1.0; v -= 1 {
 			for _, limiter := range limiters {
 				if limiter.Options.TakeWithScore == false {
 					if limiter.Take(float64(1)) == true {
-						rewardRate := (math.Cos(hours*2*math.Pi)/4 + 0.5) * fakeRewardFactor
+						rewardRate := (math.Cos(hours*2*math.Pi)/4 + rewardRateBias) * rewardRateFactor
 						if rand.Float64() < rewardRate {
 							limiter.Reward(float64(1))
 						}
 					}
 				} else {
 					if limiter.TakeWithScore(float64(1), rand.Float64()) == true {
-						rewardRate := (math.Cos(hours*2*math.Pi)/4 + 0.5) * fakeRewardFactor
+						rewardRate := (math.Cos(hours*2*math.Pi)/4 + rewardRateBias) * rewardRateFactor
 						if rand.Float64() < rewardRate {
 							limiter.Reward(float64(1))
 						}
