@@ -20,10 +20,10 @@ var (
 	redisPass  string
 	listenPort int64
 
-	limiterType       string
-	trafficFactor float64
-	rewardRateFactor  float64
-	rewardRateBias float64
+	limiterType      string
+	trafficFactor    float64
+	rewardRateFactor float64
+	rewardRateBias   float64
 )
 
 func init() {

@@ -41,10 +41,10 @@ type ClusterLimiterOpts struct {
 	DiscardPreviousData bool
 
 	InitLocalTrafficProportion float64
-	InitPassRate          float64
+	InitPassRate               float64
 	InitRewardRate             float64
 
-	UpdatePassRateMinCount int64
+	UpdatePassRateMinCount   int64
 	UpdateRewardRateMinCount int64
 
 	DeclineExpRatio            float64
@@ -151,20 +151,20 @@ func (factory *ClusterLimiterFactory) NewClusterLimiter(opts *ClusterLimiterOpts
 	}
 
 	var limiter = &ClusterLimiter{
-		name:                      opts.Name,
-		Options:                   opts,
-		factory:                   factory,
-		rewardTarget:              opts.RewardTarget,
-		beginTime:                 opts.BeginTime,
-		endTime:                   opts.EndTime,
-		completionTime:            opts.CompletionTime,
-		periodInterval:            opts.PeriodInterval,
-		reserveInterval:           opts.ReserveInterval,
-		discardPreviousData:       opts.DiscardPreviousData,
-		idealPassRate:             opts.InitPassRate,
-		idealRewardRate:           opts.InitRewardRate,
-		scoreSamplesSortInterval:  opts.ScoreSamplesSortInterval,
-		scoreSamplesMax:           opts.ScoreSamplesMax,
+		name:                     opts.Name,
+		Options:                  opts,
+		factory:                  factory,
+		rewardTarget:             opts.RewardTarget,
+		beginTime:                opts.BeginTime,
+		endTime:                  opts.EndTime,
+		completionTime:           opts.CompletionTime,
+		periodInterval:           opts.PeriodInterval,
+		reserveInterval:          opts.ReserveInterval,
+		discardPreviousData:      opts.DiscardPreviousData,
+		idealPassRate:            opts.InitPassRate,
+		idealRewardRate:          opts.InitRewardRate,
+		scoreSamplesSortInterval: opts.ScoreSamplesSortInterval,
+		scoreSamplesMax:          opts.ScoreSamplesMax,
 	}
 
 	if opts.PeriodInterval > 0 {

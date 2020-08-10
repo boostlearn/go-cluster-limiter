@@ -40,9 +40,9 @@ type ClusterLimiter struct {
 	lastRewardPassRateTime  time.Time
 	lastWorkingPassRateTime time.Time
 
-	workingPassRate           float64
-	idealPassRate             float64
-	idealRewardRate           float64
+	workingPassRate float64
+	idealPassRate   float64
+	idealRewardRate float64
 
 	localRequestRecently     cluster_counter.CounterValue
 	localPassRecently        cluster_counter.CounterValue
@@ -384,7 +384,7 @@ func (limiter *ClusterLimiter) updateIdealPassRate() {
 	if timeNow.After(lastLoadTime.Add(limiter.Options.BurstInterval * 10)) {
 		var curLocalRequest, _ = limiter.RequestCounter.LocalStoreValue(0)
 		var curIdealReward = limiter.getIdealReward(timeNow) * limiter.RequestCounter.LocalTrafficProportion()
-		if curLocalRequest.Count < limiter.prevLocalRequest.Count + limiter.Options.UpdatePassRateMinCount {
+		if curLocalRequest.Count < limiter.prevLocalRequest.Count+limiter.Options.UpdatePassRateMinCount {
 			return
 		}
 
@@ -414,7 +414,7 @@ func (limiter *ClusterLimiter) updateIdealPassRate() {
 			return
 		}
 
-		if lastClusterRequest.Count < limiter.prevClusterRequest.Count + limiter.Options.UpdatePassRateMinCount {
+		if lastClusterRequest.Count < limiter.prevClusterRequest.Count+limiter.Options.UpdatePassRateMinCount {
 			return
 		}
 
@@ -453,7 +453,7 @@ func (limiter *ClusterLimiter) updateIdealRewardRate() {
 
 	var curLocalReward, _ = limiter.RewardCounter.LocalStoreValue(0)
 	var curLocalPass, _ = limiter.PassCounter.LocalStoreValue(0)
-	if curLocalPass.Count < limiter.prevLocalPass.Count + limiter.Options.UpdateRewardRateMinCount {
+	if curLocalPass.Count < limiter.prevLocalPass.Count+limiter.Options.UpdateRewardRateMinCount {
 		return
 	}
 
