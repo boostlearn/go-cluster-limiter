@@ -44,6 +44,9 @@ type ClusterLimiterOpts struct {
 	InitIdealPassRate          float64
 	InitRewardRate             float64
 
+	UpdatePassRateMinCount int64
+	UpdateRewardRateMinCount int64
+
 	DeclineExpRatio            float64
 	RewardRatioDeclineExpRatio float64
 
@@ -116,6 +119,14 @@ func (factory *ClusterLimiterFactory) NewClusterLimiter(opts *ClusterLimiterOpts
 		opts.InitLocalTrafficProportion = 1.0
 	}
 
+	if opts.UpdatePassRateMinCount == 0 {
+		opts.UpdatePassRateMinCount = DefaultUpdatePassRateMinCount
+	}
+
+	if opts.UpdateRewardRateMinCount == 0 {
+		opts.UpdateRewardRateMinCount = DefaultUpdateRewardRateMinCount
+	}
+
 	if opts.BurstInterval == 0 {
 		opts.BurstInterval = DefaultBurstIntervalSeconds * time.Second
 	}
@@ -146,17 +157,14 @@ func (factory *ClusterLimiterFactory) NewClusterLimiter(opts *ClusterLimiterOpts
 		rewardTarget:              opts.RewardTarget,
 		beginTime:                 opts.BeginTime,
 		endTime:                   opts.EndTime,
-		completionTime:            opts.EndTime,
+		completionTime:            opts.CompletionTime,
 		periodInterval:            opts.PeriodInterval,
 		reserveInterval:           opts.ReserveInterval,
-		maxBoostFactor:            opts.MaxBoostFactor,
 		discardPreviousData:       opts.DiscardPreviousData,
 		idealPassRate:             opts.InitIdealPassRate,
 		idealRewardRate:           opts.InitRewardRate,
 		scoreSamplesSortInterval:  opts.ScoreSamplesSortInterval,
 		scoreSamplesMax:           opts.ScoreSamplesMax,
-		declineExpRatio:           opts.DeclineExpRatio,
-		rewardRateDeclineExpRatio: opts.RewardRatioDeclineExpRatio,
 	}
 
 	if opts.PeriodInterval > 0 {
