@@ -41,7 +41,7 @@ type ClusterLimiterOpts struct {
 	DiscardPreviousData bool
 
 	InitLocalTrafficProportion float64
-	InitIdealPassRate          float64
+	InitPassRate          float64
 	InitRewardRate             float64
 
 	UpdatePassRateMinCount int64
@@ -161,7 +161,7 @@ func (factory *ClusterLimiterFactory) NewClusterLimiter(opts *ClusterLimiterOpts
 		periodInterval:            opts.PeriodInterval,
 		reserveInterval:           opts.ReserveInterval,
 		discardPreviousData:       opts.DiscardPreviousData,
-		idealPassRate:             opts.InitIdealPassRate,
+		idealPassRate:             opts.InitPassRate,
 		idealRewardRate:           opts.InitRewardRate,
 		scoreSamplesSortInterval:  opts.ScoreSamplesSortInterval,
 		scoreSamplesMax:           opts.ScoreSamplesMax,

@@ -1,0 +1,17 @@
+[{
+  "Name": "test_limiter",
+  "RewardTarget": 10000,
+  "BeginTime": "1900-01-01T00:00:00+08:00",
+  "EndTime": "3000-01-01T00:00:00+08:00",
+  "CompletionTime": "0001-01-01T00:00:00Z",
+  "PeriodInterval": 60000000000,
+  "ReserveInterval": 0,
+  "BurstInterval": 5000000000,
+  "MaxBoostFactor": 2,
+  "DiscardPreviousData": true,
+  "InitLocalTrafficProportion": 1,
+  "InitPassRate": 0,
+  "InitRewardRate": 1,
+  "ScoreSamplesSortInterval": 0,
+  "ScoreSamplesMax": 0
+}]
