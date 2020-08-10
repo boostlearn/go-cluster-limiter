@@ -15,8 +15,6 @@ One common method used to control a cluster's flow is by calling the external fl
 however, cluster limiter carried out through the network, requires high network stability, consume certain request time, 
 easily forms a single hot spot service, consumes a lot of resources, and finally limits its scope of usage.
 
-![avatar](https://github.com/boostlearn/go-cluster-limiter/raw/master/doc/pictures/limiter_frame.png)
-
 This project uses a decentralized flow control algorithm to move the centralized control strategy to  decentralized nodes, 
 and the goal is to reduce the dependence on the network. 
 the control algorithm of this project needs the flow to meet the following requirements in most of its lifetime:
@@ -26,6 +24,8 @@ the control algorithm of this project needs the flow to meet the following requi
 The algorithm of this project is also sensitive to traffic changes in the flow over a certain interval (>10s), and can dynamically calculate and adapt to changes.
 
 In scenarios where the traffic flow is often non-continuous or has many of instantaneous burst traffic, the algorithm of this project may not work well.
+
+![avatar](https://github.com/boostlearn/go-cluster-limiter/raw/master/doc/pictures/limiter_frame.png)
 
 ## Supported Features
 The flow limiter of this project can set the downstream reward as the target to control the passing of a request flow. 
