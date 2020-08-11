@@ -1,5 +1,5 @@
 >This project can be used as a service module that implements flow limiter in a cluster environment, 
->and can be used in scenarios that require flow limiter such as service protection, consumption control, or experiment shunting and so on. 
+>and can be used in scenarios that require flow limiter such as service protection, consumption control, experiment shunting and so on. 
 >this project uses a decentralized flow control algorithm, which could effectively reduce the resource consumption and dependence on network stability.
 
 [中文](./README-ZH.md)
@@ -7,35 +7,35 @@
 ## The difference with other limiters
      
 the stand-alone limiter mainly controls the use of local traffic, 
-which can be implemented using algorithms such as counters, leaky buckets, or token buckets and so on.
+which can be implemented by using algorithms such as counters, leaky buckets, or token buckets and so on.
 the stand-alone limiter does not depend on the external environment and needs low resources consumption.
 
-However, the algorithm which used in stand-alone limiter cannot run in the cluster's service partition mode. 
-One common method used to control a cluster's flow is by calling the external flow control (RPC) service. 
-however, cluster limiter carried out through the network, requires high network stability, consume certain request time, 
-easily forms a single hot spot service, consumes a lot of resources, and finally limits its scope of usage.
+However, above algorithms which used in the stand-alone limiter cannot run in the cluster's service partition mode. 
+One common method which used to control a cluster's flow is by calling the external flow control RPC service. 
+however, the cluster limiter which carried out through the network, requires high network stability, consume certain query time, 
+easily forms a single hot spot, consumes a lot of resources and so on, that finally limits its scope of usage.
 
-This project uses a decentralized flow control algorithm to move the centralized control strategy to  decentralized nodes, 
-and the goal is to reduce the dependence on the network. 
-the control algorithm of this project needs the flow to meet the following requirements in most of its lifetime:
-* During a short while (<10s), the overall traffic flow of the cluster is stable.
-* During a short while (<10s), the traffic flow of each node in the cluster is stable.
+This project uses a decentralized flow control algorithm to move the centralized service to  decentralized nodes, 
+with the goal to reduce the dependence on the network. 
+the control algorithm of this project needs the flow to meet the following requirements during its lifetime:
+* the overall traffic flow of the cluster is stable for a short while (about 10s).
+* the traffic flow of each node in the cluster is stable for a short while.
      
-The algorithm of this project is also sensitive to traffic changes in the flow over a certain interval (>10s), and can dynamically calculate and adapt to changes.
+The algorithm of this project is also sensitive to traffic changes in the flow, and can dynamically calculate and adapt to changes.
 
 In scenarios where the traffic flow is often non-continuous or has many of instantaneous burst traffic, the algorithm of this project may not work well.
 
 ![avatar](https://github.com/boostlearn/go-cluster-limiter/raw/master/doc/pictures/limiter_frame.png)
 
-## Supported Features
+## Features
 The flow limiter of this project can set the downstream reward as the target to control the passing of a request flow. 
-For example, by controlling the number of advertisements cast, the target of ad clicks can be achieved finally. 
-The reward and the flow's passing traffic should be positively correlated, otherwise the reward target of the limiter may not be able to be achieved.
+For example, by controlling the number of advertisements cast, and set the reward of ad clicks as target to be achieved. 
+The reward and the flow's passing traffic should be positively correlated, otherwise the target of the limiter may cannot be able to be achieved.
 
 ![avatar](https://github.com/boostlearn/go-cluster-limiter/raw/master/doc/pictures/limiter-reward.png)
 
-The flow limiter of this project also provides hierarchical flow limiter. If the requested traffic carries a score value, 
-the hierarchical flow limiter of this project can automatically select traffic that with a higher score to be passed, and achieve the goal of traffic hierarchical selection. 
+The flow limiter of this project also provides multi-level flow limiter. If the requested traffic carries a score value as its priority, 
+the scored limiter of this project can automatically select traffic that with a higher score to be passed, and achieve the goal of traffic hierarchical selection. 
 Traffic hierarchical selection to prioritize high-value traffic is a good weapon to maximize the system's value.
 
 ![avatar](https://github.com/boostlearn/go-cluster-limiter/raw/master/doc/pictures/limiter-multilevel.png)
@@ -46,28 +46,26 @@ During this limiter's lifetime, the target reward can be reached smoothly.
 >The minimum flow control interval that can be set by the flow limiter of this project is the interval at which the client node performs global data synchronization (generally 2s~10s). 
 
 ## Examples
-#### Storage
+#### Synchronization
 >The cluster limiter of this project needs a centralized storage to synchronize global information.
 the storage can be unavailable for a short time, but the stored data should not be lost.
 The response time of data query from the storage under normal conditions is within 100ms
 The commonly used database like redis, influxdb, and mysql can all meet these conditions.Currently only redis is supported.
 
-**build cluster's storage**:
+**build the cluster's synchronization storage**:
 
     import	"github.com/boostlearn/go-cluster-limiter/cluster_counter/redis_store"
         	
     counterStore, err := redis_store.NewStore("127.0.0.1:6379","","")
 
 #### Limiter
-**build limiter's factory**：
+**build the limiters factory**：
 
     import	"github.com/boostlearn/go-cluster-limiter/cluster_limiter"
     
     limiterFactory := cluster_limiter.NewFactory(
     	&cluster_limiter.ClusterLimiterFactoryOpts{
     		Name:                  "test",
-    		HeartbeatInterval:     1000 * time.Millisecond,
-    		InitLocalTrafficProportion: 1.0,
     		Store: counterStore,
     	})
     limiterFactory.Start()
@@ -100,7 +98,7 @@ The commonly used database like redis, influxdb, and mysql can all meet these co
     if limiter != nil {
         if limiter.Take(1) { 
     	    doSomething()
-    	    if inCentainCondition {
+    	    if inSomeCondition {
     	        limiter.Reward(1) 
     	    }
         } else { 
@@ -119,8 +117,7 @@ The commonly used database like redis, influxdb, and mysql can all meet these co
     		Name:                     "limiter-3",
     		RewardTarget: 10000,
     		PeriodInterval:           time.Duration(60) * time.Second,
-    		ScoreSamplesMax:          10000,
-    		ScoreSamplesSortInterval: 10 * time.Second,
+    		TakeWithScore: true,
     		DiscardPreviousData:      true,
     	})
     		

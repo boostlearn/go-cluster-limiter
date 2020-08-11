@@ -56,8 +56,6 @@
     limiterFactory := cluster_limiter.NewFactory(
     	&cluster_limiter.ClusterLimiterFactoryOpts{
     		Name:                  "test",
-    		HeartbeatInterval:     1000 * time.Millisecond,
-    		InitLocalTrafficProportion: 1.0,
     		Store: counterStore,
     	})
     limiterFactory.Start()
@@ -107,11 +105,10 @@
     
     scorelimiter, err = limiterFactory.NewClusterLimiter(
     	&cluster_limiter.ClusterLimiterOpts{
-    		Name:                     "test",
+    		Name:                     "limiter-3",
     		RewardTarget: 10000,
     		PeriodInterval:           time.Duration(60) * time.Second,
-    		ScoreSamplesMax:          10000,
-    		ScoreSamplesSortInterval: 10 * time.Second,
+    		TakeWithScore: true,
     		DiscardPreviousData:      true,
     	})
     		
