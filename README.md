@@ -1,7 +1,4 @@
->This project provides lightweight and high-performance cluster flow control service, which has the following characteristics:
->* the algorithm runs on each flow control node in the cluster without a lot of synchronization operations.
->* the algorithm dynamically adjusts the control parameters by analyzing the time series, which has good accuracy and adaptability.
->* providing multiple flow control modes, such as delayed feedback flow limiting, hierarchical flow selection and so on.
+>This project provides lightweight and high-performance cluster flow control service.
 
 [中文](./README-ZH.md)
 
