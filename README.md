@@ -1,30 +1,26 @@
->This project can be used as a service module that implements flow limiter in a cluster environment, 
->and can be used in scenarios that require flow limiter such as service protection, consumption control, experiment shunting and so on. 
->this project uses a decentralized flow control algorithm, which could effectively reduce the resource consumption and dependence on network stability.
+>This project provides lightweight and high-performance cluster flow control service, which has the following characteristics:
+>* the algorithm runs on each flow control node in the cluster without a lot of synchronization operations.
+>* the algorithm dynamically adjusts the control parameters by analyzing the time series, which has good accuracy and adaptability.
+>* providing multiple flow control modes, such as delayed feedback flow limiting, hierarchical flow selection and so on.
 
 [中文](./README-ZH.md)
 
-## The difference with other limiters
-     
-the stand-alone limiter mainly controls the use of local traffic, 
-which can be implemented by using algorithms such as counters, leaky buckets, or token buckets and so on.
-the stand-alone limiter does not depend on the external environment and needs low resources consumption.
+## Difference from other flow control algorithms
+Traditional flow control algorithms include counters, leaky buckets, token buckets, etc. 
+These algorithms are easy to implement in the local mode, but the cost of running in the cluster's service partition mode is relatively high.
+The common solution is to use global memory or call RPC services to achieve, which requires a lot of network resources and depends on the stability of the network, which limits the scope of its use.
 
-However, above algorithms which used in the stand-alone limiter cannot run in the cluster's service partition mode. 
-One common method which used to control a cluster's flow is by calling the external flow control RPC service. 
-however, the cluster limiter which carried out through the network, requires high network stability, consume certain query time, 
-easily forms a single hot spot, consumes a lot of resources and so on, that finally limits its scope of usage.
+The algorithm of this project is based on the assumption that the overall flow of the cluster is stable:
+  * The overall flow of the cluster is stable.
+  * The flow of each node in the cluster is stable.
 
-This project uses a decentralized flow control algorithm to move the centralized service to  decentralized nodes, 
-with the goal to reduce the dependence on the network. 
-the control algorithm of this project needs the flow to meet the following requirements during its lifetime:
-* the overall traffic flow of the cluster is stable for a short while (about 10s).
-* the traffic flow of each node in the cluster is stable for a short while.
-     
-The algorithm of this project is also sensitive to traffic changes in the flow, and can dynamically calculate and adapt to changes.
-
-In scenarios where the traffic flow is often non-continuous or has many of instantaneous burst traffic, the algorithm of this project may not work well.
-
+The features of this project algorithm include:
+  * Sensitive to changes in flow (more than 10s), the algorithm can adjust flow control parameters by capturing changes.
+  * Run on each flow control node, with low resource consumption.
+  * Low requirements for network delay and network stability, and may be suitable for deployment in multiple IDCs.
+  * Can support delayed non-deterministic feedback.
+  * Can support hierarchical flow control.
+  
 ![avatar](https://github.com/boostlearn/go-cluster-limiter/raw/master/doc/pictures/limiter_frame.png)
 
 ## Features
@@ -139,10 +135,11 @@ The commonly used database like redis, influxdb, and mysql can all meet these co
     }
     
   
-## Principles of the limiter's algorithm
->The flow control calculation algorithm of this project re-evaluates the flow situation in a fixed period (about 2s~10s), and adapt to changes in traffic through parameter adjustment.
+## Algorithms
+>The flow control calculation algorithm of this project re-evaluates the flow situation in a fixed period (about 2s~10s), 
+>and adapt to changes in traffic through parameter adjustment.
 
-#### Estimate the cluster's traffic by local traffic
+#### Estimate the cluster's traffic
 >The flow control algorithm of this project believes that the cluster's traffic and local traffic are stable for a short while, 
 so the proportion of local traffic in the cluster traffic is also stable for a short time.
 
@@ -157,7 +154,7 @@ Formula for estimating current cluster's traffic:
     CurrentClusterTraffic: = LastSynchronizedClusterTraffic + LocalRequestSinceSynchronized/LocalTrafficProportion
     
     
-#### Calculate the ratio of passed to reward
+#### Estimate the ratio of passed to reward
 >Since the flow limiter does not directly control the reward, 
 the conversion ratio needs to be calculated to calculate the pass quantum to achieve the target reward. 
 
@@ -165,7 +162,7 @@ Update ConversionRate formula:
     
     ConversionRatio: = ConversionRatio * P + (RewardRecently / PassRecently) * (1 – P)
 
-#### Calculate the ratio of requests passing
+#### Estimate the ideal ratio of requests to passing
 >Whether a request can pass through the limiter can be controlled by the pass rate parameter
 
 The formula for calculating the IdealPassingRate is as follows:
