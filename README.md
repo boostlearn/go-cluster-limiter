@@ -136,6 +136,9 @@ The commonly used database like redis, influxdb, and mysql can all meet these co
 >The flow control calculation algorithm of this project re-evaluates the flow situation in a fixed period (about 2s~10s), 
 >and adapt to changes in traffic through parameter adjustment.
 
+  
+![avatar](https://github.com/boostlearn/go-cluster-limiter/raw/master/doc/pictures/limiter_algorithm_en.png)
+
 #### Estimate the cluster's traffic
 >The flow control algorithm of this project believes that the cluster's traffic and local traffic are stable for a short while, 
 so the proportion of local traffic in the cluster traffic is also stable for a short time.

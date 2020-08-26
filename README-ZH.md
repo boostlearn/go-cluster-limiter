@@ -130,6 +130,9 @@
 ## 集群流控算法原理
 >本项目流控算算法以固定周期(大约2s~10s)重新评估流量情况，通过参数调整来调价请求的通过量。
 
+  
+![avatar](https://github.com/boostlearn/go-cluster-limiter/raw/master/doc/pictures/limiter_algorithm_cn.png)
+
 #### 通过本地流量估计当前的集群流量
 >本项目流控算法认为集群流量和本地流量的短时稳定，所以本地流量在集群流量里的占比也短时稳定。
  
